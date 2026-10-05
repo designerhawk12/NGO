@@ -54,6 +54,7 @@ const validPickupPayload = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  query.mockReset();
   verify.mockResolvedValue({ authUserId: admin.authUserId, email: 'admin@example.com' });
   findUser.mockResolvedValue(admin);
 });
