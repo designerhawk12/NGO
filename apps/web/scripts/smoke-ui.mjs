@@ -25,16 +25,26 @@ try {
   assert.ok(adminLinks.length >= 2)
   assert.ok(adminLinks.every(link => /admin/i.test(link.textContent)), 'Web workspace links must describe the admin app')
   assert.doesNotMatch(document.querySelector('.landing').textContent, /Open volunteer workspace/)
+  assert.ok(document.querySelector('.landing a[href$="donor/index.html"]'), 'Landing page should offer donor entry')
 
-  await click(document.querySelector('.landing-link'))
-  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+  const adminLink = document.querySelector('.landing-link')
+  assert.ok(adminLink, 'Expected admin dashboard link')
+  const hashChanged = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Admin link did not trigger hash navigation')), 2000)
+    window.addEventListener('hashchange', () => { clearTimeout(timeout); resolve() }, { once:true })
+  })
+  await act(async () => { adminLink.click(); await hashChanged })
   assert.equal(window.location.hash, '#/workspace')
   assert.match(document.body.textContent, /Volunteer Management/)
   for (const label of ['Volunteers', 'Food & Donors', 'Pickup & Logistics', 'Vehicle Tracking', 'Vehicle Details']) {
     assert.ok([...document.querySelectorAll('.side-nav button')].some(item => item.textContent.trim() === label), `${label} module should be visible`)
   }
+  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Volunteers')))
+  assert.match(document.querySelector('main h1').textContent, /Volunteers/)
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Food & Donors')))
   assert.match(document.querySelector('main').textContent, /Admin food requests are not connected yet/)
+  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Pickup & Logistics')))
+  assert.match(document.querySelector('main h1').textContent, /Pickup & Logistics/)
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vehicle Tracking')))
   assert.match(document.querySelector('main').textContent, /This device location/)
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vehicle Details')))
