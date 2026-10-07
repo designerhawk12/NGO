@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Layout } from './components/layout/Layout'
 import { Toast } from './components/common/UI'
 import CreateAssignmentDialog from './components/assignments/CreateAssignmentDialog'
@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Volunteers from './pages/Volunteers'
 import Teams from './pages/Teams'
 import Assignments from './pages/Assignments'
+import PickupsLogistics from './pages/PickupsLogistics'
 import Settings from './pages/Settings'
 import VehicleTracking from './pages/VehicleTracking'
 import Vehicles from './pages/Vehicles'
@@ -18,7 +19,30 @@ import type { Assignment, Page, Vehicle, VehicleMaintenanceRecord, Volunteer, Vo
 export default function App() {
   const [language, setLanguage] = useState<Language>(() => window.localStorage.getItem('aaharaconnect-language') === 'kn' ? 'kn' : 'en')
   useRenderedLanguage(language)
-  const [page, setPage] = useState<Page>('dashboard')
+  const resolvePageFromUrl = (): Page => {
+    if (typeof window !== 'undefined') {
+      const searchP = new URLSearchParams(window.location.search).get('page')
+      const hashQuery = window.location.hash.includes('?')
+        ? new URLSearchParams(window.location.hash.split('?')[1]).get('page')
+        : null
+      const directHash = window.location.hash.replace(/^#\/?(workspace\/?)?/, '').split('?')[0]
+      const p = searchP || hashQuery || directHash
+      if (p === 'food' || p === 'pickups' || p === 'volunteers' || p === 'teams' || p === 'assignments' || p === 'tracking' || p === 'vehicles' || p === 'settings') {
+        return p as Page
+      }
+    }
+    return 'dashboard'
+  }
+  const [page, setPage] = useState<Page>(resolvePageFromUrl)
+
+  useEffect(() => {
+    const handleNav = () => {
+      const p = resolvePageFromUrl()
+      if (p !== 'dashboard') setPage(p)
+    }
+    window.addEventListener('hashchange', handleNav)
+    return () => window.removeEventListener('hashchange', handleNav)
+  }, [])
   const [volunteers, setVolunteers] = useState<Volunteer[]>(initialVolunteers)
   const [teams, setTeams] = useState<VolunteerTeam[]>(initialTeams)
   const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments)
@@ -37,11 +61,12 @@ export default function App() {
   const createAssignment = (assignment: Assignment) => { setAssignments(current => [assignment, ...current]); setAssignmentOpen(false); setPage('assignments'); notify('Assignment Created Successfully · Pending') }
   const changeLanguage = (next: Language) => { setLanguage(next); window.localStorage.setItem('aaharaconnect-language', next) }
   return <Layout page={page} onPage={setPage} language={language} onLanguageChange={changeLanguage}>
-    {page === 'dashboard' && <Dashboard volunteers={volunteers} teams={teams} assignments={assignments} onCreateAssignment={() => openAssignment()} onViewAssignments={() => setPage('assignments')} onViewVolunteers={() => setPage('volunteers')}/>}
+    {page === 'dashboard' && <Dashboard volunteers={volunteers} teams={teams} assignments={assignments} onCreateAssignment={() => openAssignment()} onViewAssignments={() => setPage('assignments')} onViewVolunteers={() => setPage('volunteers')} onViewPickups={() => setPage('pickups')}/>}
     {page === 'volunteers' && <Volunteers volunteers={volunteers} teams={teams} assignments={assignments} setVolunteers={setVolunteers} onAssignTeam={assignTeam} onCreateAssignment={openAssignment} notify={notify}/>}
     {page === 'teams' && <Teams volunteers={volunteers} teams={teams} setTeams={setTeams} onAssignTeam={assignTeam} notify={notify}/>}
     {page === 'food' && <FoodDonor/>}
     {page === 'assignments' && <><LivePickupsPanel/><Assignments assignments={assignments} setAssignments={setAssignments} volunteers={volunteers} teams={teams} onCreateAssignment={() => openAssignment()} notify={notify}/></>}
+    {page === 'pickups' && <PickupsLogistics assignments={assignments} setAssignments={setAssignments} volunteers={volunteers} teams={teams} onCreateAssignment={() => openAssignment()} notify={notify}/>}
     {page === 'tracking' && <VehicleTracking />}
     {page === 'vehicles' && <Vehicles vehicles={vehicles} setVehicles={setVehicles} maintenanceRecords={maintenanceRecords} setMaintenanceRecords={setMaintenanceRecords} drivers={initialDrivers} assignments={assignments} events={events} notify={notify}/>}
     {page === 'settings' && <Settings notifications={showSuccessNotifications} onNotificationsChange={setShowSuccessNotifications} onAdminSignIn={() => setPage('dashboard')}/>}

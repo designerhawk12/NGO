@@ -11,5 +11,12 @@ export default function Root() {
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
-  return hash.startsWith(WORKSPACE_HASH) ? <App /> : <Landing />
+  const isWorkspace =
+    hash.startsWith(WORKSPACE_HASH) ||
+    hash.includes('pickups') ||
+    (typeof window !== 'undefined' &&
+      (new URLSearchParams(window.location.search).get('page') === 'pickups' ||
+        window.location.hash.includes('page=pickups')))
+  return isWorkspace ? <App /> : <Landing />
 }
+

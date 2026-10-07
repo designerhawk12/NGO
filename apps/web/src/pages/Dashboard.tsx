@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarClock, CheckCircle2, Clock3, MapPin, Plus, Users, UsersRound } from 'lucide-react'
+import { ArrowRight, CalendarClock, CheckCircle2, Clock3, MapPin, PackageCheck, Plus, Users, UsersRound } from 'lucide-react'
 import { events } from '../data/mockData'
 import type { Assignment, Volunteer, VolunteerTeam } from '../types'
 import { Avatar, formatDate, formatTime, SectionHeading, StatusBadge } from '../components/common/UI'
@@ -10,9 +10,10 @@ type Props = {
   onCreateAssignment: () => void
   onViewAssignments: () => void
   onViewVolunteers: () => void
+  onViewPickups?: () => void
 }
 
-export default function Dashboard({ volunteers, teams, assignments, onCreateAssignment, onViewAssignments, onViewVolunteers }: Props) {
+export default function Dashboard({ volunteers, teams, assignments, onCreateAssignment, onViewAssignments, onViewVolunteers, onViewPickups }: Props) {
   const stats = [
     { label: 'Total Volunteers', value: 48 + Math.max(0, volunteers.length - 12), icon: Users, color: 'green' },
     { label: 'Available Volunteers', value: 21 + Math.max(0, volunteers.filter(v => v.status === 'AVAILABLE').length - 7), icon: CheckCircle2, color: 'blue' },
@@ -30,7 +31,10 @@ export default function Dashboard({ volunteers, teams, assignments, onCreateAssi
   return <>
     <div className="page-heading dashboard-heading">
       <div><h1>Volunteer Management</h1><p>Coordinate volunteers, teams and food-rescue assignments.</p></div>
-      <button className="button button-primary" onClick={onCreateAssignment}><Plus size={19}/> Create Assignment</button>
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        {onViewPickups && <button className="button button-secondary" onClick={onViewPickups}><PackageCheck size={18}/> Pickup & Logistics</button>}
+        <button className="button button-primary" onClick={onCreateAssignment}><Plus size={19}/> Create Assignment</button>
+      </div>
     </div>
 
     <div className="stat-grid">{stats.map(stat => <div className="stat-card" key={stat.label}>
@@ -73,6 +77,7 @@ export default function Dashboard({ volunteers, teams, assignments, onCreateAssi
           <p>{pickup.title} · {pickup.location}</p>
           <div className="next-pickup-meta"><span><Clock3 size={15}/>{formatDate(pickup.dateTime)}</span><span><MapPin size={15}/>{pickup.location}</span></div>
           <button onClick={onCreateAssignment}>Create Assignment <ArrowRight size={16}/></button>
+          {onViewPickups && <button className="button button-secondary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={onViewPickups}><PackageCheck size={16}/> Pickup & Logistics</button>}
         </section>
       </div>
     </div>

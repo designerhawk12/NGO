@@ -118,6 +118,7 @@ body.dev .tag{display:inline-block}
 <header>
   <a class="brand" href="../"><img src="icon-192.png" alt="" width="40" height="40"><span><strong>Akshaya Ahar</strong><small>Share surplus food, feed more people</small></span></a>
   <div class="hdr-right">
+    <a href="../#/workspace?page=pickups" style="background:var(--leaf);color:#fff;padding:6px 14px;border-radius:999px;font-weight:600;font-size:0.85rem;text-decoration:none;display:flex;align-items:center;gap:6px">🚚 Open Pickup &amp; Logistics</a>
     <a class="home" href="../">Home</a>
     <button class="themebtn" id="themeBtn" aria-label="Switch light or dark mode"></button>
   </div>
@@ -210,14 +211,19 @@ body.dev .tag{display:inline-block}
     <p class="lead" id="stLead"></p>
     <div class="panel">
       <ol class="timeline" id="timeline"></ol>
-      <div class="ext"><b>Pickup Logistics</b> <span class="tag">«external module»</span><br>Handled by the pickup team. Driver and timing details will show here once they accept.</div>
+      <div class="ext"><b>Pickup Logistics</b> <span class="tag">«external module»</span><br>Handled by the pickup team. Driver and timing details will show here once they accept.
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <a href="../#/workspace?page=pickups" style="display:inline-block;padding:10px 18px;background:var(--leaf);color:#fff;border-radius:8px;font-weight:700;text-decoration:none;box-shadow:0 2px 6px rgba(0,0,0,0.15)">Open in Pickup &amp; Logistics (View AI Recommendation &amp; Assign Crew) →</a>
+        </div>
+      </div>
     </div>
     <div class="btnrow" id="stBtns">
       <button class="ghost" id="btnStatus">Check status <span class="tag">viewPickupStatus()</span></button>
       <button class="danger" id="btnCancel">Cancel donation <span class="tag">cancelDonation()</span></button>
     </div>
     <button class="primary" id="btnNew">Donate again</button>
-    <a class="home" href="../" style="display:block;text-align:center;margin-top:16px">Back to home</a>
+    <a class="home" href="../#/workspace?page=pickups" style="display:block;text-align:center;margin-top:14px;font-weight:600;color:var(--leaf)">Go to Volunteer Workspace →</a>
+    <a class="home" href="../" style="display:block;text-align:center;margin-top:6px;font-size:0.85rem;color:var(--muted)">Back to home</a>
   </section>
   <label class="devtoggle"><input type="checkbox" id="devToggle" style="width:auto"> Class names</label>
 </div>
@@ -468,7 +474,74 @@ $("btnReview").onclick = () => {
 $("backFood").onclick = () => { renderPresets(); renderItems(); show("s-food"); };
 
 /* Submit + status */
-$("btnSubmit").onclick = () => { donor.submitDonation(); renderStatus(); show("s-status"); toast("Sent for pickup"); };
+$("btnSubmit").onclick = () => {
+  donor.submitDonation();
+  try {
+    const h = (donor.halls && donor.halls[0]) ? donor.halls[0] : {};
+    const hallName = h.hallName || ($("hName") ? $("hName").value.trim() : "") || "Function Hall";
+    const hallAddr = h.hallAddress || ($("hAddr") ? $("hAddr").value.trim() : "") || "Bengaluru";
+    const locStr = (hallName ? hallName + ", " : "") + hallAddr;
+    const donorName = donor.name || ($("rName") ? $("rName").value.trim() : "") || "Food Donor";
+
+    let foodsList = (donor.foods || []).map(f => ({
+      name: f.name,
+      foodType: f.foodType,
+      quantity: Number(f.quantity) || 0,
+      unit: f.unit || 'kg',
+      peopleFed: f.peopleFed ? f.peopleFed() : 0
+    })).filter(f => f.quantity > 0);
+
+    if (foodsList.length === 0) {
+      foodsList = [{ name: 'Surplus Prepared Meals', foodType: 'VEG', quantity: 20, unit: 'kg', peopleFed: 80 }];
+    }
+
+    const feedsVal = $("feedsNum") ? parseInt($("feedsNum").textContent) : 0;
+    const donationId = "f1000000-0000-4000-8000-" + String(Date.now()).slice(-12).padStart(12, '0');
+    const pickupId = "p" + donationId.slice(1);
+
+    const donationRecord = {
+      id: donationId,
+      donorName: donorName,
+      location: locStr,
+      readyAt: donor.preparedTime ? new Date(donor.preparedTime).toISOString() : new Date().toISOString(),
+      pickupDeadline: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
+      status: "SUBMITTED",
+      safetyReview: "APPROVED",
+      foods: foodsList,
+      totalFeeds: feedsVal || foodsList.reduce((acc, f) => acc + f.peopleFed, 0)
+    };
+    const list = Store.get("donations") || [];
+    Store.set("donations", [donationRecord, ...list.filter(d => d.donorName !== donationRecord.donorName)]);
+
+    const pickupRecord = {
+      id: pickupId,
+      foodRequestId: donationId,
+      status: "PLANNED",
+      windowStartsAt: donationRecord.readyAt,
+      windowEndsAt: donationRecord.pickupDeadline,
+      deliveryAddress: "AaharaConnect Distribution Center, Indiranagar",
+      version: 1,
+      createdAt: new Date().toISOString(),
+      donorName: donorName,
+      donorLocation: locStr,
+      foods: foodsList,
+      totalFeeds: donationRecord.totalFeeds
+    };
+    const existingPickups = Store.get("demo-pickups") || [];
+    Store.set("demo-pickups", [pickupRecord, ...existingPickups.filter(p => p.foodRequestId !== donationId)]);
+
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('aahara_donations');
+        bc.postMessage({ type: 'NEW_DONATION', data: pickupRecord });
+        setTimeout(() => bc.close(), 1000);
+      }
+    } catch {}
+  } catch (err) {
+    console.error("Donation submit error:", err);
+  }
+  renderStatus(); show("s-status"); toast("Sent for pickup");
+};
 function renderStatus(){
   const cancelled = donor.status === "Cancelled";
   const t = donor.submittedAt.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
