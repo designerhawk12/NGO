@@ -11,6 +11,7 @@ type Props = {
   onViewAssignments: () => void
   onViewVolunteers: () => void
   onViewPickups?: () => void
+  demoMode?: boolean
 }
 
 export default function Dashboard({ volunteers, teams, assignments, onCreateAssignment, onViewAssignments, onViewVolunteers, onViewPickups }: Props) {
@@ -36,6 +37,8 @@ export default function Dashboard({ volunteers, teams, assignments, onCreateAssi
         <button className="button button-primary" onClick={onCreateAssignment}><Plus size={19}/> Create Assignment</button>
       </div>
     </div>
+
+    <div className="panel" role="status" style={{ marginBottom: '1rem', borderColor: '#eab308' }}><strong>Demo data</strong><span> — sample records shown below are not live API or database data.</span></div>
 
     <div className="stat-grid">{stats.map(stat => <div className="stat-card" key={stat.label}>
       <div className="stat-top"><span>{stat.label}</span><span className={`stat-icon ${stat.color}`}><stat.icon size={21}/></span></div>

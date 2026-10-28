@@ -54,6 +54,8 @@ try {
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vessels')))
   assert.match(document.querySelector('main h1').textContent, /Vessels/)
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Dashboard')))
+  const openDemo = button('Open demo dashboard')
+  if (openDemo) await click(openDemo)
 
   await click(button('ಕನ್ನಡ'))
   assert.match(document.body.textContent, /ಸ್ವಯಂಸೇವಕರ ನಿರ್ವಹಣೆ/)
