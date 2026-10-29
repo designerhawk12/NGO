@@ -332,22 +332,22 @@ export async function updateVessel(id: string, patch: UpdateVessel, client?: Poo
   }
 }
 
-export async function deleteVessel(id: string, client?: PoolClient) {
+export async function deleteVessel(idOrCode: string, client?: PoolClient) {
   const db = client ?? getPool();
   try {
-    // Check if active issuances exist
-    const active = await db.query(
-      `SELECT 1 FROM app.vessel_issuances WHERE vessel_id = $1 AND status = 'ACTIVE'`,
-      [id]
+    const vCheck = await db.query(
+      `SELECT id FROM app.vessels WHERE id::text = $1 OR UPPER(vessel_code) = UPPER($1)`,
+      [idOrCode]
     );
-    if (active.rows.length > 0) {
-      throw new HttpError(409, 'RESOURCE_CONFLICT', 'Cannot delete vessel while it is actively issued to a pickup.');
+    if (vCheck.rows.length === 0) {
+      return true;
     }
+    const vesselId = vCheck.rows[0].id;
 
-    // Cascade delete logs and return records
-    await db.query(`DELETE FROM app.vessel_logs WHERE vessel_id = $1`, [id]);
-    await db.query(`DELETE FROM app.vessel_issuances WHERE vessel_id = $1`, [id]);
-    const res = await db.query(`DELETE FROM app.vessels WHERE id = $1 RETURNING id`, [id]);
+    // Cascade delete logs and return/issuance records
+    await db.query(`DELETE FROM app.vessel_logs WHERE vessel_id = $1`, [vesselId]);
+    await db.query(`DELETE FROM app.vessel_issuances WHERE vessel_id = $1`, [vesselId]);
+    const res = await db.query(`DELETE FROM app.vessels WHERE id = $1 RETURNING id`, [vesselId]);
     return res.rows.length > 0;
   } catch (error) {
     handleVesselDbError(error);
