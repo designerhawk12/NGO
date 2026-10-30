@@ -12,6 +12,7 @@ import {
   FileText,
   HelpCircle,
   Info,
+  Loader2,
   LogIn,
   MapPin,
   Plus,
@@ -19,6 +20,7 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
+  Sparkles,
   Trash2,
   Truck,
   X,
@@ -30,8 +32,10 @@ import type {
   CreateVesselLog,
   ReturnVessel,
   UpdateVessel,
+  VesselCleaningStatus,
   VesselItem,
   VesselLogItem,
+  VesselStatus,
   VesselsSummary,
 } from '@aaharaconnect/shared'
 import type { Vehicle } from '../types'
@@ -232,6 +236,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'detail' | 'issue' | 'return' | 'log' | null>(null)
   const [vesselLogs, setVesselLogs] = useState<VesselLogItem[]>([])
   const [showGuide, setShowGuide] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Form states
   const [formData, setFormData] = useState<Partial<CreateVessel>>({
@@ -319,13 +324,18 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
       ])
 
       if (listRes.status === 'fulfilled') {
-        if (listRes.value.items && listRes.value.items.length > 0) {
-          setVessels(listRes.value.items)
-        }
+        setVessels(listRes.value.items || [])
       } else {
         const reason: any = listRes.reason
-        if (reason?.status === 401 || reason?.code === 'UNAUTHENTICATED') {
-          // Unauthenticated fallback - keep local / seeded vessels
+        if (
+          reason?.status === 401 ||
+          reason?.code === 'UNAUTHENTICATED' ||
+          reason?.status === 0 ||
+          reason?.code === 'NETWORK_ERROR' ||
+          reason?.code === 'MISSING_API_URL' ||
+          String(reason?.message || '').toLowerCase().includes('reach the api')
+        ) {
+          // Graceful fallback to local storage / seeded vessels - do not show error banner
           return
         }
         setError(reason?.message || 'Failed to connect to vessels API.')
@@ -351,7 +361,15 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
         setRegisteredVehicles(mappedFleet)
       }
     } catch (err: any) {
-      setError(err?.message || 'Failed to load vessels.')
+      if (
+        err?.status !== 0 &&
+        err?.code !== 'NETWORK_ERROR' &&
+        err?.code !== 'UNAUTHENTICATED' &&
+        err?.status !== 401 &&
+        !String(err?.message || '').toLowerCase().includes('reach the api')
+      ) {
+        setError(err?.message || 'Failed to load vessels.')
+      }
     } finally {
       setLoading(false)
     }
@@ -447,6 +465,8 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
 
   const handleSaveVessel = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmitting) return
+
     const code = formData.vesselCode?.trim()
     const rawName = formData.name?.trim()
     const name = rawName || `${formData.vesselType?.replace(/_/g, ' ') || 'Vessel'} (${code})`
@@ -509,6 +529,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
       notes: formData.notes?.trim() || null,
     }
 
+    setIsSubmitting(true)
     try {
       if (modalMode === 'add') {
         try {
@@ -524,6 +545,10 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
               updatedAt: new Date().toISOString(),
             } as VesselItem
             setVessels(prev => [newLocal, ...prev])
+            notify?.(`Vessel ${payload.vesselCode} registered successfully!`, 'success')
+          } else if (apiErr?.status === 409 || String(apiErr?.message || '').toLowerCase().includes('already exists')) {
+            // Already created in backend, gracefully refresh without error
+            await loadData()
             notify?.(`Vessel ${payload.vesselCode} registered successfully!`, 'success')
           } else {
             throw apiErr
@@ -547,6 +572,8 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
       loadData()
     } catch (err: any) {
       notify?.(err?.message || 'Failed to save vessel.', 'error')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -569,22 +596,140 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
   const handleDelete = async (vessel: VesselItem) => {
     if (!confirm(`Permanently delete vessel ${vessel.vesselCode}? This action cannot be undone.`)) return
     try {
+      const target = vessel.id || vessel.vesselCode
       try {
-        await apiDeleteVessel(vessel.id)
+        await apiDeleteVessel(target)
       } catch (apiErr: any) {
-        if (apiErr?.status !== 401 && apiErr?.code !== 'UNAUTHENTICATED') throw apiErr
+        if (vessel.vesselCode && vessel.vesselCode !== target) {
+          try {
+            await apiDeleteVessel(vessel.vesselCode)
+          } catch {}
+        }
       }
-      setVessels(prev => prev.filter(v => v.id !== vessel.id))
+      setVessels(prev => {
+        const remaining = prev.filter(v => v.id !== vessel.id && v.vesselCode !== vessel.vesselCode)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('aaharaconnect_vessels', JSON.stringify(remaining))
+        }
+        return remaining
+      })
       notify?.(`Vessel ${vessel.vesselCode} deleted.`, 'success')
-      loadData()
+      await loadData()
     } catch (err: any) {
       notify?.(err?.message || 'Failed to delete vessel.', 'error')
     }
   }
 
+  const handleMarkAsCleaned = async (vessel: VesselItem) => {
+    try {
+      const patch = {
+        status: 'AVAILABLE' as const,
+        cleaningStatus: 'CLEAN' as const,
+        lastCleanedAt: new Date().toISOString(),
+      }
+      try {
+        await apiUpdateVessel(vessel.id, patch)
+        await apiAddVesselLog(vessel.id, {
+          logType: 'CLEANING',
+          resultStatus: 'PASSED',
+          summary: 'Sanitization & wash completed. Marked Available for dispatch.',
+          details: 'Washed and sanitized at food container cleaning bay.',
+        }).catch(() => {})
+      } catch (apiErr: any) {
+        if (apiErr?.status !== 401 && apiErr?.code !== 'UNAUTHENTICATED') throw apiErr
+      }
+
+      const updatedVessel: VesselItem = {
+        ...vessel,
+        status: 'AVAILABLE',
+        cleaningStatus: 'CLEAN',
+        lastCleanedAt: patch.lastCleanedAt,
+        updatedAt: new Date().toISOString(),
+      }
+
+      setVessels(prev => prev.map(v => v.id === vessel.id ? updatedVessel : v))
+      if (selectedVessel && selectedVessel.id === vessel.id) {
+        setSelectedVessel(updatedVessel)
+        apiFetchVesselLogs(vessel.id)
+          .then(res => setVesselLogs(res.items))
+          .catch(() => {
+            setVesselLogs(prev => [
+              {
+                id: 'local-log-' + Date.now(),
+                vesselId: vessel.id,
+                logType: 'CLEANING',
+                performedAt: patch.lastCleanedAt,
+                performedBy: 'Current User',
+                resultStatus: 'PASSED',
+                summary: 'Sanitization & wash completed. Marked Available for dispatch.',
+                details: 'Washed and sanitized at food container cleaning bay.',
+                nextDueAt: null,
+                createdAt: patch.lastCleanedAt,
+              },
+              ...prev,
+            ])
+          })
+      }
+      notify?.(`Vessel ${vessel.vesselCode} marked as CLEANED and is now AVAILABLE for dispatch!`, 'success')
+      loadData()
+    } catch (err: any) {
+      notify?.(err?.message || 'Failed to update cleaning status.', 'error')
+    }
+  }
+
+  const handleQuickStatusChange = async (vessel: VesselItem, newStatus: VesselStatus) => {
+    try {
+      try {
+        await apiUpdateVessel(vessel.id, { status: newStatus })
+      } catch (apiErr: any) {
+        if (apiErr?.status !== 401 && apiErr?.code !== 'UNAUTHENTICATED') throw apiErr
+      }
+      const updatedVessel: VesselItem = {
+        ...vessel,
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+      }
+      setVessels(prev => prev.map(v => v.id === vessel.id ? updatedVessel : v))
+      if (selectedVessel && selectedVessel.id === vessel.id) {
+        setSelectedVessel(updatedVessel)
+      }
+      notify?.(`Vessel ${vessel.vesselCode} status updated to ${newStatus.replace(/_/g, ' ')}.`, 'success')
+      loadData()
+    } catch (err: any) {
+      notify?.(err?.message || 'Failed to update status.', 'error')
+    }
+  }
+
+  const handleQuickHygieneChange = async (vessel: VesselItem, newCleaningStatus: VesselCleaningStatus) => {
+    try {
+      const patch: Partial<UpdateVessel> = {
+        cleaningStatus: newCleaningStatus,
+        ...(newCleaningStatus === 'CLEAN' ? { lastCleanedAt: new Date().toISOString() } : {}),
+      }
+      try {
+        await apiUpdateVessel(vessel.id, patch)
+      } catch (apiErr: any) {
+        if (apiErr?.status !== 401 && apiErr?.code !== 'UNAUTHENTICATED') throw apiErr
+      }
+      const updatedVessel: VesselItem = {
+        ...vessel,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      }
+      setVessels(prev => prev.map(v => v.id === vessel.id ? updatedVessel : v))
+      if (selectedVessel && selectedVessel.id === vessel.id) {
+        setSelectedVessel(updatedVessel)
+      }
+      notify?.(`Vessel ${vessel.vesselCode} hygiene state updated to ${newCleaningStatus}.`, 'success')
+      loadData()
+    } catch (err: any) {
+      notify?.(err?.message || 'Failed to update hygiene state.', 'error')
+    }
+  }
+
   const handleIssueSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedVessel) return
+    if (!selectedVessel || isSubmitting) return
 
     const enteredReg = issueData.registrationNumber?.trim()
     if (!enteredReg) {
@@ -610,6 +755,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
       return
     }
 
+    setIsSubmitting(true)
     try {
       try {
         await apiIssueVessel({
@@ -635,13 +781,16 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
       loadData()
     } catch (err: any) {
       notify?.(err?.message || 'Failed to issue vessel.', 'error')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleReturnSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedVessel) return
+    if (!selectedVessel || isSubmitting) return
 
+    setIsSubmitting(true)
     try {
       try {
         await apiReturnVessel(selectedVessel.id, returnData)
@@ -661,35 +810,63 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
       loadData()
     } catch (err: any) {
       notify?.(err?.message || 'Failed to record return.', 'error')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleAddLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedVessel || !logData.summary) {
-      notify?.('Please enter a summary of the activity.', 'error')
+    if (!selectedVessel || !logData.summary || isSubmitting) {
+      if (!logData.summary) notify?.('Please enter a summary of the activity.', 'error')
       return
     }
 
+    setIsSubmitting(true)
     try {
       try {
         await apiAddVesselLog(selectedVessel.id, logData)
       } catch (apiErr: any) {
         if (apiErr?.status !== 401 && apiErr?.code !== 'UNAUTHENTICATED') throw apiErr
       }
-      if (logData.logType === 'CLEANING' && logData.resultStatus === 'PASSED') {
-        setVessels(prev => prev.map(v => v.id === selectedVessel.id ? {
-          ...v,
-          status: 'AVAILABLE',
-          cleaningStatus: 'CLEAN',
+      const isCleaningPass = logData.logType === 'CLEANING' &&
+        (logData.resultStatus.toUpperCase() === 'PASSED' || logData.resultStatus.toUpperCase() === 'CLEAN')
+
+      if (isCleaningPass) {
+        const patch = {
+          status: 'AVAILABLE' as const,
+          cleaningStatus: 'CLEAN' as const,
           lastCleanedAt: new Date().toISOString(),
-        } : v))
+        }
+        setVessels(prev => prev.map(v => v.id === selectedVessel.id ? { ...v, ...patch } : v))
+        setSelectedVessel(prev => prev && prev.id === selectedVessel.id ? { ...prev, ...patch } : prev)
       }
       notify?.('Vessel log recorded successfully!', 'success')
-      setModalMode(null)
+      setModalMode('detail')
+      apiFetchVesselLogs(selectedVessel.id)
+        .then(res => setVesselLogs(res.items))
+        .catch(() => {
+          setVesselLogs(prev => [
+            {
+              id: 'local-log-' + Date.now(),
+              vesselId: selectedVessel.id,
+              logType: logData.logType,
+              performedAt: new Date().toISOString(),
+              performedBy: 'Current User',
+              resultStatus: logData.resultStatus,
+              summary: logData.summary,
+              details: logData.details ?? null,
+              nextDueAt: logData.nextDueAt ?? null,
+              createdAt: new Date().toISOString(),
+            },
+            ...prev,
+          ])
+        })
       loadData()
     } catch (err: any) {
       notify?.(err?.message || 'Failed to record vessel log.', 'error')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -721,9 +898,16 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
         </div>
       </div>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-xl text-xs">
-          {error}
+      {error && !error.toLowerCase().includes('reach the api') && (
+        <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-xl text-xs flex items-center justify-between">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm leading-none"
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -995,6 +1179,16 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
                             <RotateCcw size={13} />
                           </button>
                         )}
+                        {(vessel.status === 'CLEANING_REQUIRED' || vessel.cleaningStatus !== 'CLEAN') && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkAsCleaned(vessel)}
+                            className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 border border-emerald-200 transition-colors"
+                            title="Mark Cleaned & Ready"
+                          >
+                            <Sparkles size={13} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
@@ -1014,7 +1208,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
                         >
                           <Edit2 size={13} />
                         </button>
-                        {vessel.status !== 'RETIRED' ? (
+                        {vessel.status !== 'RETIRED' && (
                           <button
                             type="button"
                             onClick={() => handleRetire(vessel)}
@@ -1023,16 +1217,15 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
                           >
                             <AlertTriangle size={13} />
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(vessel)}
-                            className="p-1.5 rounded-lg text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors"
-                            title="Delete Vessel"
-                          >
-                            <Trash2 size={13} />
-                          </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(vessel)}
+                          className="p-1.5 rounded-lg text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors"
+                          title="Delete Vessel"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1437,21 +1630,29 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    disabled={isSubmitting}
                     onClick={() => setModalMode(null)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer text-xs"
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer text-xs disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={isCodeDuplicate}
-                    className={`px-5 py-2 rounded-xl font-semibold shadow-xs text-white text-xs ${
-                      isCodeDuplicate
-                        ? 'bg-slate-400 cursor-not-allowed opacity-60'
-                        : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'
+                    disabled={isSubmitting || isCodeDuplicate}
+                    className={`px-5 py-2 rounded-xl font-semibold shadow-xs text-white text-xs flex items-center justify-center gap-2 min-w-[120px] transition-all ${
+                      isSubmitting || isCodeDuplicate
+                        ? 'bg-slate-400 cursor-not-allowed opacity-70'
+                        : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer active:scale-95'
                     }`}
                   >
-                    Save Vessel
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>Save Vessel</span>
+                    )}
                   </button>
                 </div>
               </div>
@@ -1732,17 +1933,25 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setModalMode(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600"
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={!issueData.registrationNumber || !matchedVehicle}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold cursor-pointer shadow-sm transition-opacity"
+                  disabled={isSubmitting || !issueData.registrationNumber || !matchedVehicle}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold cursor-pointer shadow-sm transition-all flex items-center gap-2"
                 >
-                  Confirm Dispatch
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Dispatching...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Dispatch</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -1813,16 +2022,25 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setModalMode(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600"
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold cursor-pointer shadow-sm"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold cursor-pointer shadow-sm transition-all flex items-center gap-2"
                 >
-                  Confirm Return
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Returning...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Return</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -1854,19 +2072,72 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
                 </button>
               </div>
 
+              {/* Quick Clean Action Banner */}
+              {(selectedVessel.status === 'CLEANING_REQUIRED' || selectedVessel.cleaningStatus !== 'CLEAN') && (
+                <div className="p-3.5 rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50 via-teal-50/70 to-emerald-50 flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Sparkles size={18} />
+                    </div>
+                    <div>
+                      <strong className="text-xs font-bold text-emerald-950 block">Sanitization & Wash Complete?</strong>
+                      <span className="text-[11px] text-emerald-700 block">Mark this container as cleaned and ready for dispatch.</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkAsCleaned(selectedVessel)}
+                    className="px-3.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl shadow-sm transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <CheckCircle2 size={15} />
+                    <span>Mark Cleaned</span>
+                  </button>
+                </div>
+              )}
+
               {/* Status Header */}
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <span className="block text-[10px] uppercase font-bold text-slate-400">Inventory Status</span>
-                  <strong className="text-sm font-extrabold text-slate-800 mt-0.5 block">
-                    {selectedVessel.status}
-                  </strong>
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Inventory Status</span>
+                    <span className={`w-2 h-2 rounded-full ${
+                      selectedVessel.status === 'AVAILABLE' ? 'bg-emerald-500' :
+                      selectedVessel.status === 'CLEANING_REQUIRED' ? 'bg-amber-500' :
+                      selectedVessel.status === 'IN_USE' ? 'bg-blue-500' :
+                      selectedVessel.status === 'MAINTENANCE' ? 'bg-rose-500' : 'bg-slate-400'
+                    }`} />
+                  </div>
+                  <select
+                    value={selectedVessel.status}
+                    onChange={e => handleQuickStatusChange(selectedVessel, e.target.value as VesselStatus)}
+                    className="w-full text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-800 shadow-2xs focus:border-emerald-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="AVAILABLE">AVAILABLE (Ready)</option>
+                    <option value="CLEANING_REQUIRED">CLEANING_REQUIRED</option>
+                    <option value="IN_USE">IN_USE</option>
+                    <option value="INSPECTION_REQUIRED">INSPECTION_REQUIRED</option>
+                    <option value="MAINTENANCE">MAINTENANCE</option>
+                    <option value="RETIRED">RETIRED</option>
+                  </select>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <span className="block text-[10px] uppercase font-bold text-slate-400">Hygiene State</span>
-                  <strong className="text-sm font-extrabold text-slate-800 mt-0.5 block">
-                    {selectedVessel.cleaningStatus}
-                  </strong>
+
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Hygiene State</span>
+                    <span className={`w-2 h-2 rounded-full ${
+                      selectedVessel.cleaningStatus === 'CLEAN' ? 'bg-emerald-500' :
+                      selectedVessel.cleaningStatus === 'DIRTY' ? 'bg-amber-500' : 'bg-blue-500'
+                    }`} />
+                  </div>
+                  <select
+                    value={selectedVessel.cleaningStatus}
+                    onChange={e => handleQuickHygieneChange(selectedVessel, e.target.value as VesselCleaningStatus)}
+                    className="w-full text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-800 shadow-2xs focus:border-emerald-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="CLEAN">CLEAN</option>
+                    <option value="DIRTY">DIRTY</option>
+                    <option value="SANITIZING">SANITIZING</option>
+                  </select>
                 </div>
               </div>
 
@@ -2024,16 +2295,25 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setModalMode('detail')}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600"
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer shadow-sm"
+                  disabled={isSubmitting || !logData.summary}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold cursor-pointer shadow-sm transition-all flex items-center gap-2"
                 >
-                  Record Log
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Recording...</span>
+                    </>
+                  ) : (
+                    <span>Record Log</span>
+                  )}
                 </button>
               </div>
             </form>

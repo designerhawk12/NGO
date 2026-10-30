@@ -10,13 +10,14 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useState, useMemo } from 'react'
-import type { Driver, Vehicle } from '../../types'
+import type { Driver, Vehicle, VehicleMaintenanceRecord } from '../../types'
 import { Modal } from '../common/UI'
 
 type Props = {
   vehicle?: Vehicle
   existingVehicles?: Vehicle[]
   drivers: Driver[]
+  maintenanceRecords?: VehicleMaintenanceRecord[]
   onClose: () => void
   onSave: (vehicle: Vehicle) => void
   notify: (message: string, kind?: 'success' | 'error') => void
@@ -25,7 +26,7 @@ type Props = {
 const VEHICLE_TYPES = ['Van', 'Mini Truck', 'Tempo', 'Truck', 'Auto Rickshaw', 'Pickup', 'Other']
 const SIZES: ('SMALL' | 'MEDIUM' | 'LARGE')[] = ['SMALL', 'MEDIUM', 'LARGE']
 
-export default function VehicleModal({ vehicle, existingVehicles, drivers, onClose, onSave, notify }: Props) {
+export default function VehicleModal({ vehicle, existingVehicles, drivers, maintenanceRecords, onClose, onSave, notify }: Props) {
   const isEdit = !!vehicle
 
   // 1. Vehicle Identity State
@@ -61,7 +62,11 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
 
   // 2. Capacity Details State
   const [capacityKg, setCapacityKg] = useState(String(vehicle?.capacityKg ?? 250))
-  const [usableCargoVolume, setUsableCargoVolume] = useState(vehicle?.usableCargoVolume ?? '')
+  const [usableCargoVolume, setUsableCargoVolume] = useState(() => {
+    if (vehicle?.usableCargoVolume) return vehicle.usableCargoVolume
+    if (vehicle?.capacityKg) return `${(vehicle.capacityKg * 0.015).toFixed(1)} m³`
+    return ''
+  })
 
   // 3. Food Transport Suitability State
   const [tempCapability, setTempCapability] = useState<'AMBIENT' | 'CHILLED' | 'REFRIGERATED'>(
@@ -74,26 +79,20 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
 
   // 4. Driver & Assignment State
   const matchedDriver = drivers.find(
-    d => d.driverId === vehicle?.driverId || (vehicle?.driverName && d.name.toLowerCase() === vehicle.driverName.toLowerCase())
+    d =>
+      (vehicle?.driverId && d.driverId === vehicle.driverId) ||
+      (vehicle?.driverName && d.name.toLowerCase() === vehicle.driverName.toLowerCase()) ||
+      (vehicle?.driverId && d.name.toLowerCase() === vehicle.driverId.toLowerCase())
   )
   const [driverSelection, setDriverSelection] = useState<string>(() => {
     if (matchedDriver) return matchedDriver.driverId
-    if (vehicle?.driverName) return '__other__'
-    if (vehicle?.driverId) return vehicle.driverId
+    if (vehicle?.driverName || vehicle?.driverId) return '__other__'
     return ''
   })
   const [customDriverName, setCustomDriverName] = useState<string>(() => {
-    if (matchedDriver) return ''
-    return vehicle?.driverName ?? ''
+    if (matchedDriver) return matchedDriver.name
+    return vehicle?.driverName || vehicle?.driverId || ''
   })
-
-  // 5. Compliance & Key Dates State
-  const [registrationExpiry, setRegistrationExpiry] = useState(vehicle?.registrationExpiry ?? '')
-  const [insuranceExpiry, setInsuranceExpiry] = useState(vehicle?.insuranceExpiry ?? '')
-  const [pollutionExpiry, setPollutionExpiry] = useState(vehicle?.pollutionExpiry ?? '')
-  const [nextServiceDate, setNextServiceDate] = useState(vehicle?.nextServiceDate ?? vehicle?.nextMaintenance ?? '')
-  const [lastCleaningDate, setLastCleaningDate] = useState(vehicle?.lastCleaningDate ?? '')
-  const [nextCleaningDueDate, setNextCleaningDueDate] = useState(vehicle?.nextCleaningDueDate ?? '')
 
   const todayStr = useMemo(() => {
     const d = new Date()
@@ -102,6 +101,53 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
     const day = String(d.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   }, [])
+
+  const defaultDates = useMemo(() => {
+    const d = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const fmt = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+
+    const reg = new Date(d); reg.setFullYear(reg.getFullYear() + 1)
+    const ins = new Date(d); ins.setFullYear(ins.getFullYear() + 1)
+    const puc = new Date(d); puc.setMonth(puc.getMonth() + 6)
+    const svc = new Date(d); svc.setMonth(svc.getMonth() + 2)
+    const clean = new Date(d); clean.setDate(clean.getDate() - 1)
+    const nextClean = new Date(d); nextClean.setDate(nextClean.getDate() + 3)
+
+    return {
+      regExp: fmt(reg),
+      insExp: fmt(ins),
+      pucExp: fmt(puc),
+      nextSvc: fmt(svc),
+      lastClean: fmt(clean),
+      nextClean: fmt(nextClean),
+    }
+  }, [])
+
+  const existingNextSvc =
+    vehicle?.nextServiceDate ||
+    vehicle?.nextMaintenance ||
+    maintenanceRecords?.find(m => m.vehicleId === vehicle?.vehicleId && m.nextServiceDueOn)?.nextServiceDueOn
+
+  // 5. Compliance & Key Dates State - pre-filled from existing vehicle or smart defaults so user can see and edit
+  const [registrationExpiry, setRegistrationExpiry] = useState(
+    vehicle?.registrationExpiry || (isEdit ? defaultDates.regExp : '')
+  )
+  const [insuranceExpiry, setInsuranceExpiry] = useState(
+    vehicle?.insuranceExpiry || (isEdit ? defaultDates.insExp : '')
+  )
+  const [pollutionExpiry, setPollutionExpiry] = useState(
+    vehicle?.pollutionExpiry || (isEdit ? defaultDates.pucExp : '')
+  )
+  const [nextServiceDate, setNextServiceDate] = useState(
+    existingNextSvc || (isEdit ? defaultDates.nextSvc : '')
+  )
+  const [lastCleaningDate, setLastCleaningDate] = useState(
+    vehicle?.lastCleaningDate || (isEdit ? defaultDates.lastClean : '')
+  )
+  const [nextCleaningDueDate, setNextCleaningDueDate] = useState(
+    vehicle?.nextCleaningDueDate || (isEdit ? defaultDates.nextClean : '')
+  )
 
   const isRegExpInvalid = Boolean(registrationExpiry && registrationExpiry < todayStr)
   const isInsExpInvalid = Boolean(insuranceExpiry && insuranceExpiry < todayStr)
@@ -554,13 +600,20 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
               <select
                 id="veh-driver"
                 value={driverSelection}
-                onChange={e => setDriverSelection(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value
+                  setDriverSelection(val)
+                  if (val && val !== '__other__') {
+                    const d = drivers.find(drv => drv.driverId === val)
+                    if (d) setCustomDriverName(d.name)
+                  }
+                }}
                 required
               >
                 <option value="">Select a driver</option>
                 {drivers.map(d => (
                   <option key={d.driverId} value={d.driverId}>
-                    {d.name} ({d.status})
+                    {d.name} {d.phone ? `(${d.phone})` : ''} ({d.status})
                   </option>
                 ))}
                 <option value="__other__">Other (Enter name manually)</option>

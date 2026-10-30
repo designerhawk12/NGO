@@ -38,6 +38,7 @@ export const createVehicleSchema = z.object({
   status: vehicleStatusSchema.optional().default('ACTIVE'),
   sizeCategory: vehicleSizeCategorySchema.nullable().optional(),
   indicativeMaxVessels: z.number().int().positive().nullable().optional(),
+  assignedDriverId: z.string().nullable().optional(),
 });
 export type CreateVehicle = z.infer<typeof createVehicleSchema>;
 
@@ -48,6 +49,7 @@ export const updateVehicleSchema = z.object({
   status: vehicleStatusSchema.optional(),
   sizeCategory: vehicleSizeCategorySchema.nullable().optional(),
   indicativeMaxVessels: z.number().int().positive().nullable().optional(),
+  assignedDriverId: z.string().nullable().optional(),
 }).refine(data => Object.keys(data).length > 0, {
   message: 'At least one field must be provided for update',
 });
