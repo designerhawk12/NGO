@@ -5,25 +5,39 @@ import { HttpError } from '../middleware/errorHandler';
 
 let pool: Pool | undefined;
 
+export function createDatabaseSslOptions(config: {
+  enabled: boolean;
+  ca?: string;
+  caPath?: string;
+}): { rejectUnauthorized: true; ca?: string } | undefined {
+  if (!config.enabled) return undefined;
+
+  let caCert = config.ca;
+  if (!caCert && config.caPath) {
+    if (!existsSync(config.caPath)) {
+      throw new HttpError(503, 'SERVICE_UNAVAILABLE', 'Database SSL CA file not found at configured path.');
+    }
+    caCert = readFileSync(config.caPath, 'utf8');
+  }
+
+  return { rejectUnauthorized: true, ...(caCert ? { ca: caCert } : {}) };
+}
+
 export function getPool(): Pool {
   if (!env.databaseUrl) throw new HttpError(503, 'SERVICE_UNAVAILABLE', 'Database is not configured.');
   if (!pool) {
-    let caCert: string | undefined;
-    if (env.databaseSsl && env.databaseSslCaPath) {
-      if (!existsSync(env.databaseSslCaPath)) {
-        throw new HttpError(503, 'SERVICE_UNAVAILABLE', 'Database SSL CA file not found at configured path.');
-      }
-      caCert = readFileSync(env.databaseSslCaPath, 'utf8');
-    }
-
-        pool = new Pool({
+    pool = new Pool({
       connectionString: env.databaseUrl,
       max: 4,
       connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
-      ssl: env.databaseSsl ? { rejectUnauthorized: true, ...(caCert ? { ca: caCert } : {}) } : undefined,
+      ssl: createDatabaseSslOptions({
+        enabled: env.databaseSsl,
+        ca: env.databaseSslCa,
+        caPath: env.databaseSslCaPath,
+      }),
     });
 
     pool.on('error', (error) => {

@@ -34,6 +34,11 @@ export function parseDatabaseUrl(rawUrl?: string): string | undefined {
   }
 }
 
+export function parseDatabaseSslCa(rawCa?: string): string | undefined {
+  const normalized = rawCa?.replace(/\\n/g, '\n').trim();
+  return normalized || undefined;
+}
+
 export function validateVolunteerInviteRedirectUrl(rawUrl: string | undefined, environment: string): void {
   if (!rawUrl) return;
   let redirect: URL;
@@ -53,6 +58,7 @@ export const env = {
   corsOrigins,
   databaseUrl: parseDatabaseUrl(process.env.DATABASE_URL),
   databaseSsl: process.env.DATABASE_SSL === 'true' || (nodeEnv === 'production' && process.env.DATABASE_SSL !== 'false'),
+  databaseSslCa: parseDatabaseSslCa(process.env.DATABASE_SSL_CA),
   databaseSslCaPath: process.env.DATABASE_SSL_CA_PATH?.trim() || undefined,
   supabaseUrl: process.env.SUPABASE_URL || undefined,
   supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || undefined,

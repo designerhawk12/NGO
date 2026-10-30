@@ -48,6 +48,19 @@ describe('API foundation', () => {
     expect(JSON.stringify(result.body)).not.toContain('sensitive connection detail');
   });
 
+  it('treats a PostgreSQL TLS trust failure as a database availability error', async () => {
+    findUser.mockRejectedValueOnce(Object.assign(new Error('self-signed certificate in certificate chain'), {
+      code: 'SELF_SIGNED_CERT_IN_CHAIN',
+    }));
+
+    const result = await request(app).get('/api/v1/me').set('Authorization', 'Bearer signed-token');
+
+    expect(result.status).toBe(503);
+    expect(result.body.error.code).toBe('DATABASE_UNAVAILABLE');
+    expect(result.body.error.message).toBe('Database is temporarily unavailable.');
+    expect(JSON.stringify(result.body)).not.toContain('self-signed');
+  });
+
   it('keeps unexpected /me database failures generic to clients', async () => {
     findUser.mockRejectedValueOnce(Object.assign(new Error('permission denied for relation app_users'), { code: '42501' }));
 

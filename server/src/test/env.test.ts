@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { parseDatabaseUrl, validateVolunteerInviteRedirectUrl } from '../config/env';
+import { parseDatabaseSslCa, parseDatabaseUrl, validateVolunteerInviteRedirectUrl } from '../config/env';
+
+describe('parseDatabaseSslCa', () => {
+  it('preserves PEM content and expands escaped newlines from hosting environment values', () => {
+    const pem = '-----BEGIN CERTIFICATE-----\ncertificate-body\n-----END CERTIFICATE-----';
+    expect(parseDatabaseSslCa(pem)).toBe(pem.replace(/\\n/g, '\n'));
+    expect(parseDatabaseSslCa('  -----BEGIN CERTIFICATE-----\\nbody\\n-----END CERTIFICATE-----  '))
+      .toBe('-----BEGIN CERTIFICATE-----\nbody\n-----END CERTIFICATE-----');
+    expect(parseDatabaseSslCa('  ')).toBeUndefined();
+  });
+});
 
 describe('parseDatabaseUrl', () => {
   it('returns undefined for empty or missing values', () => {

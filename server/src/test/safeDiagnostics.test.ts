@@ -22,6 +22,7 @@ describe('safe development diagnostics', () => {
 
   it('recognizes connection failures without treating SQL errors as connectivity failures', () => {
     expect(isDatabaseConnectionError(Object.assign(new Error(), { code: 'ETIMEDOUT' }))).toBe(true);
+    expect(isDatabaseConnectionError(Object.assign(new Error(), { code: 'SELF_SIGNED_CERT_IN_CHAIN' }))).toBe(true);
     expect(isDatabaseConnectionError(Object.assign(new Error(), { code: '08006' }))).toBe(true);
     expect(isDatabaseConnectionError(Object.assign(new Error(), { code: '42P01' }))).toBe(false);
   });
