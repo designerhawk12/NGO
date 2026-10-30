@@ -18,7 +18,7 @@ export function getPool(): Pool {
 
     pool = new Pool({
       connectionString: env.databaseUrl,
-      max: 10,
+      max: 4,
       connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,
       ssl: env.databaseSsl ? { rejectUnauthorized: true, ...(caCert ? { ca: caCert } : {}) } : undefined,
