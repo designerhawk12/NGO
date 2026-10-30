@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { query } = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock('../db/pool', () => ({ getPool: () => ({ query }) }));
 
-import { findAdminVolunteerConflict, insertInvitedVolunteer, listEligibleVolunteerRows, listOwnTeamsByAppUserId, listTeams, listVolunteers, updateAdminVolunteerRows } from '../modules/volunteers/repository';
+import { findAdminVolunteerConflict, findVolunteerAuthAccountById, insertInvitedVolunteer, listEligibleVolunteerRows, listOwnTeamsByAppUserId, listTeams, listVolunteers, updateAdminVolunteerRows } from '../modules/volunteers/repository';
 import type { PoolClient } from 'pg';
 
 const ids = [
@@ -82,6 +82,20 @@ describe('Volunteer own teams repository', () => {
 });
 
 describe('Volunteer admin write repository', () => {
+  it('resolves Auth identity only through volunteer → person → app-user and returns role guard fields', async () => {
+    const account = { auth_user_id: ids[2], app_user_role: 'VOLUNTEER', disabled_at: null };
+    query.mockResolvedValueOnce({ rows: [account] });
+    expect(await findVolunteerAuthAccountById(ids[0])).toEqual(account);
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('FROM app.volunteers v');
+    expect(sql).toContain('JOIN app.people p ON p.id = v.person_id');
+    expect(sql).toContain('LEFT JOIN app.app_users au ON au.id = p.app_user_id');
+    expect(sql).toContain('au.auth_user_id');
+    expect(sql).toContain('au.role AS app_user_role');
+    expect(sql).toContain('WHERE v.id = $1');
+    expect(params).toEqual([ids[0]]);
+  });
+
   it('checks registration and phone conflicts across canonical people before invitation', async () => {
     query.mockResolvedValueOnce({ rowCount: 0 }).mockResolvedValueOnce({ rowCount: 1 });
     expect(await findAdminVolunteerConflict('VOL-002', '+919876543210')).toBe('phoneE164');

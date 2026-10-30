@@ -9,6 +9,7 @@ import {
   type CreateAdminVolunteerInput,
   type CreateTeamInput,
   type UpdateAdminVolunteerInput,
+  type SetAdminVolunteerPasswordInput,
   type UpdateOwnProfileInput,
   type UpdateTeamInput,
 } from './schemas';
@@ -91,6 +92,16 @@ export const updateAdminVolunteerHandler: RequestHandler = async (request, respo
     sendSuccess(response, await volunteerService.updateAdminVolunteer(
       response.locals.appUser as AppUser, id.data, response.locals.validatedBody as UpdateAdminVolunteerInput
     ));
+  } catch (error) { next(error); }
+};
+
+export const setAdminVolunteerPasswordHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const id = uuidSchema.safeParse(request.params.id);
+    if (!id.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Volunteer ID must be a UUID.');
+    const input = response.locals.validatedBody as SetAdminVolunteerPasswordInput;
+    await volunteerService.setAdminVolunteerPassword(response.locals.appUser as AppUser, id.data, input.password);
+    sendSuccess(response, { message: 'Volunteer password updated.' });
   } catch (error) { next(error); }
 };
 

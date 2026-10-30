@@ -2,15 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import request from 'supertest'
 import { HttpError } from '../middleware/errorHandler'
 
-const { verify, findUser, invite, revoke, repo, withTransaction } = vi.hoisted(() => ({
-  verify: vi.fn(), findUser: vi.fn(), invite: vi.fn(), revoke: vi.fn(), withTransaction: vi.fn(),
+const { verify, findUser, invite, revoke, setPassword, repo, withTransaction } = vi.hoisted(() => ({
+  verify: vi.fn(), findUser: vi.fn(), invite: vi.fn(), revoke: vi.fn(), setPassword: vi.fn(), withTransaction: vi.fn(),
   repo: {
     findAdminVolunteerConflict: vi.fn(), insertInvitedVolunteer: vi.fn(),
-    findVolunteerForAdminUpdate: vi.fn(), updateAdminVolunteerRows: vi.fn(),
+    findVolunteerForAdminUpdate: vi.fn(), updateAdminVolunteerRows: vi.fn(), findVolunteerAuthAccountById: vi.fn(),
   },
 }))
 vi.mock('../auth/supabase', () => ({
-  verifySupabaseToken: verify, inviteSupabaseUserByEmail: invite, revokeNewSupabaseInvite: revoke,
+  verifySupabaseToken: verify, inviteSupabaseUserByEmail: invite, revokeNewSupabaseInvite: revoke, setVolunteerPassword: setPassword,
 }))
 vi.mock('../auth/appUsers', () => ({ findOrCreateAppUser: findUser }))
 vi.mock('../db/pool', () => ({ withTransaction }))
@@ -39,6 +39,8 @@ beforeEach(() => {
   invite.mockResolvedValue({ authUserId: 'a0458efe-a4be-43da-a4ed-c290ac3b48cd', inviteNonce: 'nonce' })
   revoke.mockResolvedValue(true)
   repo.findAdminVolunteerConflict.mockResolvedValue(null)
+  repo.findVolunteerAuthAccountById.mockResolvedValue({ auth_user_id: 'linked-volunteer-auth-id', app_user_role: 'VOLUNTEER', disabled_at: null })
+  setPassword.mockResolvedValue(undefined)
   repo.insertInvitedVolunteer.mockResolvedValue(row)
   repo.findVolunteerForAdminUpdate.mockResolvedValue(row)
   repo.updateAdminVolunteerRows.mockImplementation(async (_row: unknown, input: Record<string, unknown>) => ({
@@ -163,5 +165,66 @@ describe('ADMIN volunteer edit', () => {
     repo.findAdminVolunteerConflict.mockResolvedValueOnce('phoneE164').mockResolvedValueOnce('registrationCode')
     expect((await request(app).patch(`/api/v1/volunteers/${volunteerId}`).set(auth).send({ phoneE164: '+919999999999' })).status).toBe(409)
     expect((await request(app).patch(`/api/v1/volunteers/${volunteerId}`).set(auth).send({ registrationCode: 'VOL-003' })).status).toBe(409)
+  })
+})
+
+describe('ADMIN volunteer password setting', () => {
+  const path = `/api/v1/volunteers/${volunteerId}/password`
+
+  it('sets a password for the Auth user linked to this volunteer, without sending email', async () => {
+    const result = await request(app).patch(path).set(auth).send({ password: 'new-safe-passphrase' })
+    expect(result.status).toBe(200)
+    expect(result.body).toEqual({ success: true, data: { message: 'Volunteer password updated.' } })
+    expect(verify).toHaveBeenCalledWith('verified-token')
+    expect(repo.findVolunteerAuthAccountById).toHaveBeenCalledWith(volunteerId)
+    expect(setPassword).toHaveBeenCalledWith('linked-volunteer-auth-id', 'new-safe-passphrase')
+    expect(invite).not.toHaveBeenCalled()
+    expect(JSON.stringify(result.body)).not.toContain('new-safe-passphrase')
+  })
+
+  it('requires an authenticated Admin and forbids Volunteer and Donor roles', async () => {
+    expect((await request(app).patch(path).send({ password: 'new-safe-passphrase' })).status).toBe(401)
+    for (const role of ['VOLUNTEER', 'DONOR']) {
+      findUser.mockResolvedValueOnce({ ...actor, role })
+      expect((await request(app).patch(path).set(auth).send({ password: 'new-safe-passphrase' })).status).toBe(403)
+    }
+    expect(repo.findVolunteerAuthAccountById).not.toHaveBeenCalled()
+    expect(setPassword).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid volunteer IDs, short passwords, extra fields, and client-supplied Auth IDs', async () => {
+    expect((await request(app).patch('/api/v1/volunteers/not-a-uuid/password').set(auth).send({ password: '12345678' })).status).toBe(400)
+    for (const body of [{ password: '' }, { password: 'short' }, { password: '12345678', authUserId: 'arbitrary-auth-id' }, { password: '12345678', role: 'ADMIN' }]) {
+      expect((await request(app).patch(path).set(auth).send(body)).status).toBe(400)
+    }
+    expect(repo.findVolunteerAuthAccountById).not.toHaveBeenCalled()
+    expect(setPassword).not.toHaveBeenCalled()
+  })
+
+  it('returns not found or conflict for missing and unlinked volunteers', async () => {
+    repo.findVolunteerAuthAccountById.mockResolvedValueOnce(null)
+    expect((await request(app).patch(path).set(auth).send({ password: 'new-safe-passphrase' })).status).toBe(404)
+    repo.findVolunteerAuthAccountById.mockResolvedValueOnce({ auth_user_id: null, app_user_role: null, disabled_at: null })
+    expect((await request(app).patch(path).set(auth).send({ password: 'new-safe-passphrase' })).status).toBe(409)
+    expect(setPassword).not.toHaveBeenCalled()
+  })
+
+  it('cannot reset an Admin, disabled account, or account with a non-Volunteer role', async () => {
+    for (const linkedAccount of [
+      { auth_user_id: 'admin-auth-id', app_user_role: 'ADMIN', disabled_at: null },
+      { auth_user_id: 'donor-auth-id', app_user_role: 'DONOR', disabled_at: null },
+      { auth_user_id: 'disabled-auth-id', app_user_role: 'VOLUNTEER', disabled_at: new Date() },
+    ]) {
+      repo.findVolunteerAuthAccountById.mockResolvedValueOnce(linkedAccount)
+      expect((await request(app).patch(path).set(auth).send({ password: 'new-safe-passphrase' })).status).toBe(409)
+    }
+    expect(setPassword).not.toHaveBeenCalled()
+  })
+
+  it('returns a safe provider failure without exposing provider details', async () => {
+    setPassword.mockRejectedValueOnce(new HttpError(503, 'PASSWORD_UPDATE_FAILED', 'The volunteer password could not be updated.'))
+    const result = await request(app).patch(path).set(auth).send({ password: 'new-safe-passphrase' })
+    expect(result.status).toBe(503)
+    expect(JSON.stringify(result.body)).not.toContain('new-safe-passphrase')
   })
 })

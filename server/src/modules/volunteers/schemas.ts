@@ -45,6 +45,11 @@ export const updateAdminVolunteerSchema = z.strictObject({
 }).refine(value => Object.keys(value).length > 0, 'Provide at least one editable volunteer field.');
 export type UpdateAdminVolunteerInput = z.infer<typeof updateAdminVolunteerSchema>;
 
+export const setAdminVolunteerPasswordSchema = z.strictObject({
+  password: z.string().min(8).max(128),
+});
+export type SetAdminVolunteerPasswordInput = z.infer<typeof setAdminVolunteerPasswordSchema>;
+
 export const listTeamsQuerySchema = pageQuerySchema.extend({
   search: z.string().trim().max(100).optional(),
 }).strict();

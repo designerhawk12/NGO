@@ -1,7 +1,10 @@
 import { uuidSchema, type AppUser, type Availability, type CreateAvailabilityRequest, type Team, type Volunteer } from '@aaharaconnect/shared';
 import type { PoolClient } from 'pg';
 import { withTransaction } from '../../db/pool';
-import { inviteSupabaseUserByEmail } from '../../auth/supabase';
+import {
+  inviteSupabaseUserByEmail,
+  setVolunteerPassword,
+} from '../../auth/supabase';
 import { HttpError } from '../../middleware/errorHandler';
 import * as volunteerRepository from './repository';
 import type { VolunteerProfileRow } from './repository';
@@ -218,6 +221,37 @@ export async function updateAdminVolunteer(actor: AppUser, id: string, input: Up
     });
     return toVolunteer(row);
   } catch (error) { handleAdminVolunteerWriteError(error); }
+}
+export async function setAdminVolunteerPassword(
+  actor: AppUser,
+  id: string,
+  password: string
+): Promise<void> {
+  requireAdmin(actor);
+
+  const volunteer = await volunteerRepository.findVolunteerAuthAccountById(id);
+
+  if (!volunteer) {
+    throw new HttpError(404, 'NOT_FOUND', 'Volunteer not found.');
+  }
+
+  if (!volunteer.auth_user_id) {
+    throw new HttpError(
+      409,
+      'RESOURCE_CONFLICT',
+      'This volunteer does not have a linked authentication account.'
+    );
+  }
+
+  if (volunteer.app_user_role !== 'VOLUNTEER') {
+    throw new HttpError(409, 'RESOURCE_CONFLICT', 'The linked account is not a Volunteer account.');
+  }
+
+  if (volunteer.disabled_at) {
+    throw new HttpError(409, 'RESOURCE_CONFLICT', 'The linked account is disabled.');
+  }
+
+  await setVolunteerPassword(volunteer.auth_user_id, password);
 }
 
 function toTeam(row: volunteerRepository.TeamRow): Team {

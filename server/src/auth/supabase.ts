@@ -137,3 +137,43 @@ export async function inviteSupabaseUserByEmail(
     );
   }
 }
+
+export async function setVolunteerPassword(
+  authUserId: string,
+  newPassword: string
+): Promise<void> {
+  const supabase = getSupabaseAdminClient();
+
+  if (newPassword.length < 8 || newPassword.length > 128) {
+    throw new HttpError(
+      400,
+      'INVALID_PASSWORD',
+      'Password must be between 8 and 128 characters long.'
+    );
+  }
+
+  let lookupResult: Awaited<ReturnType<typeof supabase.auth.admin.getUserById>>;
+  try {
+    lookupResult = await supabase.auth.admin.getUserById(authUserId);
+  } catch {
+    throw new HttpError(503, 'PASSWORD_UPDATE_FAILED', 'The linked authentication account could not be verified.');
+  }
+  const { data, error: lookupError } = lookupResult;
+  if (lookupError?.status === 404 || lookupError?.code === 'user_not_found') {
+    throw new HttpError(409, 'RESOURCE_CONFLICT', 'The linked authentication account no longer exists.');
+  }
+  if (lookupError || !data.user || data.user.id !== authUserId) {
+    throw new HttpError(503, 'PASSWORD_UPDATE_FAILED', 'The linked authentication account could not be verified.');
+  }
+  if (!data.user.email_confirmed_at) {
+    throw new HttpError(409, 'VOLUNTEER_EMAIL_UNCONFIRMED', 'The volunteer account must be email-confirmed before its password can be set.');
+  }
+
+  // Updating only the password preserves the Auth account's existing verification state.
+  try {
+    const { error } = await supabase.auth.admin.updateUserById(authUserId, { password: newPassword });
+    if (error) throw new Error('Auth password update failed.');
+  } catch {
+    throw new HttpError(503, 'PASSWORD_UPDATE_FAILED', 'The volunteer password could not be updated.');
+  }
+}

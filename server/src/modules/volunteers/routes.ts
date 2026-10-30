@@ -16,9 +16,10 @@ import {
   replaceOwnAvailabilityHandler,
   updateAdminTeamHandler,
   updateAdminVolunteerHandler,
+  setAdminVolunteerPasswordHandler,
   updateOwnProfileHandler,
 } from './controller';
-import { availabilityWriteSchema, createAdminVolunteerSchema, createTeamSchema, updateAdminVolunteerSchema, updateOwnProfileSchema, updateTeamSchema } from './schemas';
+import { availabilityWriteSchema, createAdminVolunteerSchema, createTeamSchema, setAdminVolunteerPasswordSchema, updateAdminVolunteerSchema, updateOwnProfileSchema, updateTeamSchema } from './schemas';
 
 export const volunteerRoutes = Router();
 const selfProfileRoutes = Router();
@@ -34,6 +35,7 @@ selfProfileRoutes.get('/', requireAuth, requireRole('ADMIN'), listAdminVolunteer
 selfProfileRoutes.post('/', requireAuth, requireRole('ADMIN'), validateBody(createAdminVolunteerSchema), createAdminVolunteerHandler);
 selfProfileRoutes.get('/:id', requireAuth, requireRole('ADMIN'), getAdminVolunteerHandler);
 selfProfileRoutes.patch('/:id', requireAuth, requireRole('ADMIN'), validateBody(updateAdminVolunteerSchema), updateAdminVolunteerHandler);
+selfProfileRoutes.patch('/:id/password', requireAuth, requireRole('ADMIN'), validateBody(setAdminVolunteerPasswordSchema), setAdminVolunteerPasswordHandler);
 
 teamRoutes.get('/', requireAuth, requireRole('ADMIN'), listAdminTeamsHandler);
 teamRoutes.get('/:id', requireAuth, requireRole('ADMIN'), getAdminTeamHandler);

@@ -35,6 +35,10 @@ export const createAdminVolunteer = (accessToken: string, input: CreateAdminVolu
   apiRequest<Volunteer>('volunteers', { method: 'POST', headers: bearer(accessToken), body: input })
 export const updateAdminVolunteer = (accessToken: string, id: string, input: UpdateAdminVolunteerInput) =>
   apiRequest<Volunteer>(`volunteers/${encodeURIComponent(id)}`, { method: 'PATCH', headers: bearer(accessToken), body: input })
+export const setAdminVolunteerPassword = (accessToken: string, id: string, password: string) =>
+  apiRequest<{ message: string }>(`volunteers/${encodeURIComponent(id)}/password`, {
+    method: 'PATCH', headers: bearer(accessToken), body: { password },
+  })
 export const listAdminTeams = (accessToken: string) => readAll<Team>('teams', accessToken)
 export const getAdminTeam = (accessToken: string, id: string) =>
   apiRequest<Team>(`teams/${encodeURIComponent(id)}`, { headers: bearer(accessToken) })

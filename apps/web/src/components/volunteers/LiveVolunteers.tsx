@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { Team, Volunteer } from '@aaharaconnect/shared'
-import { ChevronDown, Phone, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react'
+import { ChevronDown, KeyRound, Phone, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react'
 import { ApiClientError } from '../../api/client'
 import {
-  createAdminVolunteer, getAdminVolunteer, listAdminTeams, listAdminVolunteers, updateAdminVolunteer,
+  createAdminVolunteer, getAdminVolunteer, listAdminTeams, listAdminVolunteers, setAdminVolunteerPassword, updateAdminVolunteer,
   type CreateAdminVolunteerInput, type UpdateAdminVolunteerInput,
 } from '../../features/volunteers/api'
 import { Avatar, Drawer, EmptyState, Modal, StatusBadge, Toast } from '../common/UI'
@@ -34,6 +34,18 @@ function volunteerWriteError(cause: unknown): string {
     NETWORK_ERROR: 'Could not reach the API. Check your connection and try again.',
   }
   return messages[cause.code] ?? 'Could not save volunteer. Try again.'
+}
+
+function passwordWriteError(cause: unknown): string {
+  if (!(cause instanceof ApiClientError)) return 'Could not update the volunteer password. Try again.'
+  const messages: Record<string, string> = {
+    VOLUNTEER_EMAIL_UNCONFIRMED: 'This account is not email-confirmed. The password was not changed; complete the approved email-verification process first.',
+    RESOURCE_CONFLICT: 'This account cannot be updated as a Volunteer account.',
+    PASSWORD_UPDATE_FAILED: 'The linked authentication account could not be updated. Try again later.',
+    NETWORK_ERROR: 'Could not reach the API. Check your connection and try again.',
+    VALIDATION_ERROR: 'Use a password between 8 and 128 characters.',
+  }
+  return messages[cause.code] ?? 'Could not update the volunteer password. Try again.'
 }
 
 function parseForm(form: VolunteerForm, isCreate: boolean):
@@ -78,6 +90,10 @@ export default function LiveVolunteers({ token }: { token: string }) {
   const [saving, setSaving] = useState(false)
   const submitting = useRef(false)
   const [feedback, setFeedback] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
+  const [passwordDialogVolunteer, setPasswordDialogVolunteer] = useState<Volunteer | null>(null)
+  const [passwordValue, setPasswordValue] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSaving, setPasswordSaving] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -134,6 +150,31 @@ export default function LiveVolunteers({ token }: { token: string }) {
     }
   }
 
+  const closePasswordDialog = () => {
+    if (passwordSaving) return
+    setPasswordDialogVolunteer(null); setPasswordValue(''); setPasswordError(null)
+  }
+  const submitPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!passwordDialogVolunteer || passwordSaving) return
+    if (passwordValue.length < 8 || passwordValue.length > 128) {
+      setPasswordValue(''); setPasswordError('Use a password between 8 and 128 characters.')
+      return
+    }
+    const target = passwordDialogVolunteer
+    const value = passwordValue
+    setPasswordSaving(true); setPasswordError(null)
+    try {
+      await setAdminVolunteerPassword(token, target.id, value)
+      setPasswordDialogVolunteer(null)
+      setFeedback({ message: 'Volunteer password updated.', kind: 'success' })
+    } catch (cause) {
+      setPasswordError(passwordWriteError(cause))
+    } finally {
+      setPasswordValue(''); setPasswordSaving(false)
+    }
+  }
+
   const teamNames = (id: string) => teams.filter(team => team.memberIds.includes(id)).map(team => team.name).join(', ') || 'Unassigned'
   const skills = useMemo(() => [...new Set(volunteers.flatMap(volunteer => volunteer.skills))].sort(), [volunteers])
   const filtered = useMemo(() => volunteers.filter(volunteer => {
@@ -156,7 +197,15 @@ export default function LiveVolunteers({ token }: { token: string }) {
       </>}
       <div className="table-footer"><span>Live volunteer roster</span><button className="text-link" onClick={() => void load()} disabled={loading}>Refresh</button></div>
     </section>
-    {selectedId && <Drawer title="Volunteer profile" onClose={() => { setSelectedId(null); setDetail(null) }}><div className="drawer-body">{detailLoading ? <p className="quiet-text">Loading volunteer profile…</p> : detailError ? <EmptyState title="Could not load volunteer profile" description="Try again to read this record." action={<button className="button button-secondary" onClick={() => void loadDetail(selectedId)}>Retry</button>}/> : detail ? <><div className="profile-hero"><Avatar name={detail.name} size="lg"/><h2>{detail.name}</h2><span className="muted-id">{detail.registrationCode}</span><StatusBadge status={detail.status}/><button className="button button-secondary" onClick={() => { setSelectedId(null); setDetail(null); openEdit(detail) }}>Edit Volunteer</button></div><div className="detail-section"><h3>Volunteer details</h3><div className="detail-grid"><div><span>Phone</span><strong><Phone size={15}/>{detail.phoneE164 ?? '—'}</strong></div><div><span>Team</span><strong><Users size={15}/>{teamNames(detail.id)}</strong></div></div><div className="detail-skills"><span>Skills</span><div className="skill-list">{detail.skills.map(value => <span className="skill-badge" key={value}>{value}</span>)}</div></div></div><p className="quiet-text">Availability and assignment history are not included in this administrator read API.</p></> : null}</div></Drawer>}
+    {selectedId && <Drawer title="Volunteer profile" onClose={() => { setSelectedId(null); setDetail(null) }}><div className="drawer-body">{detailLoading ? <p className="quiet-text" style={{ padding: 20 }}>Loading volunteer profile…</p> : detailError ? <EmptyState title="Could not load volunteer profile" description="Try again to read this record." action={<button className="button button-secondary" onClick={() => void loadDetail(selectedId)}>Retry</button>}/> : detail ? <><div className="profile-hero"><Avatar name={detail.name} size="lg"/><h2>{detail.name}</h2><span className="muted-id">{detail.registrationCode}</span><StatusBadge status={detail.status}/><button className="button button-secondary" onClick={() => { setSelectedId(null); setDetail(null); openEdit(detail) }}>Edit Volunteer</button><button className="button button-secondary" onClick={() => { setPasswordDialogVolunteer(detail); setPasswordValue(''); setPasswordError(null) }}><KeyRound size={16}/> Set or reset mobile password</button></div><div className="detail-section"><h3>Volunteer details</h3><div className="detail-grid"><div><span>Phone</span><strong><Phone size={15}/>{detail.phoneE164 ?? '—'}</strong></div><div><span>Team</span><strong><Users size={15}/>{teamNames(detail.id)}</strong></div></div><div className="detail-skills"><span>Skills</span><div className="skill-list">{detail.skills.map(value => <span className="skill-badge" key={value}>{value}</span>)}</div></div></div><p className="quiet-text">Availability and assignment history are not included in this administrator read API.</p></> : null}</div></Drawer>}
+    {passwordDialogVolunteer && <Modal title="Set or reset mobile password" subtitle="Set the password this Volunteer will use to sign in to the mobile app." onClose={closePasswordDialog}>
+      <form className="dialog-form" onSubmit={event => void submitPassword(event)} noValidate>
+        <p className="quiet-text">This replaces the current password. No email is sent. Share the new password only through a private channel.</p>
+        <label className="field field-full">New password<input type="password" value={passwordValue} onChange={event => setPasswordValue(event.target.value)} autoComplete="new-password" minLength={8} maxLength={128} required aria-describedby="volunteer-password-help"/><small id="volunteer-password-help">Use a password between 8 and 128 characters.</small></label>
+        {passwordError && <p className="settings-auth-message" role="alert">{passwordError}</p>}
+        <div className="dialog-footer"><button type="button" className="button button-secondary" disabled={passwordSaving} onClick={closePasswordDialog}>Cancel</button><button type="submit" className="button button-primary" disabled={passwordSaving}>{passwordSaving ? 'Setting password…' : 'Set password'}</button></div>
+      </form>
+    </Modal>}
     {formMode && <Modal title={formMode === 'create' ? 'Add a volunteer' : 'Edit volunteer'} subtitle={formMode === 'create' ? 'Create a volunteer profile and send an invitation.' : 'Update this volunteer’s administrative profile.'} onClose={() => { if (!saving) setFormMode(null) }}>
       <form className="dialog-form" onSubmit={event => void submit(event)} noValidate>
         <div className="form-grid">

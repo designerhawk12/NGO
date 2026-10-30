@@ -219,6 +219,24 @@ export async function findVolunteerById(id: string, client?: PoolClient): Promis
   return result.rows[0] ?? null;
 }
 
+export type VolunteerAuthAccountRow = {
+  auth_user_id: string | null;
+  app_user_role: 'ADMIN' | 'VOLUNTEER' | 'DONOR' | null;
+  disabled_at: Date | null;
+};
+
+export async function findVolunteerAuthAccountById(id: string): Promise<VolunteerAuthAccountRow | null> {
+  const result = await getPool().query<VolunteerAuthAccountRow>(
+    `SELECT au.auth_user_id, au.role AS app_user_role, au.disabled_at
+     FROM app.volunteers v
+     JOIN app.people p ON p.id = v.person_id
+     LEFT JOIN app.app_users au ON au.id = p.app_user_id
+     WHERE v.id = $1`,
+    [id]
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function findAdminVolunteerConflict(
   registrationCode: string, phoneE164: string | null, excludeVolunteerId?: string
 ): Promise<'registrationCode' | 'phoneE164' | null> {
