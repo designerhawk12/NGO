@@ -48,6 +48,17 @@ describe('API foundation', () => {
     expect(JSON.stringify(result.body)).not.toContain('sensitive connection detail');
   });
 
+  it('keeps unexpected /me database failures generic to clients', async () => {
+    findUser.mockRejectedValueOnce(Object.assign(new Error('permission denied for relation app_users'), { code: '42501' }));
+
+    const result = await request(app).get('/api/v1/me').set('Authorization', 'Bearer signed-token');
+
+    expect(result.status).toBe(500);
+    expect(result.body.error.code).toBe('INTERNAL_ERROR');
+    expect(result.body.error.message).toBe('Something went wrong.');
+    expect(JSON.stringify(result.body)).not.toContain('permission denied');
+  });
+
   it('rejects missing bearer tokens', async () => {
     const result = await request(app).get('/api/v1/me');
     expect(result.status).toBe(401);

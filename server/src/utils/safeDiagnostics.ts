@@ -31,6 +31,34 @@ function identifySubsystem(error: unknown, code: string | undefined): Diagnostic
   return 'Application';
 }
 
+function safeErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message
+    .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [REDACTED]')
+    .replace(/\bpostgres(?:ql)?:\/\/[^\s]+/gi, '[REDACTED_DATABASE_URL]')
+    .replace(/\beyJ[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}\b/g, '[REDACTED_TOKEN]')
+    .replace(/\b(?:sb_secret|service_role|secret)[_-][A-Za-z0-9_-]{8,}\b/gi, '[REDACTED_KEY]')
+    .replace(/\b(password|passwd|pwd|access_token|refresh_token|api[_-]?key|secret)\b(\s*[:=]\s*)[^\s,;]+/gi, '$1$2[REDACTED]')
+    .slice(0, 500);
+}
+
+/** Production diagnostics retain actionable error details while redacting credential-like values. */
+export function reportProductionError(
+  error: unknown,
+  requestId: string | undefined,
+  subsystem?: DiagnosticSubsystem,
+): void {
+  const code = errorCode(error);
+  console.error(JSON.stringify({
+    level: 'error',
+    requestId,
+    subsystem: subsystem ?? identifySubsystem(error, code),
+    errorClass: errorClass(error),
+    ...(code ? { code } : {}),
+    message: safeErrorMessage(error),
+  }));
+}
+
 /** Development-only diagnostics. Deliberately excludes messages, stacks, URLs, and request headers. */
 export function reportDevelopmentError(
   error: unknown,

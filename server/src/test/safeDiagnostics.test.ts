@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isDatabaseConnectionError, reportDevelopmentError } from '../utils/safeDiagnostics';
+import { isDatabaseConnectionError, reportDevelopmentError, reportProductionError } from '../utils/safeDiagnostics';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -31,5 +31,27 @@ describe('safe development diagnostics', () => {
     const output = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     reportDevelopmentError(new Error('private detail'), 'request-456');
     expect(output).not.toHaveBeenCalled();
+  });
+
+  it('records production error details while redacting credential-like values', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const output = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const error = Object.assign(
+      new Error('permission denied; password=hunter2; Bearer abc.def.ghi; key=sb_secret_abcdefghijk'),
+      { code: '42501' },
+    );
+
+    reportProductionError(error, 'request-789');
+
+    const entry = JSON.parse(String(output.mock.calls[0][0]));
+    expect(entry).toMatchObject({
+      requestId: 'request-789',
+      subsystem: 'PostgreSQL',
+      code: '42501',
+      message: expect.stringContaining('permission denied'),
+    });
+    expect(JSON.stringify(entry)).not.toContain('hunter2');
+    expect(JSON.stringify(entry)).not.toContain('abc.def.ghi');
+    expect(JSON.stringify(entry)).not.toContain('sb_secret_abcdefghijk');
   });
 });
