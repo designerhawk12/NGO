@@ -15,6 +15,8 @@ import FoodDonor from './pages/FoodDonor'
 import Vessels from './pages/Vessels'
 import LivePickupsPanel from './components/assignments/LivePickupsPanel'
 import { isLiveAdmin } from './features/pickups/adapters'
+import { isLiveAuthConfigured } from './api/auth'
+import LiveDashboard from './pages/LiveDashboard'
 import { useRenderedLanguage, type Language } from './lib/i18n'
 import type { Assignment, Page, Vehicle, VehicleMaintenanceRecord, Volunteer, VolunteerTeam } from './types'
 
@@ -36,6 +38,7 @@ export default function App() {
     return 'dashboard'
   }
   const [page, setPage] = useState<Page>(resolvePageFromUrl)
+  const [dashboardDemo, setDashboardDemo] = useState(false)
 
   useEffect(() => {
     const handleNav = () => {
@@ -97,7 +100,9 @@ export default function App() {
   const createAssignment = (assignment: Assignment) => { setAssignments(current => [assignment, ...current]); setAssignmentOpen(false); setPage('assignments'); notify('Assignment Created Successfully · Pending') }
   const changeLanguage = (next: Language) => { setLanguage(next); window.localStorage.setItem('aaharaconnect-language', next) }
   return <Layout page={page} onPage={setPage} language={language} onLanguageChange={changeLanguage}>
-    {page === 'dashboard' && <Dashboard volunteers={volunteers} teams={teams} assignments={assignments} onCreateAssignment={() => openAssignment()} onViewAssignments={() => setPage('assignments')} onViewVolunteers={() => setPage('volunteers')} onViewPickups={() => setPage('pickups')}/>}
+    {page === 'dashboard' && (isLiveAuthConfigured() && !dashboardDemo
+      ? <LiveDashboard onDemo={() => setDashboardDemo(true)} onSettings={() => setPage('settings')} onPickups={() => setPage('pickups')}/>
+      : <Dashboard volunteers={volunteers} teams={teams} assignments={assignments} onCreateAssignment={() => openAssignment()} onViewAssignments={() => setPage('assignments')} onViewVolunteers={() => setPage('volunteers')} onViewPickups={() => setPage('pickups')}/>)}
     {page === 'volunteers' && <Volunteers volunteers={volunteers} teams={teams} assignments={assignments} setVolunteers={setVolunteers} onAssignTeam={assignTeam} onCreateAssignment={openAssignment} notify={notify}/>}
     {page === 'teams' && <Teams volunteers={volunteers} teams={teams} setTeams={setTeams} onAssignTeam={assignTeam} notify={notify}/>}
     {page === 'food' && <FoodDonor vehicles={vehicles} setVehicles={setVehicles} notify={notify}/>}
