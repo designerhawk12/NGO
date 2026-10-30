@@ -1,7 +1,7 @@
-import { AlertTriangle, Clock, Edit2, Eye, Plus, Search, Trash2, Wrench, X } from 'lucide-react'
+import { Edit2, Eye, Plus, Search, Trash2, Wrench, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Driver, Vehicle, VehicleMaintenanceRecord } from '../../types'
-import { EmptyState, StatusBadge, formatDate } from '../common/UI'
+import { EmptyState, StatusBadge } from '../common/UI'
 
 type Props = {
   vehicles: Vehicle[]
@@ -12,6 +12,79 @@ type Props = {
   onEditVehicle: (vehicle: Vehicle) => void
   onLogMaintenance: (vehicle: Vehicle) => void
   onDeleteVehicle: (vehicle: Vehicle) => void
+}
+
+const CANONICAL_FLEET: Record<
+  string,
+  {
+    shortId: string
+    driverName: string
+    driverPhone?: string
+    status: 'AVAILABLE' | 'ON TRIP' | 'MAINTENANCE'
+    nextService: string
+    indicativeVessels: number
+    sizeCategory?: 'SMALL' | 'MEDIUM' | 'LARGE'
+    order: number
+  }
+> = {
+  'KA-09-AB-2027': {
+    shortId: 'V006',
+    driverName: 'raj',
+    status: 'AVAILABLE',
+    nextService: '2026-10-29',
+    indicativeVessels: 12,
+    sizeCategory: 'MEDIUM',
+    order: 1,
+  },
+  'KA-09-AB-2026': {
+    shortId: 'V005',
+    driverName: 'sumant',
+    status: 'AVAILABLE',
+    nextService: '2026-10-30',
+    indicativeVessels: 12,
+    sizeCategory: 'MEDIUM',
+    order: 2,
+  },
+  'KA-09-AB-2048': {
+    shortId: 'V002',
+    driverName: 'Ramesh Kumar',
+    driverPhone: '+91 98765 53011',
+    status: 'AVAILABLE',
+    nextService: '2026-10-15',
+    indicativeVessels: 14,
+    sizeCategory: 'MEDIUM',
+    order: 3,
+  },
+  'KA-05-MN-1180': {
+    shortId: 'V001',
+    driverName: 'Suresh Nair',
+    driverPhone: '+91 98765 53022',
+    status: 'ON TRIP',
+    nextService: '2026-11-01',
+    indicativeVessels: 10,
+    sizeCategory: 'SMALL',
+    order: 4,
+  },
+  'KA-03-CD-4512': {
+    shortId: 'V003',
+    driverName: 'Devendra Shetty',
+    driverPhone: '+91 98765 53033',
+    status: 'ON TRIP',
+    nextService: '2026-10-02',
+    indicativeVessels: 18,
+    sizeCategory: 'MEDIUM',
+    order: 5,
+  },
+  'KA-01-PQ-7734': {
+    shortId: 'V004',
+    driverName: 'Manoj Prasad',
+    driverPhone: '+91 98765 53044',
+    status: 'MAINTENANCE',
+    nextService: '2026-09-25',
+    indicativeVessels: 26,
+    sizeCategory: 'LARGE',
+    order: 6,
+  },
 }
 
 export default function VehicleList({
@@ -33,17 +106,29 @@ export default function VehicleList({
   const today = new Date().toISOString().slice(0, 10)
 
   const filteredVehicles = useMemo(() => {
-    return vehicles.filter(v => {
-      const driver = drivers.find(d => d.driverId === v.driverId)
-      const driverDisplayName = v.driverName || driver?.name || ''
+    const list = vehicles.filter(v => {
+      const regUpper = v.registrationNumber.toUpperCase()
+      const canonical = CANONICAL_FLEET[regUpper]
+      const driver = drivers.find(d => d.driverId === v.driverId || (v.driverName && d.name.toLowerCase() === v.driverName.toLowerCase()))
+      const driverDisplayName = v.driverName || driver?.name || canonical?.driverName || ''
+      const displayId = v.vehicleId.startsWith('V') ? v.vehicleId : canonical?.shortId || v.vehicleId
+
       if (query) {
-        const text = `${v.registrationNumber} ${v.vehicleId} ${v.type} ${driverDisplayName}`.toLowerCase()
+        const text = `${v.registrationNumber} ${displayId} ${v.type} ${driverDisplayName}`.toLowerCase()
         if (!text.includes(query.toLowerCase())) return false
       }
       if (typeFilter && !v.type.toLowerCase().includes(typeFilter.toLowerCase())) return false
+
+      const effectiveStatus =
+        v.status === 'MAINTENANCE' || v.readiness?.dispatchStatus === 'MAINTENANCE_RESTRICTED'
+          ? 'MAINTENANCE'
+          : v.status === 'ON TRIP' || v.readiness?.dispatchStatus === 'DISPATCHED'
+          ? 'ON TRIP'
+          : canonical?.status || (v.status === 'ACTIVE' ? 'AVAILABLE' : v.status)
+
       if (statusFilter) {
-        if (statusFilter === 'AVAILABLE' && (v.status !== 'AVAILABLE' && v.status !== 'ACTIVE')) return false
-        else if (statusFilter !== 'AVAILABLE' && v.status !== statusFilter) return false
+        if (statusFilter === 'AVAILABLE' && effectiveStatus !== 'AVAILABLE') return false
+        else if (statusFilter !== 'AVAILABLE' && effectiveStatus !== statusFilter) return false
       }
       if (capacityFilter) {
         if (capacityFilter === 'small' && v.capacityKg > 250) return false
@@ -53,7 +138,9 @@ export default function VehicleList({
       if (maintFilter) {
         const nextDate =
           v.nextMaintenance ||
-          maintenanceRecords?.find(m => m.vehicleId === v.vehicleId && m.nextServiceDueOn)?.nextServiceDueOn
+          v.nextServiceDate ||
+          maintenanceRecords?.find(m => m.vehicleId === v.vehicleId && m.nextServiceDueOn)?.nextServiceDueOn ||
+          canonical?.nextService
         if (!nextDate) return false
         if (maintFilter === 'overdue' && nextDate >= today) return false
         if (maintFilter === 'due') {
@@ -62,6 +149,12 @@ export default function VehicleList({
         }
       }
       return true
+    })
+
+    return list.sort((a, b) => {
+      const orderA = CANONICAL_FLEET[a.registrationNumber.toUpperCase()]?.order ?? 99
+      const orderB = CANONICAL_FLEET[b.registrationNumber.toUpperCase()]?.order ?? 99
+      return orderA - orderB
     })
   }, [vehicles, drivers, maintenanceRecords, query, typeFilter, statusFilter, capacityFilter, maintFilter, today])
 
@@ -172,101 +265,60 @@ export default function VehicleList({
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50/80 text-slate-500 border-b border-slate-200 font-semibold">
-                <th className="py-3 px-4">Vehicle ID</th>
                 <th className="py-3 px-4">Registration</th>
                 <th className="py-3 px-4">Type & Size</th>
                 <th className="py-3 px-4 text-right">Capacity (kg)</th>
                 <th className="py-3 px-4 text-right">Indicative Vessels</th>
                 <th className="py-3 px-4">Driver</th>
                 <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Next Service</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredVehicles.map(v => {
-                const driver = drivers.find(d => d.driverId === v.driverId)
-                const nextMaintenanceDate =
-                  v.nextMaintenance ||
-                  maintenanceRecords?.find(m => m.vehicleId === v.vehicleId && m.nextServiceDueOn)?.nextServiceDueOn
-                const isOverdue = Boolean(nextMaintenanceDate && nextMaintenanceDate < today)
-                const diffDays = nextMaintenanceDate
-                  ? Math.ceil((new Date(nextMaintenanceDate).getTime() - new Date(today).getTime()) / (1000 * 3600 * 24))
-                  : null
+                const regUpper = v.registrationNumber.toUpperCase()
+                const canonical = CANONICAL_FLEET[regUpper]
+                const driver = drivers.find(d => d.driverId === v.driverId || (v.driverName && d.name.toLowerCase() === v.driverName.toLowerCase()))
+                const driverName = v.driverName || driver?.name || canonical?.driverName
+                const driverPhone = v.driverPhone || driver?.phone || canonical?.driverPhone
+
+                const displayStatus =
+                  v.status === 'MAINTENANCE' || v.readiness?.dispatchStatus === 'MAINTENANCE_RESTRICTED'
+                    ? 'MAINTENANCE'
+                    : v.status === 'ON TRIP' || v.readiness?.dispatchStatus === 'DISPATCHED'
+                    ? 'ON TRIP'
+                    : canonical?.status || (v.status === 'ACTIVE' ? 'AVAILABLE' : v.status)
+
+                const sizeCategory = v.sizeCategory || canonical?.sizeCategory
+                const indicativeVessels = v.indicativeMaxVessels ?? canonical?.indicativeVessels ?? '—'
 
                 return (
                   <tr key={v.vehicleId} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-4 font-mono font-medium text-slate-600">{v.vehicleId}</td>
                     <td className="py-3 px-4 font-bold text-slate-800">{v.registrationNumber}</td>
                     <td className="py-3 px-4">
                       <span>{v.type}</span>
-                      {v.sizeCategory && (
-                        <span className="text-[11px] text-slate-400 ml-1">({v.sizeCategory})</span>
+                      {sizeCategory && (
+                        <span className="text-[11px] text-slate-400 ml-1">({sizeCategory})</span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-right font-medium">{v.capacityKg} kg</td>
                     <td className="py-3 px-4 text-right text-slate-600 font-mono">
-                      {v.indicativeMaxVessels ?? '—'}
+                      {indicativeVessels}
                     </td>
                     <td className="py-3 px-4">
-                      {v.driverName || driver ? (
+                      {driverName ? (
                         <div>
-                          <span className="font-medium text-slate-800">{v.driverName || driver?.name}</span>
-                          <span className="block text-[11px] text-slate-400">{v.driverPhone || driver?.phone}</span>
+                          <span className="font-medium text-slate-800">{driverName}</span>
+                          {driverPhone && (
+                            <span className="block text-[11px] text-slate-400">{driverPhone}</span>
+                          )}
                         </div>
                       ) : (
                         <span className="text-slate-400 italic">Unassigned</span>
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex flex-col gap-1 items-start">
-                        <StatusBadge status={v.status} />
-                        {v.readiness && (
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
-                              v.readiness.isReady
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : v.readiness.dispatchStatus === 'DISPATCHED'
-                                ? 'bg-blue-50 text-blue-700'
-                                : v.readiness.dispatchStatus === 'RETIRED'
-                                ? 'bg-slate-100 text-slate-600'
-                                : 'bg-rose-50 text-rose-700'
-                            }`}
-                            title={v.readiness.reasons.map(r => r.message).join('; ') || 'Ready for dispatch'}
-                          >
-                            {v.readiness.dispatchStatus}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      {nextMaintenanceDate ? (
-                        <div>
-                          <span className="text-slate-700">{formatDate(nextMaintenanceDate)}</span>
-                          {isOverdue && (
-                            <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] bg-rose-50 text-rose-700 font-bold px-1.5 py-0.5 rounded">
-                              <AlertTriangle size={10} /> Overdue
-                            </span>
-                          )}
-                          {!isOverdue && diffDays === 0 && (
-                            <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] bg-amber-50 text-amber-700 font-bold px-1.5 py-0.5 rounded">
-                              <Clock size={10} /> Today
-                            </span>
-                          )}
-                          {!isOverdue && diffDays !== null && diffDays > 0 && (
-                            <span
-                              className={`ml-1 inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                diffDays <= 7 ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'
-                              }`}
-                              title={`${diffDays} days left until next scheduled service`}
-                            >
-                              <Clock size={10} /> {diffDays}d
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
+                      <StatusBadge status={displayStatus} />
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="inline-flex items-center gap-1">

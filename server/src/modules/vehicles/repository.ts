@@ -177,16 +177,17 @@ const VEHICLE_SELECT_FRAGMENT = `
     curr_assign.pickup_id AS curr_pickup_id,
     curr_assign.assignment_status AS curr_assignment_status,
     curr_assign.window_starts_at AS curr_window_starts_at,
-    curr_assign.window_ends_at AS curr_window_ends_at,
-    curr_assign.driver_id AS curr_driver_id,
-    curr_assign.driver_name AS curr_driver_name,
-    curr_assign.driver_phone AS curr_driver_phone,
-    curr_assign.driver_licence AS curr_driver_licence,
+    COALESCE(curr_assign.driver_id, ad.id) AS curr_driver_id,
+    COALESCE(curr_assign.driver_name, adp.name) AS curr_driver_name,
+    COALESCE(curr_assign.driver_phone, adp.phone_e164) AS curr_driver_phone,
+    COALESCE(curr_assign.driver_licence, ad.licence_number) AS curr_driver_licence,
     latest_maint.serviced_on AS latest_serviced_on,
     latest_maint.condition AS latest_condition,
     latest_maint.summary AS latest_summary,
     latest_maint.next_service_due_on AS latest_next_service_due_on
   FROM app.vehicles v
+  LEFT JOIN app.drivers ad ON ad.id = v.assigned_driver_id
+  LEFT JOIN app.people adp ON adp.id = ad.person_id
   LEFT JOIN LATERAL (
     SELECT
       a.id AS assignment_id,
@@ -323,8 +324,9 @@ export async function createVehicle(data: CreateVehicle, client?: PoolClient) {
         capacity_kg,
         status,
         size_category,
-        indicative_max_vessels
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        indicative_max_vessels,
+        assigned_driver_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *`,
       [
         data.registrationNumber,
@@ -333,6 +335,7 @@ export async function createVehicle(data: CreateVehicle, client?: PoolClient) {
         data.status ?? 'ACTIVE',
         data.sizeCategory ?? null,
         data.indicativeMaxVessels ?? null,
+        data.assignedDriverId ?? null,
       ]
     );
 
@@ -374,6 +377,10 @@ export async function updateVehicle(
   if (patch.indicativeMaxVessels !== undefined) {
     values.push(patch.indicativeMaxVessels);
     setClauses.push(`indicative_max_vessels = $${values.length}`);
+  }
+  if (patch.assignedDriverId !== undefined) {
+    values.push(patch.assignedDriverId);
+    setClauses.push(`assigned_driver_id = $${values.length}`);
   }
 
   if (setClauses.length === 0) {
