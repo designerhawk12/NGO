@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Mukta:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{
   box-sizing:border-box;
@@ -63,6 +64,7 @@ button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid transpare
 .err{color:var(--chili);font-size:.88rem;margin-top:8px;min-height:1.2em}
 .hint{color:var(--muted);font-size:.85rem;margin-top:6px}
 .loc{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--leaf-soft);color:var(--leaf);font-size:.9rem}
+.map{height:220px;border-radius:12px;margin-top:10px;overflow:hidden;border:1px solid var(--line);z-index:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{background:var(--bg);border:1px solid var(--line);color:var(--ink);padding:7px 12px;border-radius:999px;font-weight:500;display:flex;align-items:center;gap:6px}
 .chip.added{border-color:var(--leaf);background:var(--leaf-soft);color:var(--leaf)}
@@ -132,7 +134,6 @@ body.dev .tag{display:inline-block}
     <div class="panel" id="regForm">
       <label>Full name <span class="tag">name : String</span></label><input id="rName" autocomplete="name">
       <label>Phone number <span class="tag">phone : String</span></label><input id="rPhone" inputmode="numeric" maxlength="10" placeholder="10-digit mobile">
-      <label>Address <span class="tag">address : String</span></label><input id="rAddr" autocomplete="street-address">
       <label>Password</label><input id="rPass" type="password">
       <div class="err" id="rErr"></div>
       <button class="primary" id="btnReg">Register <span class="tag">register()</span></button>
@@ -154,6 +155,8 @@ body.dev .tag{display:inline-block}
       <label>Hall address <span class="tag">hallAddress</span></label><input id="hAddr">
       <button class="ghost" id="btnGps" style="width:100%;margin-top:14px">Use my current location <span class="tag">fetchCurrentLocation()</span></button>
       <div class="loc" id="locBox" hidden></div>
+      <div class="map" id="hallMap"></div>
+      <p class="hint" style="margin-top:6px">Tap the map or drag the pin to fine-tune the pickup spot — the address fills in automatically.</p>
       <details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Enter coordinates manually</summary>
         <div class="row"><div><label>Latitude</label><input id="lat" inputmode="decimal"></div><div><label>Longitude</label><input id="lng" inputmode="decimal"></div></div>
       </details>
@@ -170,7 +173,11 @@ body.dev .tag{display:inline-block}
       <label>Common items</label>
       <div class="chips" id="presetChips"></div>
       <label style="margin-top:16px">Something else?</label>
-      <input id="cName" placeholder="Item name, e.g. Pulihora">
+      <div class="row" style="gap:6px">
+        <input id="cName" placeholder="Item name, e.g. Pulihora" title="Type the food name, or tap the mic to speak it">
+        <button type="button" id="btnVoice" class="secondary" style="flex:none;padding:10px 12px" title="Speak the food name instead of typing" aria-label="Voice input for food name">🎤</button>
+      </div>
+      <p class="hint" style="margin-top:4px">Tip: tap 🎤 to speak the food name instead of typing it.</p>
       <div class="row" style="margin-top:8px">
         <select id="cType">
           <option value="VEG">🥬 Vegetarian</option>
@@ -198,6 +205,10 @@ body.dev .tag{display:inline-block}
     <h1>Check and send</h1>
     <p class="lead">Once sent, the pickup team will collect the food from the hall.</p>
     <div class="panel"><dl class="summary" id="summary"></dl></div>
+    <div class="panel">
+      <label style="margin-top:0">AI's feeding estimate <span class="tag">estimateTotal()</span></label>
+      <div class="feeds" style="margin-top:4px"><b id="aiFeedsNum">…</b><span>people (AI estimate)<br><small class="hint" id="aiNote" style="margin:0">Calculating…</small></span></div>
+    </div>
     <button class="primary" id="btnSubmit">Send for pickup <span class="tag">submitDonation()</span></button>
     <button class="secondary" id="backFood" style="width:100%;margin-top:8px">Edit food</button>
   </section>
@@ -220,6 +231,7 @@ body.dev .tag{display:inline-block}
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="config.js"></script>
 <script>
 /* ===== Model classes, following the class diagram ===== */
@@ -615,8 +627,8 @@ $("tabReg").onclick = () => { $("tabReg").classList.add("on"); $("tabLog").class
 $("tabLog").onclick = () => { $("tabLog").classList.add("on"); $("tabReg").classList.remove("on"); $("logForm").hidden = false; $("regForm").hidden = true; };
 
 $("btnReg").onclick = async () => {
-  const n = $("rName").value.trim(), p = $("rPhone").value.trim(), a = $("rAddr").value.trim(), pw = $("rPass").value;
-  if (!n || !a) return $("rErr").textContent = "Enter your name and address.";
+  const n = $("rName").value.trim(), p = $("rPhone").value.trim(), pw = $("rPass").value;
+  if (!n) return $("rErr").textContent = "Enter your name.";
   if (!/^\d{10}$/.test(p)) return $("rErr").textContent = "Phone number must be 10 digits.";
   if (pw.length < 4) return $("rErr").textContent = "Password must be at least 4 characters.";
   $("rErr").textContent = "";
@@ -625,7 +637,7 @@ $("btnReg").onclick = async () => {
   b.disabled = true;
   b.textContent = "Registering...";
   try {
-    donor = await FoodDonor.register(n, p, a, pw);
+    donor = await FoodDonor.register(n, p, "Not specified", pw);
     toast("Registered as " + n);
     goHall();
   } catch (err) {
@@ -660,19 +672,75 @@ $("btnLog").onclick = async () => {
     b.innerHTML = origText;
   }
 };
-function goHall(){ $("hello").textContent = "Hi " + donor.name + ", tell us which hall to pick the food up from."; show("s-hall"); }
+function goHall(){ $("hello").textContent = "Hi " + donor.name + ", tell us which hall to pick the food up from."; show("s-hall"); setTimeout(initHallMap, 50); }
 
-/* Hall + GPS */
+/* Hall + Map (free OpenStreetMap / Leaflet, no API key needed) */
+let hallMap = null, hallMarker = null;
+const INDIA_CENTER = [20.5937, 78.9629];
+
+function initHallMap(){
+  if (hallMap) { hallMap.invalidateSize(); return; }
+  const la = parseFloat($("lat").value), lo = parseFloat($("lng").value);
+  const hasFix = !isNaN(la) && !isNaN(lo);
+  const start = hasFix ? [la, lo] : INDIA_CENTER;
+  hallMap = L.map("hallMap").setView(start, hasFix ? 16 : 5);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(hallMap);
+  hallMarker = L.marker(start, { draggable: true }).addTo(hallMap);
+  hallMarker.on("dragend", () => { const p = hallMarker.getLatLng(); onMapLocationPicked(p.lat, p.lng); });
+  hallMap.on("click", e => onMapLocationPicked(e.latlng.lat, e.latlng.lng));
+}
+
+function setMapLocation(lat, lng, zoom){
+  if (!hallMap) return;
+  hallMarker.setLatLng([lat, lng]);
+  hallMap.setView([lat, lng], zoom || 16);
+}
+
+/* Free reverse-geocoding via OpenStreetMap Nominatim (no API key) */
+async function reverseGeocode(lat, lng){
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=0`, {
+      headers: { "Accept-Language": "en" }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.display_name || null;
+  } catch (e) { console.warn("Reverse geocode failed:", e.message); return null; }
+}
+
+async function onMapLocationPicked(lat, lng){
+  $("lat").value = lat.toFixed(6); $("lng").value = lng.toFixed(6);
+  setMapLocation(lat, lng);
+  $("locBox").hidden = false;
+  $("locBox").textContent = "📍 Fetching address…";
+  const addr = await reverseGeocode(lat, lng);
+  if (addr) {
+    $("hAddr").value = addr;
+    $("locBox").textContent = "📍 " + addr;
+  } else {
+    $("locBox").textContent = "📍 Location captured: " + lat.toFixed(5) + ", " + lng.toFixed(5);
+  }
+}
+
 $("btnGps").onclick = async () => {
   $("hErr").textContent = ""; $("btnGps").textContent = "Finding your location…";
   try {
     await gps.fetchCurrentLocation();
-    $("lat").value = gps.latitude.toFixed(6); $("lng").value = gps.longitude.toFixed(6);
-    $("locBox").hidden = false;
-    $("locBox").textContent = "📍 Location captured: " + gps.latitude.toFixed(5) + ", " + gps.longitude.toFixed(5);
+    initHallMap();
+    await onMapLocationPicked(gps.latitude, gps.longitude);
   } catch (e) { $("hErr").textContent = e.message; }
   $("btnGps").innerHTML = 'Use my current location <span class="tag">fetchCurrentLocation()</span>';
 };
+
+["lat", "lng"].forEach(id => {
+  $(id).addEventListener("change", () => {
+    const la = parseFloat($("lat").value), lo = parseFloat($("lng").value);
+    if (!isNaN(la) && !isNaN(lo)) { initHallMap(); setMapLocation(la, lo); }
+  });
+});
 $("btnHall").onclick = () => {
   const hn = $("hName").value.trim(), ha = $("hAddr").value.trim();
   const la = parseFloat($("lat").value), lo = parseFloat($("lng").value);
@@ -702,18 +770,65 @@ function renderPresets(){
     box.appendChild(b);
   });
 }
-$("btnCustom").onclick = () => {
+/* AI serving-size + emoji estimate, used when a brand-new custom food is added */
+async function aiEstimateFood(name, unit){
+  const cfg = window.__CONFIG__ || {};
+  const apiBase = cfg.API_BASE_URL || "/api/v1";
+  const res = await fetch(`${apiBase}/estimate-food`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, unit })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "AI estimate failed");
+  return data; // { perPerson, emoji }
+}
+
+/* Voice input for the custom food name (Web Speech API) */
+$("btnVoice").onclick = () => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast("Voice input isn't supported in this browser."); return; }
+  const rec = new SR();
+  rec.lang = "en-IN";
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  const btn = $("btnVoice");
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = "🎙️";
+  rec.onresult = e => { $("cName").value = e.results[0][0].transcript; };
+  rec.onerror = e => { toast(e.error === "not-allowed" ? "Microphone permission was denied." : "Couldn't hear that. Try again."); };
+  rec.onend = () => { btn.disabled = false; btn.textContent = orig; };
+  try { rec.start(); } catch { btn.disabled = false; btn.textContent = orig; }
+};
+
+$("btnCustom").onclick = async () => {
   const n = $("cName").value.trim();
   if (!n) return $("cErr").textContent = "Type the item name first.";
   if (/\b(chicken|mutton|fish|meat|egg|eggs|beef|pork|prawn|crab)\b/i.test(n)) {
     return $("cErr").textContent = "Akshaya Ahar accepts strictly vegetarian food donations only.";
   }
   if (donor.foods.some(f => f.name.toLowerCase() === n.toLowerCase())) return $("cErr").textContent = "That item is already in the list.";
+  $("cErr").textContent = "";
   const u = $("cUnit").value;
   const t = $("cType").value;
-  const emoji = t === "SWEETS" ? "🍬" : (t === "PACKAGED" ? "📦" : "🥬");
-  donor.addFoodDetails(n, t, { [u]: DEFAULT_PER[u] }, u, emoji);
-  $("cName").value = ""; $("cErr").textContent = ""; renderItems();
+  let emoji = t === "SWEETS" ? "🍬" : (t === "PACKAGED" ? "📦" : "🥬");
+  let perPerson = DEFAULT_PER[u];
+
+  const b = $("btnCustom");
+  const origText = b.textContent;
+  b.disabled = true; b.textContent = "✨ Estimating with AI…";
+  try {
+    const data = await aiEstimateFood(n, u);
+    if (data.perPerson > 0) perPerson = data.perPerson;
+    if (data.emoji) emoji = data.emoji;
+  } catch (err) {
+    console.warn("AI estimate for new item failed, using defaults:", err.message);
+  } finally {
+    b.disabled = false; b.textContent = origText;
+  }
+
+  donor.addFoodDetails(n, t, { [u]: perPerson }, u, emoji);
+  $("cName").value = ""; renderItems();
 };
 
 function renderItems(){
@@ -764,8 +879,34 @@ $("btnReview").onclick = () => {
     <dt>Food</dt><dd>${filled.map(f => `${f.emoji || "🥬"} ${esc(f.name)}: ${f.quantity} ${f.unit === "kg" ? "kg" : "pcs"} (≈${f.peopleFed()} people)`).join("<br>")}</dd>
     <dt>Can feed about</dt><dd>${$("feedsNum").textContent} people</dd>`;
   show("s-review");
+  requestAiTotalEstimate(filled);
 };
 $("backFood").onclick = () => { renderPresets(); renderItems(); show("s-food"); };
+
+/* AI's holistic estimate across all donated items, factoring in prepared time vs now */
+async function requestAiTotalEstimate(items){
+  $("aiFeedsNum").textContent = "…";
+  $("aiNote").textContent = "Thinking…";
+  try {
+    const cfg = window.__CONFIG__ || {};
+    const apiBase = cfg.API_BASE_URL || "/api/v1";
+    const res = await fetch(`${apiBase}/estimate-total`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        foods: items.map(f => ({ name: f.name, quantity: f.quantity, unit: f.unit })),
+        preparedTime: donor.preparedTime || null
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "AI estimate failed");
+    $("aiFeedsNum").textContent = data.estimatedFeeds;
+    $("aiNote").textContent = data.note;
+  } catch (err) {
+    $("aiFeedsNum").textContent = "—";
+    $("aiNote").textContent = "AI estimate unavailable (" + (err.message || "error") + ").";
+  }
+}
 
 /* Submit + status */
 $("btnSubmit").onclick = async () => {

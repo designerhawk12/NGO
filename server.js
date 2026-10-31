@@ -47,6 +47,8 @@ const SUPABASE_PUBLISHABLE_KEY =
 const SUPABASE_SECRET_KEY = env.SUPABASE_SECRET_KEY || '';
 const SUPABASE_KEY = SUPABASE_SECRET_KEY || SUPABASE_PUBLISHABLE_KEY || '';
 
+const GROQ_API_KEY = env.GROQ || env.GROQ_API_KEY || '';
+
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
@@ -216,9 +218,186 @@ window.__CONFIG__ = {
       app: 'Akshaya Ahar',
       port: PORT,
       databaseConfigured: isSupabaseConfigured(),
+      aiEstimationConfigured: Boolean(GROQ_API_KEY),
       vegetarianOnlyEnforced: true,
       allowedOriginsCount: TRUSTED_ORIGINS.length
     });
+    return;
+  }
+
+  // 1b. AI Serving-Size Estimate (POST /api/v1/estimate-food)
+  if (urlPath === '/api/v1/estimate-food' && req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody(req);
+      const name = (payload.name || '').trim();
+      const unit = payload.unit === 'pcs' ? 'pcs' : 'kg';
+
+      if (!name) {
+        return sendJson(res, 400, { error: 'Food name is required' });
+      }
+      if (!GROQ_API_KEY) {
+        return sendJson(res, 503, { error: 'AI estimation is not configured (missing GROQ key in .env)' });
+      }
+
+      const unitLabel = unit === 'kg' ? 'kilograms' : 'pieces';
+      const prompt = `You help a vegetarian Indian community food donation app.
+Food item: "${name}"
+Measured in: ${unitLabel}
+
+Give two things about this one food item, for ONE adult's shared-meal serving:
+1. perPerson: how many ${unitLabel} of it are needed to feed exactly one adult
+2. emoji: ONE single emoji that best represents this specific food (prefer a close, specific match over a generic one)
+
+Respond with ONLY a JSON object, nothing else, in exactly this form:
+{"perPerson": <number>, "emoji": "<single emoji>"}`;
+
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-20b',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.2,
+          max_tokens: 200,
+          reasoning_effort: 'low'
+        })
+      });
+
+      const groqData = await groqRes.json();
+      if (!groqRes.ok) {
+        throw new Error((groqData.error && groqData.error.message) || 'Groq API error');
+      }
+
+      const content = (groqData.choices && groqData.choices[0] && groqData.choices[0].message.content) || '';
+
+      let perPerson = NaN;
+      let emoji = null;
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          perPerson = parseFloat(parsed.perPerson);
+          if (typeof parsed.emoji === 'string' && parsed.emoji.trim()) {
+            emoji = parsed.emoji.trim().slice(0, 8);
+          }
+        } catch {
+          // fall through to the numeric-only fallback below
+        }
+      }
+      if (!perPerson || !isFinite(perPerson)) {
+        const numMatch = content.match(/[\d.]+/);
+        perPerson = numMatch ? parseFloat(numMatch[0]) : NaN;
+      }
+
+      if (!perPerson || perPerson <= 0 || !isFinite(perPerson)) {
+        throw new Error('AI could not produce a usable estimate for this item');
+      }
+
+      sendJson(res, 200, { success: true, name, unit, perPerson, emoji });
+    } catch (err) {
+      console.error('[API /estimate-food Error]', err.message);
+      sendJson(res, err.status || 500, { error: err.message });
+    }
+    return;
+  }
+
+  // 1c. AI Holistic Donation Estimate (POST /api/v1/estimate-total)
+  // Looks at every donated item together (not a simple per-item sum) and factors in
+  // how much time has passed since the food was prepared.
+  if (urlPath === '/api/v1/estimate-total' && req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody(req);
+      const foods = Array.isArray(payload.foods) ? payload.foods : [];
+      const preparedTime = payload.preparedTime || null;
+
+      if (!foods.length) {
+        return sendJson(res, 400, { error: 'At least one food item is required' });
+      }
+      if (!GROQ_API_KEY) {
+        return sendJson(res, 503, { error: 'AI estimation is not configured (missing GROQ key in .env)' });
+      }
+
+      const now = new Date();
+      let timeNote = 'The preparation time was not provided.';
+      const prepared = preparedTime ? new Date(preparedTime) : null;
+      if (prepared && !isNaN(prepared.getTime())) {
+        const hoursElapsed = Math.max(0, (now.getTime() - prepared.getTime()) / 3600000);
+        timeNote = `The food was prepared at ${prepared.toISOString()}, about ${hoursElapsed.toFixed(1)} hour(s) before now (${now.toISOString()}).`;
+      }
+
+      const itemLines = foods
+        .map(f => `- ${f.name}: ${f.quantity} ${f.unit === 'pcs' ? 'pieces' : 'kg'}`)
+        .join('\n');
+
+      const prompt = `You assess a vegetarian Indian community food donation made up of several items shared as one meal.
+
+Food items donated:
+${itemLines}
+
+${timeNote}
+
+Tasks:
+1. estimatedFeeds: estimate the TOTAL number of adults this combined donation can feed as one shared meal. Do not simply add up each item's individual headcount - people take a bit of several items on one plate, so the combined total is usually close to the single largest item's headcount, nudged up a little by the variety of other items available.
+2. note: write a VERY SHORT note (max 2 sentences) explaining the estimate. Mention the time consideration: if the food is more than 3-4 hours old, flag a freshness/safety concern; otherwise reassure it is still fresh.
+
+Respond with ONLY a JSON object, nothing else, in exactly this form:
+{"estimatedFeeds": <integer>, "note": "<short text>"}`;
+
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-20b',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3,
+          max_tokens: 300,
+          reasoning_effort: 'low'
+        })
+      });
+
+      const groqData = await groqRes.json();
+      if (!groqRes.ok) {
+        throw new Error((groqData.error && groqData.error.message) || 'Groq API error');
+      }
+
+      const content = (groqData.choices && groqData.choices[0] && groqData.choices[0].message.content) || '';
+
+      let estimatedFeeds = NaN;
+      let note = '';
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          estimatedFeeds = parseInt(parsed.estimatedFeeds, 10);
+          if (typeof parsed.note === 'string') note = parsed.note.trim().slice(0, 300);
+        } catch {
+          // fall through to the numeric-only fallback below
+        }
+      }
+      if (!estimatedFeeds || !isFinite(estimatedFeeds)) {
+        const numMatch = content.match(/\d+/);
+        estimatedFeeds = numMatch ? parseInt(numMatch[0], 10) : NaN;
+      }
+
+      if (!estimatedFeeds || estimatedFeeds <= 0) {
+        throw new Error('AI could not produce a usable total estimate');
+      }
+
+      sendJson(res, 200, {
+        success: true,
+        estimatedFeeds,
+        note: note || 'Estimate generated from the combined items.'
+      });
+    } catch (err) {
+      console.error('[API /estimate-total Error]', err.message);
+      sendJson(res, err.status || 500, { error: err.message });
+    }
     return;
   }
 
@@ -404,7 +583,7 @@ window.__CONFIG__ = {
   // Static File Serving & Security Protection
   // -------------------------------------------------------------
   let safePath = path.normalize(urlPath).replace(/^(\.\.[\/\\])+/, '');
-  if (safePath === '/' || safePath === '') safePath = '/index.html';
+  if (safePath === '/' || safePath === '\\' || safePath === '') safePath = '/index.html';
 
   const filePath = path.join(__dirname, safePath);
 
@@ -445,5 +624,6 @@ server.listen(PORT, () => {
   console.log(`  Restricted CORS to trusted origins: ${TRUSTED_ORIGINS.join(', ')}`);
   console.log(`  Vegetarian-only policy: ENFORCED`);
   console.log(`  Database status: ${isSupabaseConfigured() ? 'CONFIGURED' : 'PENDING CREDENTIALS'}`);
+  console.log(`  AI estimation (Groq): ${GROQ_API_KEY ? 'CONFIGURED' : 'PENDING KEY'}`);
   console.log(`==================================================\n`);
 });
