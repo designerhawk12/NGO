@@ -30,6 +30,38 @@ const rows = ids.map((id, index) => ({ id, created_at: new Date(`2026-10-0${inde
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe('Volunteer admin repository pagination', () => {
+  it('returns the legacy roster when migration 007 has not created the applications table', async () => {
+    const missingTable = Object.assign(new Error('relation unavailable'), { code: '42P01' });
+    query.mockRejectedValueOnce(missingTable)
+      .mockResolvedValueOnce({ rows: [{ exists: false }] })
+      .mockResolvedValueOnce({ rows: [rows[0]] });
+    const result = await listVolunteers({ limit: 2 });
+    expect(result.rows).toEqual([rows[0]]);
+    expect(query.mock.calls[1][0]).toContain("to_regclass('app.volunteer_applications')");
+    expect(query.mock.calls[2][0]).not.toContain('app.volunteer_applications');
+    expect(query.mock.calls[2][1]).toEqual([3]);
+  });
+
+  it('keeps an empty legacy roster empty and never masks other database failures', async () => {
+    const missingTable = Object.assign(new Error('relation unavailable'), { code: '42P01' });
+    query.mockRejectedValueOnce(missingTable)
+      .mockResolvedValueOnce({ rows: [{ exists: false }] })
+      .mockResolvedValueOnce({ rows: [] });
+    expect((await listVolunteers({ limit: 2 })).rows).toEqual([]);
+    query.mockReset();
+    const unavailable = Object.assign(new Error('connection failure'), { code: 'ECONNREFUSED' });
+    query.mockRejectedValueOnce(unavailable);
+    await expect(listVolunteers({ limit: 2 })).rejects.toBe(unavailable);
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not bypass application filtering when the applications table exists', async () => {
+    const missingRelation = Object.assign(new Error('other relation unavailable'), { code: '42P01' });
+    query.mockRejectedValueOnce(missingRelation).mockResolvedValueOnce({ rows: [{ exists: true }] });
+    await expect(listVolunteers({ limit: 2 })).rejects.toBe(missingRelation);
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
   it('uses parameterized filters and a stable created-at/id cursor for volunteers', async () => {
     query.mockResolvedValueOnce({ rows });
     const first = await listVolunteers({ limit: 2, search: 'Ada', status: 'ACTIVE', skill: 'pickup', teamId: ids[0] });

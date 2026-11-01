@@ -212,12 +212,22 @@ export async function listVolunteers(query: ListVolunteersQuery): Promise<{ rows
     conditions.push(`(v.created_at, v.id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);
   }
   params.push(query.limit + 1);
-  const result = await getPool().query<AdminVolunteerRow>(
+  const sql = (filters: string[]) =>
     `SELECT ${volunteerSelect} FROM app.volunteers v JOIN app.people p ON p.id = v.person_id
-     ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
-     ORDER BY v.created_at DESC, v.id DESC LIMIT $${params.length}`,
-    params
-  );
+     ${filters.length ? `WHERE ${filters.join(' AND ')}` : ''}
+     ORDER BY v.created_at DESC, v.id DESC LIMIT $${params.length}`;
+  let result;
+  try {
+    result = await getPool().query<AdminVolunteerRow>(sql(conditions), params);
+  } catch (error) {
+    if ((error as { code?: unknown })?.code !== '42P01') throw error;
+    const table = await getPool().query<{ exists: boolean }>(
+      "SELECT to_regclass('app.volunteer_applications') IS NOT NULL AS exists"
+    );
+    if (table.rows[0]?.exists !== false) throw error;
+    // Before migration 007, there can be no application rows. Keep existing Admin roster reads available.
+    result = await getPool().query<AdminVolunteerRow>(sql(conditions.slice(1)), params);
+  }
   const rows = result.rows.slice(0, query.limit);
   return { rows, nextCursor: result.rows.length > query.limit ? encodeCursor(rows[rows.length - 1]) : null };
 }
