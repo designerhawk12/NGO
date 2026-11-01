@@ -33,3 +33,6 @@ Thumbs.db
 
 # Existing local duplicate of the tracked root web prototype; apps/web is canonical.
 /WEB/
+
+.vercel/
+

@@ -4,7 +4,31 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build:web",
   "outputDirectory": "apps/web/dist",
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    {
+      "src": "^/api/v1/(.*)$",
+      "dest": "/api/index",
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "set",
+          "target": {
+            "key": "x-ac-original-api-path"
+          },
+          "args": "v1/$1"
+        }
+      ]
+    }
+  ],
   "rewrites": [
-    { "source": "/accept-invite", "destination": "/index.html" }
+    {
+      "source": "/accept-invite",
+      "destination": "/index.html"
+    }
   ]
 }
