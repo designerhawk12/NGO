@@ -53,6 +53,7 @@ export const env = {
   corsOrigins,
   databaseUrl: parseDatabaseUrl(process.env.DATABASE_URL),
   databaseSsl: process.env.DATABASE_SSL === 'true' || (nodeEnv === 'production' && process.env.DATABASE_SSL !== 'false'),
+  databaseSslCa: process.env.DATABASE_SSL_CA?.trim() || undefined,
   databaseSslCaPath: process.env.DATABASE_SSL_CA_PATH?.trim() || undefined,
   supabaseUrl: process.env.SUPABASE_URL || undefined,
   supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || undefined,
