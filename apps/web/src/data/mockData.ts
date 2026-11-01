@@ -44,17 +44,11 @@ export const drivers: Driver[] = [
 ]
 
 export const vehicles: Vehicle[] = [
-<<<<<<< HEAD
-  { vehicleId: 'V002', registrationNumber: 'KA-09-AB-2048', type: 'Van 02', capacityKg: 250, status: 'AVAILABLE', sizeCategory: 'MEDIUM', indicativeMaxVessels: 14, driverId: 'D001', lastMaintenance: '2026-08-15', nextMaintenance: '2026-10-15' },
-  { vehicleId: 'V001', registrationNumber: 'KA-05-MN-1180', type: 'Van 01', capacityKg: 200, status: 'ON TRIP', sizeCategory: 'SMALL', indicativeMaxVessels: 10, driverId: 'D002', lastMaintenance: '2026-09-01', nextMaintenance: '2026-11-01' },
-  { vehicleId: 'V003', registrationNumber: 'KA-03-CD-4512', type: 'Van 03', capacityKg: 300, status: 'AVAILABLE', sizeCategory: 'MEDIUM', indicativeMaxVessels: 18, driverId: 'D003', lastMaintenance: '2026-07-20', nextMaintenance: '2026-10-02' },
-=======
   { vehicleId: 'V006', registrationNumber: 'KA-09-AB-2027', type: 'Van', capacityKg: 250, status: 'AVAILABLE', sizeCategory: 'MEDIUM', indicativeMaxVessels: 12, driverName: 'raj', lastMaintenance: '2026-09-29', nextMaintenance: '2026-10-29' },
   { vehicleId: 'V005', registrationNumber: 'KA-09-AB-2026', type: 'Van', capacityKg: 250, status: 'AVAILABLE', sizeCategory: 'MEDIUM', indicativeMaxVessels: 12, driverName: 'sumant', lastMaintenance: '2026-09-30', nextMaintenance: '2026-10-30' },
   { vehicleId: 'V002', registrationNumber: 'KA-09-AB-2048', type: 'Van 02', capacityKg: 250, status: 'AVAILABLE', sizeCategory: 'MEDIUM', indicativeMaxVessels: 14, driverId: 'D001', lastMaintenance: '2026-08-15', nextMaintenance: '2026-10-15' },
   { vehicleId: 'V001', registrationNumber: 'KA-05-MN-1180', type: 'Van 01', capacityKg: 200, status: 'ON TRIP', sizeCategory: 'SMALL', indicativeMaxVessels: 10, driverId: 'D002', lastMaintenance: '2026-09-01', nextMaintenance: '2026-11-01' },
   { vehicleId: 'V003', registrationNumber: 'KA-03-CD-4512', type: 'Van 03', capacityKg: 300, status: 'ON TRIP', sizeCategory: 'MEDIUM', indicativeMaxVessels: 18, driverId: 'D003', lastMaintenance: '2026-07-20', nextMaintenance: '2026-10-02' },
->>>>>>> upstream/develop
   { vehicleId: 'V004', registrationNumber: 'KA-01-PQ-7734', type: 'Mini Truck 01', capacityKg: 450, status: 'MAINTENANCE', sizeCategory: 'LARGE', indicativeMaxVessels: 26, driverId: 'D004', lastMaintenance: '2026-09-10', nextMaintenance: '2026-09-25' },
 ]
 

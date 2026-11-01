@@ -4,17 +4,13 @@ import { photoDataUrlSchema, uuidSchema } from './common';
 export const vehicleStatusSchema = z.enum(['ACTIVE', 'MAINTENANCE', 'RETIRED']);
 export const vehicleSizeCategorySchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 export const vehicleConditionSchema = z.enum(['GOOD', 'NEEDS_SERVICE', 'UNSAFE']);
-<<<<<<< HEAD
 export const vehicleLocationPointSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   recordedAt: z.string().optional(),
 });
 export type VehicleLocationPoint = z.infer<typeof vehicleLocationPointSchema>;
-
-=======
 export const vehiclePhotoSchema = photoDataUrlSchema;
->>>>>>> upstream/develop
 export const vehicleSchema = z.object({
   id: uuidSchema,
   registrationNumber: z.string(),
