@@ -1,8 +1,8 @@
 import express from 'express';
 import { randomUUID } from 'node:crypto';
 import cors from 'cors';
-import { env } from './config/env';
-import { errorHandler } from './middleware/errorHandler';
+import { env, invalidProductionConfig, missingProductionConfig } from './config/env';
+import { errorHandler, HttpError } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 import { apiRouter } from './routes';
 
@@ -16,6 +16,14 @@ app.use((request, response, next) => {
   response.setHeader('X-Request-ID', requestId);
   const started = Date.now();
   response.on('finish', () => console.info(JSON.stringify({ level: 'info', requestId, method: request.method, path: request.originalUrl.split('?')[0], status: response.statusCode, durationMs: Date.now() - started })));
+  next();
+});
+app.use('/api/v1', (request, _response, next) => {
+  if ((missingProductionConfig.length > 0 || invalidProductionConfig.length > 0)
+    && request.path !== '/health' && request.path !== '/health/ready') {
+    next(new HttpError(503, 'SERVER_CONFIGURATION_ERROR', 'The API is not configured for this environment.'));
+    return;
+  }
   next();
 });
 app.use('/api/v1', apiRouter);

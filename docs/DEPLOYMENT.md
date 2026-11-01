@@ -2,9 +2,24 @@
 
 ## Vercel web deployment
 
-Set the Vercel project's **Root Directory** to the repository root (`./`), not `apps/web`. The root `vercel.json` pins the Vite framework, `npm ci`, `npm run build:web`, and `apps/web/dist`. This installs the npm workspaces and builds `packages/shared` before TypeScript compiles the web app. The root Node engine selects Node 22.x, matching GitHub Actions; select 22.x in Vercel's Node.js Version setting as well. A Vercel deployment builds only the web frontend and does not host the Express API.
+Set the Vercel project's **Root Directory** to the repository root (`./`), not `apps/web`. The root `vercel.json` pins the Vite framework, `npm ci`, `npm run build:web`, and `apps/web/dist`. This installs the npm workspaces and builds `packages/shared` before TypeScript compiles the web app. The root Node engine selects Node 22.x, matching GitHub Actions; select 22.x in Vercel's Node.js Version setting as well. The same Vercel project also serves the Express API through `api/index.ts` under `/api/v1/*`.
 
-Set these build-time environment variable names in Vercel for the appropriate Preview and Production environments: `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY`. `VITE_API_BASE_URL` must be the publicly reachable Express API origin ending in `/api/v1`; a `localhost` value only works on the developer's machine. The Supabase values are public Auth configuration. Never add `DATABASE_URL`, database passwords, CA files, or service-role keys to Vercel's frontend environment. Preview and production builds can complete before the API is deployed, but live sign-in and API features require that public backend and its CORS origin configuration.
+Set these build-time environment variable names in Vercel for the appropriate Preview and Production environments: `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY`. `VITE_API_BASE_URL` must be the publicly reachable Express API origin ending in `/api/v1`; a `localhost` value only works on the developer's machine. The Supabase values are public Auth configuration. Never add `DATABASE_URL`, database passwords, CA files, or service-role keys to a `VITE_` variable. Preview and Production have separate environment settings, and a change requires a new deployment. A Ready build does not prove the API function starts: check `/api/v1/health` and `/api/v1/health/ready` on the exact deployment URL.
+
+| Variable | Required environment | Visibility | Consumer / fallback |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | Vercel Preview/Production API, Render API | Secret | PostgreSQL pool; no production fallback |
+| `DATABASE_SSL` | API | Server only | Verified TLS defaults on in production; `false` is rejected |
+| `DATABASE_SSL_CA_PATH` | API when a private CA is needed | Server only | Path to a deployed readable CA file; inline CA is unsupported |
+| `SUPABASE_URL` | API and corresponding public client configuration | Public URL | Auth project origin; no production API fallback |
+| `SUPABASE_PUBLISHABLE_KEY` | API | Publishable | Auth token verification; no production API fallback |
+| `CORS_ORIGIN` | Vercel Preview/Production API, Render API | Server only | Comma-separated exact web origins; no production fallback |
+| `SUPABASE_SECRET_KEY` | API only when Admin invitations are enabled | Secret | Invitation service; unrelated Auth routes do not require it |
+| `VOLUNTEER_INVITE_REDIRECT_URL` | API when invitations are enabled | Server only | Exact HTTPS `/accept-invite` URL; optional otherwise |
+| `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` | Web build | Browser public | Web API/Auth clients; build-time values |
+| `EXPO_PUBLIC_API_BASE_URL`, `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Mobile build | App public | Mobile API/Auth clients; build-time values |
+
+Missing required API settings are logged as `ServerConfigurationError` with variable names only. Liveness remains available; readiness and protected routes return `503 SERVER_CONFIGURATION_ERROR`. Never place `SUPABASE_SECRET_KEY` in a browser or mobile variable.
 
 From a clean checkout, reproduce the deployment build with `npm ci` followed by `npm run build:web` at the repository root. Confirm `npm ls @aaharaconnect/shared --workspace apps/web --depth=0` shows the local workspace link. After a deployment, verify the actual URL and Auth settings in the Vercel dashboard without copying their values into Git or logs.
 
