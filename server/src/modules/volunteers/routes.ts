@@ -5,26 +5,41 @@ import { validateBody } from '../../middleware/validate';
 import {
   createAdminTeamHandler,
   createAdminVolunteerHandler,
+  decideAdminVolunteerApplicationHandler,
   createOwnAvailabilityHandler,
   getAdminTeamHandler,
   getAdminVolunteerHandler,
   getOwnProfileHandler,
   listAdminTeamsHandler,
+  listAdminVolunteerApplicationsHandler,
   listAdminVolunteersHandler,
   listOwnAvailabilityHandler,
   listOwnTeamsHandler,
   replaceOwnAvailabilityHandler,
+  registerVolunteerHandler,
   updateAdminTeamHandler,
   updateAdminVolunteerHandler,
   updateOwnProfileHandler,
 } from './controller';
-import { availabilityWriteSchema, createAdminVolunteerSchema, createTeamSchema, updateAdminVolunteerSchema, updateOwnProfileSchema, updateTeamSchema } from './schemas';
+import {
+  availabilityWriteSchema,
+  createAdminVolunteerSchema,
+  createSelfRegistrationSchema,
+  createTeamSchema,
+  decideVolunteerApplicationSchema,
+  updateAdminVolunteerSchema,
+  updateOwnProfileSchema,
+  updateTeamSchema,
+} from './schemas';
 
 export const volunteerRoutes = Router();
 const selfProfileRoutes = Router();
 const teamRoutes = Router();
 
 selfProfileRoutes.get('/me', requireAuth, requireRole('VOLUNTEER'), getOwnProfileHandler);
+selfProfileRoutes.post('/register', validateBody(createSelfRegistrationSchema), registerVolunteerHandler);
+selfProfileRoutes.get('/applications', requireAuth, requireRole('ADMIN'), listAdminVolunteerApplicationsHandler);
+selfProfileRoutes.patch('/:id/approval', requireAuth, requireRole('ADMIN'), validateBody(decideVolunteerApplicationSchema), decideAdminVolunteerApplicationHandler);
 selfProfileRoutes.patch('/me', requireAuth, requireRole('VOLUNTEER'), validateBody(updateOwnProfileSchema), updateOwnProfileHandler);
 selfProfileRoutes.get('/me/availability', requireAuth, requireRole('VOLUNTEER'), listOwnAvailabilityHandler);
 selfProfileRoutes.get('/me/teams', requireAuth, requireRole('VOLUNTEER'), listOwnTeamsHandler);

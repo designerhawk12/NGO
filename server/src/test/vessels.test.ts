@@ -32,6 +32,7 @@ const volunteerActor = {
   id: 'b0000000-0000-4000-8000-000000000002',
   authUserId: 'a0000000-0000-4000-8000-000000000002',
   role: 'VOLUNTEER',
+  volunteerApplicationStatus: 'APPROVED',
   displayName: 'Volunteer User',
 };
 

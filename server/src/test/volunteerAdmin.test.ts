@@ -152,7 +152,7 @@ describe('ADMIN Volunteer Management API', () => {
 });
 
 describe('Volunteer own team membership', () => {
-  beforeEach(() => { findUser.mockResolvedValue({ ...actor, role: 'VOLUNTEER' }); });
+  beforeEach(() => { findUser.mockResolvedValue({ ...actor, role: 'VOLUNTEER', volunteerApplicationStatus: 'APPROVED' }); });
 
   it('returns only the authenticated Volunteer teams and leader flags in the usual page envelope', async () => {
     repo.listOwnTeamsByAppUserId.mockResolvedValue([

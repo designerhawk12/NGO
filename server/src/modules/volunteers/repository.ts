@@ -4,7 +4,14 @@ import type { UpdateOwnProfileInput } from './schemas';
 import type { CreateAvailabilityRequest } from '@aaharaconnect/shared';
 import { uuidSchema } from '@aaharaconnect/shared';
 import { HttpError } from '../../middleware/errorHandler';
-import type { CreateAdminVolunteerInput, ListTeamsQuery, ListVolunteersQuery, UpdateAdminVolunteerInput } from './schemas';
+import type {
+  CreateAdminVolunteerInput,
+  CreateSelfRegistrationInput,
+  ListApplicationsQuery,
+  ListTeamsQuery,
+  ListVolunteersQuery,
+  UpdateAdminVolunteerInput,
+} from './schemas';
 
 export type VolunteerProfileRow = {
   id: string;
@@ -106,7 +113,8 @@ export async function findWindowAvailability(volunteerId: string, startsAt: Date
          WHERE uv.volunteer_id = v.id AND uv.state = 'UNAVAILABLE'
            AND tstzrange(uv.starts_at, uv.ends_at, '[)') && tstzrange($2, $3, '[)')
        ) AS is_available
-     FROM app.volunteers v WHERE v.id = $1`,
+      FROM app.volunteers v WHERE v.id = $1
+        AND NOT EXISTS (SELECT 1 FROM app.volunteer_applications va WHERE va.volunteer_id = v.id AND va.status <> 'APPROVED')`,
     [volunteerId, startsAt, endsAt]
   );
   return result.rows[0] ?? null;
@@ -117,7 +125,8 @@ export type VolunteerIdentityRow = Pick<VolunteerWindowRow, 'id' | 'person_id' |
 export async function findVolunteerIdentityById(volunteerId: string, client?: PoolClient): Promise<VolunteerIdentityRow | null> {
   const db = client ?? getPool();
   const result = await db.query<VolunteerIdentityRow>(
-    'SELECT id, person_id, status FROM app.volunteers WHERE id = $1', [volunteerId]
+    `SELECT v.id, v.person_id, v.status FROM app.volunteers v WHERE v.id = $1
+     AND NOT EXISTS (SELECT 1 FROM app.volunteer_applications va WHERE va.volunteer_id = v.id AND va.status <> 'APPROVED')`, [volunteerId]
   );
   return result.rows[0] ?? null;
 }
@@ -134,6 +143,7 @@ export async function listEligibleVolunteerRows(
   const result = await db.query<VolunteerIdentityRow>(
     `SELECT v.id, v.person_id, v.status FROM app.volunteers v
      WHERE v.status = 'ACTIVE'
+       AND NOT EXISTS (SELECT 1 FROM app.volunteer_applications va WHERE va.volunteer_id = v.id AND va.status <> 'APPROVED')
        AND EXISTS (
          SELECT 1 FROM app.volunteer_availability av
          WHERE av.volunteer_id = v.id AND av.state = 'AVAILABLE'
@@ -174,7 +184,7 @@ export type AdminVolunteerRow = VolunteerProfileRow & PageRow;
 const volunteerSelect = 'v.id, v.person_id, v.registration_code, v.skills, v.status, v.created_at, p.name, p.phone_e164';
 
 export async function listVolunteers(query: ListVolunteersQuery): Promise<{ rows: AdminVolunteerRow[]; nextCursor: string | null }> {
-  const conditions: string[] = [];
+  const conditions: string[] = ["NOT EXISTS (SELECT 1 FROM app.volunteer_applications va WHERE va.volunteer_id = v.id AND va.status <> 'APPROVED')"];
   const params: unknown[] = [];
   if (query.search) {
     params.push(query.search);
@@ -210,6 +220,93 @@ export async function listVolunteers(query: ListVolunteersQuery): Promise<{ rows
   );
   const rows = result.rows.slice(0, query.limit);
   return { rows, nextCursor: result.rows.length > query.limit ? encodeCursor(rows[rows.length - 1]) : null };
+}
+
+export type PendingVolunteerApplicationRow = {
+  application_id: string;
+  volunteer_id: string;
+  auth_user_id: string;
+  name: string;
+  phone_e164: string | null;
+  registration_code: string;
+  skills: string[];
+  status: 'PENDING';
+  submitted_at: Date;
+};
+
+export async function listPendingVolunteerApplications(
+  query: ListApplicationsQuery
+): Promise<{ rows: PendingVolunteerApplicationRow[]; nextCursor: string | null }> {
+  const conditions = ["va.status = 'PENDING'", "au.role = 'VOLUNTEER'"];
+  const params: unknown[] = [];
+  if (query.cursor) {
+    const cursor = decodeCursor(query.cursor);
+    params.push(cursor.createdAt, cursor.id);
+    conditions.push(`(va.submitted_at, va.id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);
+  }
+  params.push(query.limit + 1);
+  const result = await getPool().query<PendingVolunteerApplicationRow>(
+    `SELECT va.id AS application_id, v.id AS volunteer_id, au.auth_user_id, p.name, p.phone_e164,
+       v.registration_code, v.skills, va.status, va.submitted_at
+     FROM app.volunteer_applications va
+     JOIN app.volunteers v ON v.id = va.volunteer_id
+     JOIN app.people p ON p.id = v.person_id
+     JOIN app.app_users au ON au.id = p.app_user_id
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY va.submitted_at DESC, va.id DESC LIMIT $${params.length}`,
+    params
+  );
+  const rows = result.rows.slice(0, query.limit);
+  return { rows, nextCursor: result.rows.length > query.limit ? encodeCursor({ id: rows[rows.length - 1].application_id, created_at: rows[rows.length - 1].submitted_at }) : null };
+}
+
+export type VolunteerApplicationReviewRow = {
+  id: string;
+  volunteer_id: string;
+  status: 'PENDING' | 'APPROVED' | 'DENIED';
+  app_user_role: 'ADMIN' | 'VOLUNTEER' | 'DONOR' | null;
+};
+
+export async function findVolunteerApplicationForUpdate(
+  volunteerId: string,
+  client: PoolClient
+): Promise<VolunteerApplicationReviewRow | null> {
+  const result = await client.query<VolunteerApplicationReviewRow>(
+    `SELECT va.id, va.volunteer_id, va.status, au.role AS app_user_role
+     FROM app.volunteer_applications va
+     JOIN app.volunteers v ON v.id = va.volunteer_id
+     JOIN app.people p ON p.id = v.person_id
+     JOIN app.app_users au ON au.id = p.app_user_id
+     WHERE va.volunteer_id = $1
+     FOR UPDATE OF va, v, au`,
+    [volunteerId]
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function setVolunteerApplicationDecision(
+  volunteerId: string,
+  status: 'APPROVED' | 'DENIED',
+  reviewerAppUserId: string,
+  client: PoolClient
+): Promise<Pick<VolunteerApplicationReviewRow, 'id' | 'volunteer_id' | 'status'> | null> {
+  const result = await client.query<Pick<VolunteerApplicationReviewRow, 'id' | 'volunteer_id' | 'status'>>(
+    `WITH changed AS (
+       UPDATE app.volunteer_applications
+       SET status = $2, reviewed_at = now(), reviewed_by = $3
+       WHERE volunteer_id = $1 AND status = 'PENDING'
+       RETURNING id, volunteer_id, status
+     ), updated_volunteer AS (
+       UPDATE app.volunteers v
+       SET status = CASE WHEN changed.status = 'APPROVED' THEN 'ACTIVE' ELSE 'INACTIVE' END
+       FROM changed WHERE v.id = changed.volunteer_id
+       RETURNING v.id
+     )
+     SELECT changed.id, changed.volunteer_id, changed.status
+     FROM changed JOIN updated_volunteer ON updated_volunteer.id = changed.volunteer_id`,
+    [volunteerId, status, reviewerAppUserId]
+  );
+  return result.rows[0] ?? null;
 }
 
 export async function findVolunteerById(id: string, client?: PoolClient): Promise<VolunteerProfileRow | null> {
@@ -256,6 +353,34 @@ export async function insertInvitedVolunteer(
   );
   const row = await findVolunteerById(volunteer.rows[0].id, client);
   if (!row) throw new HttpError(500, 'INTERNAL_ERROR', 'Created volunteer could not be read.');
+  return row;
+}
+
+export async function insertSelfRegisteredVolunteer(
+  authUserId: string,
+  input: CreateSelfRegistrationInput,
+  client: PoolClient
+): Promise<VolunteerProfileRow> {
+  const appUser = await client.query<{ id: string }>(
+    `INSERT INTO app.app_users(auth_user_id, role, display_name)
+     VALUES ($1, 'VOLUNTEER', $2) RETURNING id`, [authUserId, input.name]
+  );
+  const person = await client.query<{ id: string }>(
+    'INSERT INTO app.people(app_user_id, name, phone_e164) VALUES ($1, $2, $3) RETURNING id',
+    [appUser.rows[0].id, input.name, input.phoneE164]
+  );
+  const volunteer = await client.query<{ id: string }>(
+    `INSERT INTO app.volunteers(person_id, registration_code, skills, status)
+     VALUES ($1, $2, $3::text[], 'INACTIVE') RETURNING id`,
+    [person.rows[0].id, input.registrationCode, input.skills]
+  );
+  await client.query(
+    `INSERT INTO app.volunteer_applications(volunteer_id, status)
+     VALUES ($1, 'PENDING')`,
+    [volunteer.rows[0].id]
+  );
+  const row = await findVolunteerById(volunteer.rows[0].id, client);
+  if (!row) throw new HttpError(500, 'INTERNAL_ERROR', 'Created volunteer application could not be read.');
   return row;
 }
 
@@ -355,7 +480,10 @@ export async function findTeamForUpdate(id: string, client: PoolClient): Promise
 
 export async function findExistingVolunteerIds(ids: string[], client: PoolClient): Promise<string[]> {
   if (!ids.length) return [];
-  const result = await client.query<{ id: string }>('SELECT id FROM app.volunteers WHERE id = ANY($1::uuid[])', [ids]);
+  const result = await client.query<{ id: string }>(
+    `SELECT v.id FROM app.volunteers v WHERE v.id = ANY($1::uuid[])
+     AND NOT EXISTS (SELECT 1 FROM app.volunteer_applications va WHERE va.volunteer_id = v.id AND va.status <> 'APPROVED')`, [ids]
+  );
   return result.rows.map(row => row.id);
 }
 

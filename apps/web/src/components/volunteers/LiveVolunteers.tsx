@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import type { Team, Volunteer } from '@aaharaconnect/shared'
-import { ChevronDown, Phone, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react'
+import type { Team, Volunteer, VolunteerApplication } from '@aaharaconnect/shared'
+import { Check, ChevronDown, Phone, Plus, Search, SlidersHorizontal, Users, X, XCircle } from 'lucide-react'
 import { ApiClientError } from '../../api/client'
 import {
-  createAdminVolunteer, getAdminVolunteer, listAdminTeams, listAdminVolunteers, updateAdminVolunteer,
+  createAdminVolunteer, decideAdminVolunteerApplication, getAdminVolunteer, listAdminTeams, listAdminVolunteerApplications,
+  listAdminVolunteers, updateAdminVolunteer,
   type CreateAdminVolunteerInput, type UpdateAdminVolunteerInput,
 } from '../../features/volunteers/api'
 import { Avatar, Drawer, EmptyState, Modal, StatusBadge, Toast } from '../common/UI'
@@ -61,6 +62,10 @@ function parseForm(form: VolunteerForm, isCreate: boolean):
 export default function LiveVolunteers({ token }: { token: string }) {
   const [volunteers, setVolunteers] = useState<Volunteer[]>([])
   const [teams, setTeams] = useState<Team[]>([])
+  const [applications, setApplications] = useState<VolunteerApplication[]>([])
+  const [applicationsLoading, setApplicationsLoading] = useState(true)
+  const [applicationsError, setApplicationsError] = useState(false)
+  const [reviewingId, setReviewingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [search, setSearch] = useState('')
@@ -87,7 +92,13 @@ export default function LiveVolunteers({ token }: { token: string }) {
     } catch { setError(true) }
     finally { setLoading(false) }
   }, [token])
-  useEffect(() => { void load() }, [load])
+  const loadApplications = useCallback(async () => {
+    setApplicationsLoading(true); setApplicationsError(false)
+    try { setApplications(await listAdminVolunteerApplications(token)) }
+    catch { setApplicationsError(true) }
+    finally { setApplicationsLoading(false) }
+  }, [token])
+  useEffect(() => { void load(); void loadApplications() }, [load, loadApplications])
   const loadDetail = useCallback(async (id: string) => {
     setSelectedId(id); setDetail(null); setDetailLoading(true); setDetailError(false)
     try { setDetail(await getAdminVolunteer(token, id)) }
@@ -134,6 +145,21 @@ export default function LiveVolunteers({ token }: { token: string }) {
     }
   }
 
+  const reviewApplication = async (application: VolunteerApplication, status: 'APPROVED' | 'DENIED') => {
+    if (reviewingId) return
+    setReviewingId(application.volunteerId)
+    try {
+      await decideAdminVolunteerApplication(token, application.volunteerId, status)
+      setApplications(current => current.filter(item => item.volunteerId !== application.volunteerId))
+      setFeedback({ message: status === 'APPROVED' ? 'Volunteer application approved.' : 'Volunteer application denied.', kind: 'success' })
+      await loadApplications()
+      if (status === 'APPROVED') await load()
+    } catch (cause) {
+      setFeedback({ message: cause instanceof ApiClientError && cause.code === 'RESOURCE_CONFLICT'
+        ? 'This application was already reviewed. Refresh the list.'
+        : 'Could not update this volunteer application. Check your session and retry.', kind: 'error' })
+    } finally { setReviewingId(null) }
+  }
   const teamNames = (id: string) => teams.filter(team => team.memberIds.includes(id)).map(team => team.name).join(', ') || 'Unassigned'
   const skills = useMemo(() => [...new Set(volunteers.flatMap(volunteer => volunteer.skills))].sort(), [volunteers])
   const filtered = useMemo(() => volunteers.filter(volunteer => {
@@ -147,6 +173,32 @@ export default function LiveVolunteers({ token }: { token: string }) {
   return <>
     <div className="page-heading"><div><span className="eyebrow">PEOPLE & CAPACITY</span><h1>Volunteers</h1><p>Manage NGO volunteers and their availability.</p></div><button className="button button-primary" onClick={openCreate}><Plus size={18}/> Add Volunteer</button></div>
     <div className="info-strip"><div className="info-strip-icon"><Users size={21}/></div><div><strong>Live administrator roster</strong><span>Volunteer profiles and invitations are managed through the shared API.</span></div><span className="info-strip-count">{volunteers.length} profiles</span></div>
+    <section className="panel volunteer-panel" aria-live="polite" aria-labelledby="volunteer-approval-heading">
+      <div className="table-toolbar">
+        <div><strong id="volunteer-approval-heading">Volunteer Approval</strong><p className="quiet-text">Review new applications before granting access to Volunteer features.</p></div>
+        <button className="text-link" onClick={() => void loadApplications()} disabled={applicationsLoading}>Refresh applications</button>
+      </div>
+      {applicationsLoading && applications.length === 0 ? <p className="quiet-text" style={{ padding: 20 }}>Loading volunteer applications…</p>
+        : applicationsError && applications.length === 0 ? <EmptyState title="Could not load volunteer applications" description="Check your administrator session and API connection, then retry." action={<button className="button button-secondary" onClick={() => void loadApplications()}>Retry</button>}/>
+          : applications.length === 0 ? <EmptyState title="No pending applications" description="New volunteer applications will appear here for review."/>
+            : <div>{applicationsError && <p className="quiet-text" role="alert">Could not refresh applications. Showing the last loaded results. <button className="text-link" onClick={() => void loadApplications()}>Retry</button></p>}
+              {applications.map(application => <article key={application.volunteerId} className="flex flex-col gap-4 border-t border-slate-200 p-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold text-slate-900">{application.name}</h3><StatusBadge status={application.status}/></div>
+                  <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                    <div><dt className="text-xs text-slate-500">Email</dt><dd className="break-all">{application.email}</dd></div>
+                    <div><dt className="text-xs text-slate-500">Phone</dt><dd>{application.phoneE164 ?? '—'}</dd></div>
+                    <div><dt className="text-xs text-slate-500">Registration code</dt><dd>{application.registrationCode}</dd></div>
+                    <div><dt className="text-xs text-slate-500">Submitted</dt><dd>{new Date(application.submittedAt).toLocaleString()}</dd></div>
+                  </dl>
+                  <div className="mt-3"><span className="text-xs text-slate-500">Skills</span><div className="skill-list mt-1">{application.skills.length ? application.skills.map(skill => <span className="skill-badge" key={skill}>{skill}</span>) : <span className="quiet-text">No skills listed.</span>}</div></div>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button className="button button-primary" onClick={() => void reviewApplication(application, 'APPROVED')} disabled={reviewingId !== null}><Check size={16}/>{reviewingId === application.volunteerId ? 'Saving…' : 'Approve'}</button>
+                  <button className="button button-secondary" onClick={() => void reviewApplication(application, 'DENIED')} disabled={reviewingId !== null}><XCircle size={16}/>{reviewingId === application.volunteerId ? 'Saving…' : 'Deny'}</button>
+                </div>
+              </article>)}</div>}
+    </section>
     <section className="panel volunteer-panel" aria-live="polite">
       <div className="table-toolbar"><div className="search-wrap"><Search size={18}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search volunteers by name, phone or registration" aria-label="Search volunteers"/>{search && <button onClick={() => setSearch('')} aria-label="Clear search"><X size={16}/></button>}</div><span className="result-count">Showing {filtered.length} of {volunteers.length} volunteers</span></div>
       <div className="filters"><span className="filter-caption"><SlidersHorizontal size={17}/> Filters</span><label className="select-wrap"><select value={status} onChange={event => setStatus(event.target.value)} aria-label="Filter by status"><option value="all">All statuses</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select><ChevronDown size={15}/></label><label className="select-wrap"><select value={teamId} onChange={event => setTeamId(event.target.value)} aria-label="Filter by team"><option value="all">All teams</option>{teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}<option value="none">Unassigned</option></select><ChevronDown size={15}/></label><label className="select-wrap"><select value={skill} onChange={event => setSkill(event.target.value)} aria-label="Filter by skill"><option value="all">All skills</option>{skills.map(value => <option key={value} value={value}>{value}</option>)}</select><ChevronDown size={15}/></label>{(status !== 'all' || teamId !== 'all' || skill !== 'all') && <button className="clear-filters" onClick={() => { setStatus('all'); setTeamId('all'); setSkill('all') }}>Clear filters</button>}</div>

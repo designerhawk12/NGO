@@ -80,7 +80,7 @@ describe('API foundation', () => {
   });
 
   it('keeps VOLUNTEER access below ADMIN for central role and vehicle-roster endpoints', async () => {
-    findUser.mockResolvedValue({ ...donor, role: 'VOLUNTEER' });
+    findUser.mockResolvedValue({ ...donor, role: 'VOLUNTEER', volunteerApplicationStatus: 'APPROVED' });
     const me = await request(app).get('/api/v1/me').set('Authorization', 'Bearer signed-token').set('X-Role', 'ADMIN');
     expect(me.status).toBe(200);
     expect(me.body.data.role).toBe('VOLUNTEER');

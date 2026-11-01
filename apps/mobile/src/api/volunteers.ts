@@ -1,4 +1,11 @@
-import type { Availability, CreateAvailabilityRequest, Page, Volunteer } from '@aaharaconnect/shared';
+import type {
+  Availability,
+  CreateAvailabilityRequest,
+  Page,
+  Volunteer,
+  VolunteerRegistrationInput,
+  VolunteerRegistrationResult,
+} from '@aaharaconnect/shared';
 import { getCurrentAccessToken } from './auth';
 import { apiRequest } from './client';
 
@@ -8,6 +15,10 @@ async function authorization() {
 
 export async function getOwnVolunteerProfile(): Promise<Volunteer> {
   return apiRequest<Volunteer>('volunteers/me', { headers: await authorization() });
+}
+
+export function registerVolunteer(input: VolunteerRegistrationInput): Promise<VolunteerRegistrationResult> {
+  return apiRequest<VolunteerRegistrationResult>('volunteers/register', { method: 'POST', body: input });
 }
 
 export type OwnVolunteerTeam = { id: string; name: string; isLeader: boolean };

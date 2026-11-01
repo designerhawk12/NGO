@@ -7,11 +7,45 @@ import {
   listTeamsQuerySchema,
   listVolunteersQuerySchema,
   type CreateAdminVolunteerInput,
+  type CreateSelfRegistrationInput,
   type CreateTeamInput,
+  type DecideVolunteerApplicationInput,
+  listApplicationsQuerySchema,
+  decideVolunteerApplicationSchema,
   type UpdateAdminVolunteerInput,
   type UpdateOwnProfileInput,
   type UpdateTeamInput,
 } from './schemas';
+
+export const registerVolunteerHandler: RequestHandler = async (_request, response, next) => {
+  try {
+    sendSuccess(response, await volunteerService.registerVolunteer(
+      response.locals.validatedBody as CreateSelfRegistrationInput
+    ), 201);
+  } catch (error) { next(error); }
+};
+
+export const listAdminVolunteerApplicationsHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const query = listApplicationsQuerySchema.safeParse(request.query);
+    if (!query.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Volunteer application query is invalid.');
+    sendSuccess(response, await volunteerService.listPendingVolunteerApplications(
+      response.locals.appUser as AppUser, query.data
+    ));
+  } catch (error) { next(error); }
+};
+
+export const decideAdminVolunteerApplicationHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const id = uuidSchema.safeParse(request.params.id);
+    if (!id.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Volunteer ID must be a UUID.');
+    const decision = decideVolunteerApplicationSchema.safeParse(response.locals.validatedBody);
+    if (!decision.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Volunteer application decision is invalid.');
+    sendSuccess(response, await volunteerService.decideVolunteerApplication(
+      response.locals.appUser as AppUser, id.data, decision.data as DecideVolunteerApplicationInput
+    ));
+  } catch (error) { next(error); }
+};
 
 export const getOwnProfileHandler: RequestHandler = async (_request, response, next) => {
   try {

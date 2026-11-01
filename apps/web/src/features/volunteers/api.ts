@@ -1,4 +1,4 @@
-import type { Page, Team, Volunteer } from '@aaharaconnect/shared'
+import type { Page, Team, Volunteer, VolunteerApplication, VolunteerApprovalDecision } from '@aaharaconnect/shared'
 import { apiRequest } from '../../api/client'
 
 const bearer = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}` })
@@ -20,6 +20,14 @@ async function readAll<T>(path: string, accessToken: string): Promise<T[]> {
 }
 
 export const listAdminVolunteers = (accessToken: string) => readAll<Volunteer>('volunteers', accessToken)
+export const listAdminVolunteerApplications = (accessToken: string) =>
+  readAll<VolunteerApplication>('volunteers/applications', accessToken)
+export const decideAdminVolunteerApplication = (
+  accessToken: string, volunteerId: string, status: VolunteerApprovalDecision['status']
+) => apiRequest<{ volunteerId: string; status: VolunteerApprovalDecision['status'] }>(
+  `volunteers/${encodeURIComponent(volunteerId)}/approval`,
+  { method: 'PATCH', headers: bearer(accessToken), body: { status } },
+)
 export const getAdminVolunteer = (accessToken: string, id: string) =>
   apiRequest<Volunteer>(`volunteers/${encodeURIComponent(id)}`, { headers: bearer(accessToken) })
 export type CreateAdminVolunteerInput = {

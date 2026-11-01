@@ -25,6 +25,7 @@ const actor = {
   authUserId: '076f89a1-77a8-44de-bef3-189291a0f331',
   role: 'VOLUNTEER',
   displayName: null,
+  volunteerApplicationStatus: 'APPROVED',
 };
 const volunteerId = '7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5';
 const otherVolunteerId = '44bada71-76fd-41ad-a1af-b2cd9f2df902';
