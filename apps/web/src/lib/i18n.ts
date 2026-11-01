@@ -5,6 +5,17 @@ export type Language = 'en' | 'kn'
 // The English UI remains the source text. This layer changes only rendered copy;
 // option values, IDs, names and the volunteer/assignment data stay untouched.
 const kannada: Record<string, string> = {
+  "(Optional)": "(ಐಚ್ಛಿಕ)",
+  "Choose vessel photo": "ಪಾತ್ರೆಯ ಫೋಟೋ ಆಯ್ಕೆಮಾಡಿ",
+  "Choose vehicle photo": "ವಾಹನದ ಫೋಟೋ ಆಯ್ಕೆಮಾಡಿ",
+  "JPG, PNG or WebP, up to 10 MB.": "JPG, PNG ಅಥವಾ WebP, ಗರಿಷ್ಠ 10 MB.",
+  "Remove Photo": "ಫೋಟೋ ತೆಗೆದುಹಾಕಿ",
+  "Vessel Photo": "ಪಾತ್ರೆಯ ಫೋಟೋ",
+  "Vehicle Photo": "ವಾಹನದ ಫೋಟೋ",
+  "Add Photo": "ಫೋಟೋ ಸೇರಿಸಿ",
+  "Change Photo": "ಫೋಟೋ ಬದಲಿಸಿ",
+  "Preparing photo…": "ಫೋಟೋ ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ…",
+
   'Validating your invitation…':'ನಿಮ್ಮ ಆಹ್ವಾನವನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…',
   'Please wait while we verify your secure link.':'ನಿಮ್ಮ ಸುರಕ್ಷಿತ ಲಿಂಕ್ ಅನ್ನು ಪರಿಶೀಲಿಸುವವರೆಗೆ ದಯವಿಟ್ಟು ಕಾಯಿರಿ.',
   'This invitation is invalid or has expired.':'ಈ ಆಹ್ವಾನ ಅಮಾನ್ಯವಾಗಿದೆ ಅಥವಾ ಅವಧಿ ಮೀರಿದೆ.',
