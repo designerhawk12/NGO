@@ -47,6 +47,7 @@ export interface VehicleReadinessInfo {
 }
 
 export interface Vehicle {
+  photoDataUrl?: string | null
   vehicleId: string
   registrationNumber: string
   type: string

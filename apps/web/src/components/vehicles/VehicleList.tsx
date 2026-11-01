@@ -1,4 +1,4 @@
-import { Edit2, Eye, Plus, Search, Trash2, Wrench, X } from 'lucide-react'
+import { Edit2, Plus, Search, Trash2, Wrench, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Driver, Vehicle, VehicleMaintenanceRecord } from '../../types'
 import { EmptyState, StatusBadge } from '../common/UI'
@@ -92,7 +92,6 @@ export default function VehicleList({
   drivers,
   maintenanceRecords,
   onAddVehicle,
-  onViewVehicle,
   onEditVehicle,
   onLogMaintenance,
   onDeleteVehicle,
@@ -294,7 +293,7 @@ export default function VehicleList({
 
                 return (
                   <tr key={v.vehicleId} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-800">{v.registrationNumber}</td>
+                    <td className="py-3 px-4 font-bold text-slate-800"><div className="flex items-center gap-2">{v.photoDataUrl && <img src={v.photoDataUrl} alt={`${v.registrationNumber} vehicle`} className="h-10 w-14 rounded object-cover shrink-0" />}<span>{v.registrationNumber}</span></div></td>
                     <td className="py-3 px-4">
                       <span>{v.type}</span>
                       {sizeCategory && (
@@ -322,14 +321,6 @@ export default function VehicleList({
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="inline-flex items-center gap-1">
-                        <button
-                          type="button"
-                          className="icon-button p-1 hover:text-emerald-700"
-                          title="View Details"
-                          onClick={() => onViewVehicle(v)}
-                        >
-                          <Eye size={15} />
-                        </button>
                         <button
                           type="button"
                           className="icon-button p-1 hover:text-emerald-700"

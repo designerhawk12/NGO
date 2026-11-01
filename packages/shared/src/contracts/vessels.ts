@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { utcDateTimeSchema, uuidSchema } from './common';
+import { photoDataUrlSchema, utcDateTimeSchema, uuidSchema } from './common';
 
 export const vesselTypeSchema = z.enum([
   'HOT_BOX',
@@ -65,6 +65,7 @@ export const vesselLogTypeSchema = z.enum([
 
 // Creation Schema
 export const createVesselSchema = z.object({
+  photoDataUrl: photoDataUrlSchema.nullable().optional(),
   vesselCode: z.string().trim().min(1, 'Vessel Code / ID is required').max(64),
   name: z.string().trim().min(1, 'Vessel Name is required').max(200),
   vesselType: vesselTypeSchema,
@@ -87,7 +88,15 @@ export const createVesselSchema = z.object({
 });
 
 // Update Schema
-export const updateVesselSchema = createVesselSchema.partial().refine(
+export const updateVesselSchema = createVesselSchema.partial().extend({
+  foodGradeCertified: z.boolean().optional(),
+  hasInsulation: z.boolean().optional(),
+  hasTightLid: z.boolean().optional(),
+  status: vesselStatusSchema.optional(),
+  cleaningStatus: vesselCleaningStatusSchema.optional(),
+  maintenanceCondition: vesselConditionSchema.optional(),
+  storageLocation: z.string().trim().min(1).max(255).optional(),
+}).refine(
   data => Object.keys(data).length > 0,
   { message: 'At least one field must be provided for update.' }
 );
@@ -163,6 +172,7 @@ export type CreateVesselLog = z.infer<typeof createVesselLogSchema>;
 export type VesselsSummary = z.infer<typeof vesselsSummarySchema>;
 
 export interface VesselItem {
+  photoDataUrl?: string | null;
   id: string;
   vesselCode: string;
   name: string;

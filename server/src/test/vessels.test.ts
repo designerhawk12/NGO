@@ -10,6 +10,7 @@ const { verify, findUser, query } = vi.hoisted(() => ({
 vi.mock('../auth/supabase', () => ({ verifySupabaseToken: verify }));
 vi.mock('../auth/appUsers', () => ({ findOrCreateAppUser: findUser }));
 vi.mock('../db/pool', () => ({
+  withTransaction: async (run: (client: unknown) => Promise<unknown>) => run({ query }),
   getPool: () => ({
     query,
     connect: async () => ({

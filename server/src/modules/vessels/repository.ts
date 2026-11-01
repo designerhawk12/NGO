@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { getPool } from '../../db/pool';
+import { getPool, withTransaction } from '../../db/pool';
 import { HttpError } from '../../middleware/errorHandler';
 import type {
   CreateVessel,
@@ -36,6 +36,7 @@ export function handleVesselDbError(error: unknown): never {
 }
 
 interface VesselDbRow {
+  photo_data_url?: string | null;
   id: string;
   vessel_code: string;
   name: string;
@@ -72,6 +73,7 @@ function mapVesselRow(row: VesselDbRow): VesselItem {
   return {
     id: row.id,
     vesselCode: row.vessel_code,
+    photoDataUrl: row.photo_data_url ?? null,
     name: row.name,
     vesselType: row.vessel_type as any,
     material: row.material as any,
@@ -111,6 +113,7 @@ const VESSEL_SELECT_SQL = `
   SELECT
     v.id,
     v.vessel_code,
+    v.photo_data_url,
     v.name,
     v.vessel_type,
     v.material,
@@ -247,8 +250,9 @@ export async function createVessel(input: CreateVessel, client?: PoolClient) {
         inspection_result,
         maintenance_condition,
         storage_location,
-        notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        notes,
+        photo_data_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       RETURNING *`,
       [
         input.vesselCode,
@@ -270,6 +274,7 @@ export async function createVessel(input: CreateVessel, client?: PoolClient) {
         input.maintenanceCondition,
         input.storageLocation,
         input.notes ?? null,
+        input.photoDataUrl ?? null,
       ]
     );
     return mapVesselRow(res.rows[0]);
@@ -309,6 +314,7 @@ export async function updateVessel(id: string, patch: UpdateVessel, client?: Poo
   mapField('maintenanceCondition', 'maintenance_condition');
   mapField('storageLocation', 'storage_location');
   mapField('notes', 'notes');
+  mapField('photoDataUrl', 'photo_data_url');
 
   setClauses.push(`updated_at = now()`);
 
@@ -388,7 +394,8 @@ export async function issueVessel(
   input: IssueVessel,
   actorUserId?: string,
   client?: PoolClient
-) {
+): Promise<{ success: boolean; issuanceId: string; issuedAt: Date; vehicleId: string | null; registrationNumber: string | null; pickupId: string | null }> {
+  if (!client) return withTransaction(transaction => issueVessel(input, actorUserId, transaction));
   const db = client ?? getPool();
   try {
     // 1. Fetch vessel with lock

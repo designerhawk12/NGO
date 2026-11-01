@@ -20,7 +20,21 @@ function errorClass(error: unknown): string {
 
 export function isDatabaseConnectionError(error: unknown): boolean {
   const code = errorCode(error)?.toUpperCase();
-  return !!code && (databaseConnectionCodes.has(code) || /^08[A-Z0-9]{3}$/.test(code));
+  if (code && (databaseConnectionCodes.has(code) || /^08[A-Z0-9]{3}$/.test(code) || code === 'XX000')) {
+    return true;
+  }
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    if (
+      msg.includes('tenant/user') ||
+      msg.includes('self-signed certificate') ||
+      msg.includes('certificate chain') ||
+      msg.includes('connection terminated')
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Production-safe PostgreSQL diagnostics. Never include driver messages or URLs. */

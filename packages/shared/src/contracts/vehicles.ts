@@ -1,15 +1,17 @@
 import { z } from 'zod';
-import { uuidSchema } from './common';
+import { photoDataUrlSchema, uuidSchema } from './common';
 
 export const vehicleStatusSchema = z.enum(['ACTIVE', 'MAINTENANCE', 'RETIRED']);
 export const vehicleSizeCategorySchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 export const vehicleConditionSchema = z.enum(['GOOD', 'NEEDS_SERVICE', 'UNSAFE']);
+export const vehiclePhotoSchema = photoDataUrlSchema;
 export const vehicleSchema = z.object({
   id: uuidSchema,
   registrationNumber: z.string(),
   kind: z.string(),
   capacityKg: z.number().positive(),
   status: vehicleStatusSchema,
+  photoDataUrl: vehiclePhotoSchema.nullable().optional(),
   sizeCategory: vehicleSizeCategorySchema.nullable().optional(),
   indicativeMaxVessels: z.number().int().positive().nullable().optional(),
 });
@@ -36,6 +38,7 @@ export const createVehicleSchema = z.object({
   kind: z.string().trim().min(1).max(64),
   capacityKg: z.number().positive(),
   status: vehicleStatusSchema.optional().default('ACTIVE'),
+  photoDataUrl: vehiclePhotoSchema.nullable().optional(),
   sizeCategory: vehicleSizeCategorySchema.nullable().optional(),
   indicativeMaxVessels: z.number().int().positive().nullable().optional(),
   assignedDriverId: z.string().nullable().optional(),
@@ -47,6 +50,7 @@ export const updateVehicleSchema = z.object({
   kind: z.string().trim().min(1).max(64).optional(),
   capacityKg: z.number().positive().optional(),
   status: vehicleStatusSchema.optional(),
+  photoDataUrl: vehiclePhotoSchema.nullable().optional(),
   sizeCategory: vehicleSizeCategorySchema.nullable().optional(),
   indicativeMaxVessels: z.number().int().positive().nullable().optional(),
   assignedDriverId: z.string().nullable().optional(),
