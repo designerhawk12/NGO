@@ -7,15 +7,37 @@ import { ApiClientError } from '../../api/client';
 import { Button, Card, Field, Header, Icon, Screen, T } from '../common/UI';
 import { C } from '../../constants/theme';
 
+// Donors always enter wall-clock times in India Standard Time (UTC+05:30),
+// regardless of what timezone the device/emulator/server happens to be set
+// to. `new Date(\`${date}T${time}:00\`)` (no offset) is interpreted using the
+// *local* timezone of whatever machine runs this code, which silently shifts
+// stored times by hours on any non-IST device. Build the UTC instant
+// directly from a fixed IST offset instead.
+const IST_OFFSET_MINUTES = 5 * 60 + 30;
+
 function localDateTime(date: string, time: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return null;
-  const value = new Date(`${date}T${time}:00`);
-  if (Number.isNaN(value.valueOf()) || value.getFullYear() !== Number(date.slice(0, 4))
-    || value.getMonth() + 1 !== Number(date.slice(5, 7))
-    || value.getDate() !== Number(date.slice(8, 10))
-    || value.getHours() !== Number(time.slice(0, 2))
-    || value.getMinutes() !== Number(time.slice(3, 5))) return null;
-  return value.toISOString();
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  const timeMatch = /^(\d{2}):(\d{2})$/.exec(time);
+  if (!dateMatch || !timeMatch) return null;
+
+  const year = Number(dateMatch[1]);
+  const month = Number(dateMatch[2]);
+  const day = Number(dateMatch[3]);
+  const hour = Number(timeMatch[1]);
+  const minute = Number(timeMatch[2]);
+  if (hour > 23 || minute > 59) return null;
+
+  const utcMillis = Date.UTC(year, month - 1, day, hour, minute) - IST_OFFSET_MINUTES * 60000;
+
+  // Reject impossible calendar dates (e.g. 2026-02-30) by shifting back to
+  // IST and checking the entered components round-trip, using UTC-based
+  // getters only so this check is also timezone-independent.
+  const ist = new Date(utcMillis + IST_OFFSET_MINUTES * 60000);
+  if (ist.getUTCFullYear() !== year || ist.getUTCMonth() + 1 !== month || ist.getUTCDate() !== day) {
+    return null;
+  }
+
+  return new Date(utcMillis).toISOString();
 }
 
 export default function LiveDonate() {
