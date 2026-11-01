@@ -1,6 +1,5 @@
 import {
   AlertCircle,
-  AlertTriangle,
   Box,
   Boxes,
   CheckCircle2,
@@ -26,6 +25,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react'
+import InventoryPhoto from '../components/common/InventoryPhoto'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   CreateVessel,
@@ -236,6 +236,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'detail' | 'issue' | 'return' | 'log' | null>(null)
   const [vesselLogs, setVesselLogs] = useState<VesselLogItem[]>([])
   const [showGuide, setShowGuide] = useState(false)
+  const [photoBusy, setPhotoBusy] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Form states
@@ -444,6 +445,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
   const handleOpenEdit = (vessel: VesselItem) => {
     setSelectedVessel(vessel)
     setFormData({
+      photoDataUrl: vessel.photoDataUrl ?? null,
       vesselCode: vessel.vesselCode,
       name: vessel.name,
       vesselType: vessel.vesselType,
@@ -465,7 +467,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
 
   const handleSaveVessel = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isSubmitting) return
+    if (isSubmitting || photoBusy) return
 
     const code = formData.vesselCode?.trim()
     const rawName = formData.name?.trim()
@@ -538,14 +540,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
           notify?.(`Vessel ${created.vesselCode} registered successfully!`, 'success')
         } catch (apiErr: any) {
           if (apiErr?.status === 401 || apiErr?.code === 'UNAUTHENTICATED') {
-            const newLocal: VesselItem = {
-              id: 'vsl-' + Date.now(),
-              ...payload,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            } as VesselItem
-            setVessels(prev => [newLocal, ...prev])
-            notify?.(`Vessel ${payload.vesselCode} registered successfully!`, 'success')
+            throw apiErr
           } else if (apiErr?.status === 409 || String(apiErr?.message || '').toLowerCase().includes('already exists')) {
             // Already created in backend, gracefully refresh without error
             await loadData()
@@ -560,12 +555,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
           setVessels(prev => prev.map(v => v.id === selectedVessel.id ? updated : v))
           notify?.(`Vessel ${updated.vesselCode} updated successfully!`, 'success')
         } catch (apiErr: any) {
-          if (apiErr?.status === 401 || apiErr?.code === 'UNAUTHENTICATED') {
-            setVessels(prev => prev.map(v => v.id === selectedVessel.id ? { ...v, ...payload, updatedAt: new Date().toISOString() } : v))
-            notify?.(`Vessel ${payload.vesselCode} updated successfully!`, 'success')
-          } else {
-            throw apiErr
-          }
+          throw apiErr
         }
       }
       setModalMode(null)
@@ -574,22 +564,6 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
       notify?.(err?.message || 'Failed to save vessel.', 'error')
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  const handleRetire = async (vessel: VesselItem) => {
-    if (!confirm(`Are you sure you want to retire vessel ${vessel.vesselCode}?`)) return
-    try {
-      try {
-        await apiUpdateVessel(vessel.id, { status: 'RETIRED' })
-      } catch (apiErr: any) {
-        if (apiErr?.status !== 401 && apiErr?.code !== 'UNAUTHENTICATED') throw apiErr
-      }
-      setVessels(prev => prev.map(v => v.id === vessel.id ? { ...v, status: 'RETIRED' } : v))
-      notify?.(`Vessel ${vessel.vesselCode} marked as RETIRED.`, 'success')
-      loadData()
-    } catch (err: any) {
-      notify?.(err?.message || 'Failed to retire vessel.', 'error')
     }
   }
 
@@ -1031,7 +1005,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
                     {/* Code & Name */}
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                        <Boxes size={14} className="text-emerald-600" />
+                        <>{vessel.photoDataUrl ? <img src={vessel.photoDataUrl} alt={`${vessel.vesselCode} photo`} className="h-10 w-12 rounded-lg object-cover" /> : <Boxes size={14} className="text-emerald-600" />}</>
                         <span>{vessel.vesselCode}</span>
                       </div>
                       <span className="text-[11px] text-slate-500 block truncate max-w-[140px]">
@@ -1208,16 +1182,6 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
                         >
                           <Edit2 size={13} />
                         </button>
-                        {vessel.status !== 'RETIRED' && (
-                          <button
-                            type="button"
-                            onClick={() => handleRetire(vessel)}
-                            className="p-1.5 rounded-lg text-amber-700 hover:bg-amber-50 border border-amber-200 transition-colors"
-                            title="Retire Vessel"
-                          >
-                            <AlertTriangle size={13} />
-                          </button>
-                        )}
                         <button
                           type="button"
                           onClick={() => handleDelete(vessel)}
@@ -1258,6 +1222,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
             </div>
 
             <form onSubmit={handleSaveVessel} className="space-y-4 text-xs">
+              <InventoryPhoto value={formData.photoDataUrl} onChange={photoDataUrl => setFormData(current => ({ ...current, photoDataUrl }))} onBusyChange={setPhotoBusy} disabled={isSubmitting} notify={(message, kind) => notify?.(message, kind)} />
               {/* 1. Basic Information */}
               <div className="rounded-2xl border border-emerald-200/90 bg-emerald-50/25 p-4 space-y-3.5">
                 <div className="flex items-center justify-between">
@@ -1638,9 +1603,9 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
                   </button>
                   <button
                     type="submit"
-                    disabled={isSubmitting || isCodeDuplicate}
+                    disabled={isSubmitting || photoBusy || isCodeDuplicate}
                     className={`px-5 py-2 rounded-xl font-semibold shadow-xs text-white text-xs flex items-center justify-center gap-2 min-w-[120px] transition-all ${
-                      isSubmitting || isCodeDuplicate
+                      isSubmitting || photoBusy || isCodeDuplicate
                         ? 'bg-slate-400 cursor-not-allowed opacity-70'
                         : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer active:scale-95'
                     }`}

@@ -19,6 +19,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 }
 
 export interface ApiVehicleItem {
+  photoDataUrl?: string | null;
   id: string;
   registrationNumber: string;
   kind: string;

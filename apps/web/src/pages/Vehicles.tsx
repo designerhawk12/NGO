@@ -17,6 +17,7 @@ import {
   type ApiVehicleItem,
 } from '../features/vehicles/api'
 import type { FleetSummary } from '@aaharaconnect/shared'
+import { isLiveAuthConfigured } from '../api/auth'
 import { isLiveAdmin, map409ErrorMessage } from '../features/pickups/adapters'
 
 type Props = {
@@ -36,6 +37,7 @@ function toFrontendVehicle(item: ApiVehicleItem, existing?: Vehicle): Vehicle {
   return {
     ...existing,
     vehicleId: item.id,
+    photoDataUrl: item.photoDataUrl ?? null,
     registrationNumber: item.registrationNumber,
     type: item.kind,
     capacityKg: item.capacityKg,
@@ -192,6 +194,10 @@ export default function Vehicles({
   const totalFleetCount = initialVehicles.length
 
   const handleSaveVehicle = async (vehicle: Vehicle) => {
+    if (isLiveAuthConfigured() && !isLiveAdmin()) {
+      notify('Sign in as an administrator in Settings to save vehicles to the database.', 'error')
+      return false
+    }
     const isEdit = Boolean(
       vehicle.vehicleId &&
       initialVehicles.some(
@@ -202,6 +208,7 @@ export default function Vehicles({
       if (isLiveAdmin()) {
         if (isEdit) {
           await apiUpdateVehicle(vehicle.vehicleId, {
+            photoDataUrl: vehicle.photoDataUrl ?? null,
             registrationNumber: vehicle.registrationNumber,
             kind: vehicle.type,
             capacityKg: vehicle.capacityKg,
@@ -213,6 +220,7 @@ export default function Vehicles({
           notify('Vehicle updated successfully.', 'success')
         } else {
           await apiCreateVehicle({
+            photoDataUrl: vehicle.photoDataUrl ?? null,
             registrationNumber: vehicle.registrationNumber,
             kind: vehicle.type,
             capacityKg: vehicle.capacityKg,
@@ -253,9 +261,11 @@ export default function Vehicles({
           notify('Vehicle added to registry successfully.', 'success')
         }
       }
+      return true
     } catch (err: any) {
       const msg = map409ErrorMessage(err)
       notify(msg || 'Failed to save vehicle.', 'error')
+      return false
     }
   }
 

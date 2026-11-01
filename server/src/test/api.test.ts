@@ -17,6 +17,16 @@ beforeEach(() => {
 });
 
 describe('API foundation', () => {
+  it('requires a real session in development too', async () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+    try {
+      const result = await request(app).post('/api/v1/vessels/issue').send({});
+      expect(result.status).toBe(401);
+      expect(verify).not.toHaveBeenCalled();
+      expect(findUser).not.toHaveBeenCalled();
+    } finally { process.env.NODE_ENV = previous; }
+  });
   it('serves liveness without a database and emits a request ID', async () => {
     const result = await request(app).get('/api/v1/health');
     expect(result.status).toBe(200);

@@ -13,3 +13,9 @@ export type ApiSuccess<T> = { success: true; data: T };
 export type ApiFailure = { success: false; error: { code: ApiErrorCode | string; message: string; details?: { field?: string; reason: string }[]; requestId?: string } };
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 export type Page<T> = { items: T[]; nextCursor: string | null };
+
+// Optional size-limited raster photos shared by inventory forms.
+export const photoDataUrlSchema = z.string().max(700000).regex(new RegExp('^data:image/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$')).refine(value => {
+  const [header, data = ''] = value.split(',');
+  return header.includes('jpeg') ? data.startsWith('/9j/') : header.includes('png') ? data.startsWith('iVBORw0KGgo') : data.startsWith('UklGR');
+}, 'Choose a valid JPEG, PNG or WebP photo.');

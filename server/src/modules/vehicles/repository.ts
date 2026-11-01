@@ -62,6 +62,7 @@ export function handleVehicleDbError(error: unknown): never {
 }
 
 export interface VehicleDbRow {
+  photo_data_url?: string | null;
   id: string;
   registration_number: string;
   kind: string;
@@ -127,6 +128,7 @@ function mapVehicleRow(row: VehicleDbRow) {
   return {
     id: row.id,
     registrationNumber: row.registration_number,
+    photoDataUrl: row.photo_data_url ?? null,
     kind: row.kind,
     capacityKg: Number(row.capacity_kg),
     status: row.status,
@@ -166,6 +168,7 @@ const VEHICLE_SELECT_FRAGMENT = `
   SELECT
     v.id,
     v.registration_number,
+    v.photo_data_url,
     v.kind,
     v.capacity_kg,
     v.status,
@@ -177,6 +180,7 @@ const VEHICLE_SELECT_FRAGMENT = `
     curr_assign.pickup_id AS curr_pickup_id,
     curr_assign.assignment_status AS curr_assignment_status,
     curr_assign.window_starts_at AS curr_window_starts_at,
+    curr_assign.window_ends_at AS curr_window_ends_at,
     COALESCE(curr_assign.driver_id, ad.id) AS curr_driver_id,
     COALESCE(curr_assign.driver_name, adp.name) AS curr_driver_name,
     COALESCE(curr_assign.driver_phone, adp.phone_e164) AS curr_driver_phone,
@@ -325,8 +329,9 @@ export async function createVehicle(data: CreateVehicle, client?: PoolClient) {
         status,
         size_category,
         indicative_max_vessels,
-        assigned_driver_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        assigned_driver_id,
+        photo_data_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
       [
         data.registrationNumber,
@@ -336,6 +341,7 @@ export async function createVehicle(data: CreateVehicle, client?: PoolClient) {
         data.sizeCategory ?? null,
         data.indicativeMaxVessels ?? null,
         data.assignedDriverId ?? null,
+        data.photoDataUrl ?? null,
       ]
     );
 
@@ -354,6 +360,10 @@ export async function updateVehicle(
   const setClauses: string[] = [];
   const values: unknown[] = [id];
 
+  if (patch.photoDataUrl !== undefined) {
+    values.push(patch.photoDataUrl);
+    setClauses.push(`photo_data_url = $${values.length}`);
+  }
   if (patch.registrationNumber !== undefined) {
     values.push(patch.registrationNumber);
     setClauses.push(`registration_number = $${values.length}`);

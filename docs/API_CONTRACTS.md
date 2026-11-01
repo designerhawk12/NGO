@@ -47,3 +47,9 @@ Example planned dispatch request:
 Module 3's vehicle-assignment projection is read-only and ADMIN-only. A Module 5 admin screen may call it to obtain current driver and volunteer IDs, then resolve permitted contact/profile data through Module 5 and Module 1 APIs. Module 4 may read assignment/active-trip status only through a reviewed Module 3 service interface. Module 5's indicative vessel capacity is a vehicle specification; the actual vessel count remains in Module 3's `container_plans`. No EMPLOYEE authentication role is defined. The projection currently returns all nonterminal matches with `nextCursor: null`; add reviewed pagination before using it for large fleets.
 
 Errors: `400 VALIDATION_ERROR` or `INVALID_JSON`; `401 UNAUTHENTICATED`; `403 FORBIDDEN`; `404 NOT_FOUND`; `409 RESOURCE_CONFLICT`, `INVALID_TRANSITION`, or `VERSION_CONFLICT`; `503 SERVICE_UNAVAILABLE`; `500 INTERNAL_ERROR`. Do not return SQL details or stack traces. Document any new code in `packages/shared` before using it in clients.
+
+## Vehicle photo extension
+
+Module 5 vehicle create/update requests and vehicle responses support optional `photoDataUrl` (JPEG, PNG or WebP base64 data URL, maximum 700,000 characters). Omit it on update to preserve the photo; send null to remove it. Photos pass through the existing Express API and are stored on the canonical vehicle row. The web form resizes selected images before saving. Migration 006 adds a nullable column and preserves existing vehicles; rollback drops that column and its photos. Affected owners: Module 5 and integration maintainers (shared contract and migration).
+
+Vessel create/update requests and responses also support the optional photoDataUrl field with the same raster photo limits. Omit it to preserve the current photo; null removes it. Migration 007 adds a nullable photo column; rollback drops the column and its photo data.
