@@ -186,6 +186,8 @@ h1,h2,h3 { letter-spacing:-.025em; }
 .field { font-size:14px; gap:8px; }
 .dialog-form .field small { color:#718577; font-size:12px; font-weight:400; line-height:1.4; }
 .field input,.field select,.inline-picker select,.slot-form input { height:44px; font-size:14px; padding:0 12px; }
+.driver-skill-toggle { display:flex; align-items:center; gap:10px; min-height:40px; font-size:14px; font-weight:600; color:#31523c; cursor:pointer; }
+.driver-skill-toggle input[type="checkbox"] { width:18px; height:18px; margin:0; flex:none; accent-color:#176b43; }
 .volunteer-table td:last-child { white-space:nowrap; }
 .volunteer-table td:last-child .text-link + .text-link { margin-left:12px; }
 .skill-picker { gap:8px; }

@@ -110,6 +110,17 @@ export const getAdminVolunteerHandler: RequestHandler = async (request, response
   } catch (error) { next(error); }
 };
 
+export const getAdminVolunteerDriverDetailsHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const id = uuidSchema.safeParse(request.params.id);
+    if (!id.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Volunteer ID must be a UUID.');
+    response.set('Cache-Control', 'no-store');
+    sendSuccess(response, await volunteerService.getAdminVolunteerDriverDetails(
+      response.locals.appUser as AppUser, id.data
+    ));
+  } catch (error) { next(error); }
+};
+
 export const createAdminVolunteerHandler: RequestHandler = async (_request, response, next) => {
   try {
     sendSuccess(response, await volunteerService.createAdminVolunteer(

@@ -9,6 +9,7 @@ import {
   createOwnAvailabilityHandler,
   getAdminTeamHandler,
   getAdminVolunteerHandler,
+  getAdminVolunteerDriverDetailsHandler,
   getOwnProfileHandler,
   listAdminTeamsHandler,
   listAdminVolunteerApplicationsHandler,
@@ -47,6 +48,7 @@ selfProfileRoutes.post('/me/availability', requireAuth, requireRole('VOLUNTEER')
 selfProfileRoutes.patch('/me/availability/:id', requireAuth, requireRole('VOLUNTEER'), validateBody(availabilityWriteSchema), replaceOwnAvailabilityHandler);
 selfProfileRoutes.get('/', requireAuth, requireRole('ADMIN'), listAdminVolunteersHandler);
 selfProfileRoutes.post('/', requireAuth, requireRole('ADMIN'), validateBody(createAdminVolunteerSchema), createAdminVolunteerHandler);
+selfProfileRoutes.get('/:id/driver-details', requireAuth, requireRole('ADMIN'), getAdminVolunteerDriverDetailsHandler);
 selfProfileRoutes.get('/:id', requireAuth, requireRole('ADMIN'), getAdminVolunteerHandler);
 selfProfileRoutes.patch('/:id', requireAuth, requireRole('ADMIN'), validateBody(updateAdminVolunteerSchema), updateAdminVolunteerHandler);
 
