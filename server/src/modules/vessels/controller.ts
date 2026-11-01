@@ -81,12 +81,12 @@ export const updateVesselHandler: RequestHandler = async (request, response, nex
 
 export const deleteVesselHandler: RequestHandler = async (request, response, next) => {
   try {
-    const idResult = uuidSchema.safeParse(request.params.id);
-    if (!idResult.success) {
-      throw new HttpError(400, 'VALIDATION_ERROR', 'Vessel ID must be a UUID.');
+    const id = request.params.id;
+    if (!id || typeof id !== 'string') {
+      throw new HttpError(400, 'VALIDATION_ERROR', 'Vessel identifier is required.');
     }
-    await vesselService.deleteVessel(idResult.data);
-    sendSuccess(response, { deleted: true, id: idResult.data });
+    await vesselService.deleteVessel(id);
+    sendSuccess(response, { deleted: true, id });
   } catch (error) {
     next(error);
   }

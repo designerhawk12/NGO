@@ -8,8 +8,7 @@ export class ApiClientError extends Error {
 
 /** Future web services should use this client instead of calling fetch in components. */
 export async function apiRequest<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
-  if (!baseUrl) throw new ApiClientError(0, 'MISSING_API_URL', 'Set VITE_API_BASE_URL in apps/web/.env.');
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
 
   const headers = new Headers(options.headers);
   if (options.body !== undefined && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');

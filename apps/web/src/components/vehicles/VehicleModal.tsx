@@ -1,7 +1,6 @@
 import {
   AlertCircle,
   CheckCircle,
-  FileText,
   Info,
   Package,
   ShieldCheck,
@@ -9,16 +8,17 @@ import {
   User,
   XCircle,
 } from 'lucide-react'
-import { useState, useMemo } from 'react'
-import type { Driver, Vehicle } from '../../types'
+import { useRef, useState } from 'react'
+import type { Driver, Vehicle, VehicleMaintenanceRecord } from '../../types'
 import { Modal } from '../common/UI'
 
 type Props = {
   vehicle?: Vehicle
   existingVehicles?: Vehicle[]
   drivers: Driver[]
+  maintenanceRecords?: VehicleMaintenanceRecord[]
   onClose: () => void
-  onSave: (vehicle: Vehicle) => void
+  onSave: (vehicle: Vehicle) => boolean | Promise<boolean>
   notify: (message: string, kind?: 'success' | 'error') => void
 }
 
@@ -27,6 +27,48 @@ const SIZES: ('SMALL' | 'MEDIUM' | 'LARGE')[] = ['SMALL', 'MEDIUM', 'LARGE']
 
 export default function VehicleModal({ vehicle, existingVehicles, drivers, onClose, onSave, notify }: Props) {
   const isEdit = !!vehicle
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(vehicle?.photoDataUrl ?? null)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const photoInput = useRef<HTMLInputElement>(null)
+  const [saving, setSaving] = useState(false)
+
+  const choosePhoto = async (file?: File) => {
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      notify('Choose a JPG, PNG or WebP photo.', 'error')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      notify('Choose a photo smaller than 10 MB.', 'error')
+      return
+    }
+    setPhotoBusy(true)
+    const url = URL.createObjectURL(file)
+    try {
+      const image = new Image()
+      image.src = url
+      await image.decode()
+      const scale = Math.min(1, 1200 / Math.max(image.width, image.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(image.width * scale))
+      canvas.height = Math.max(1, Math.round(image.height * scale))
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Photo could not be processed.')
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+      let result = canvas.toDataURL('image/jpeg', 0.82)
+      if (result.length > 700000) result = canvas.toDataURL('image/jpeg', 0.5)
+      if (result.length > 700000) throw new Error('Photo is too large. Choose a smaller photo.')
+      setPhotoDataUrl(result)
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Unable to read this photo.', 'error')
+    } finally {
+      URL.revokeObjectURL(url)
+      setPhotoBusy(false)
+      if (photoInput.current) photoInput.current.value = ''
+    }
+  }
 
   // 1. Vehicle Identity State
   const [registrationNumber, setRegistrationNumber] = useState(vehicle?.registrationNumber ?? '')
@@ -61,7 +103,11 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
 
   // 2. Capacity Details State
   const [capacityKg, setCapacityKg] = useState(String(vehicle?.capacityKg ?? 250))
-  const [usableCargoVolume, setUsableCargoVolume] = useState(vehicle?.usableCargoVolume ?? '')
+  const [usableCargoVolume, setUsableCargoVolume] = useState(() => {
+    if (vehicle?.usableCargoVolume) return vehicle.usableCargoVolume
+    if (vehicle?.capacityKg) return `${(vehicle.capacityKg * 0.015).toFixed(1)} m³`
+    return ''
+  })
 
   // 3. Food Transport Suitability State
   const [tempCapability, setTempCapability] = useState<'AMBIENT' | 'CHILLED' | 'REFRIGERATED'>(
@@ -74,43 +120,20 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
 
   // 4. Driver & Assignment State
   const matchedDriver = drivers.find(
-    d => d.driverId === vehicle?.driverId || (vehicle?.driverName && d.name.toLowerCase() === vehicle.driverName.toLowerCase())
+    d =>
+      (vehicle?.driverId && d.driverId === vehicle.driverId) ||
+      (vehicle?.driverName && d.name.toLowerCase() === vehicle.driverName.toLowerCase()) ||
+      (vehicle?.driverId && d.name.toLowerCase() === vehicle.driverId.toLowerCase())
   )
   const [driverSelection, setDriverSelection] = useState<string>(() => {
     if (matchedDriver) return matchedDriver.driverId
-    if (vehicle?.driverName) return '__other__'
-    if (vehicle?.driverId) return vehicle.driverId
+    if (vehicle?.driverName || vehicle?.driverId) return '__other__'
     return ''
   })
   const [customDriverName, setCustomDriverName] = useState<string>(() => {
-    if (matchedDriver) return ''
-    return vehicle?.driverName ?? ''
+    if (matchedDriver) return matchedDriver.name
+    return vehicle?.driverName || vehicle?.driverId || ''
   })
-
-  // 5. Compliance & Key Dates State
-  const [registrationExpiry, setRegistrationExpiry] = useState(vehicle?.registrationExpiry ?? '')
-  const [insuranceExpiry, setInsuranceExpiry] = useState(vehicle?.insuranceExpiry ?? '')
-  const [pollutionExpiry, setPollutionExpiry] = useState(vehicle?.pollutionExpiry ?? '')
-  const [nextServiceDate, setNextServiceDate] = useState(vehicle?.nextServiceDate ?? vehicle?.nextMaintenance ?? '')
-  const [lastCleaningDate, setLastCleaningDate] = useState(vehicle?.lastCleaningDate ?? '')
-  const [nextCleaningDueDate, setNextCleaningDueDate] = useState(vehicle?.nextCleaningDueDate ?? '')
-
-  const todayStr = useMemo(() => {
-    const d = new Date()
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }, [])
-
-  const isRegExpInvalid = Boolean(registrationExpiry && registrationExpiry < todayStr)
-  const isInsExpInvalid = Boolean(insuranceExpiry && insuranceExpiry < todayStr)
-  const isPucExpInvalid = Boolean(pollutionExpiry && pollutionExpiry < todayStr)
-  const isNextSvcInvalid = Boolean(nextServiceDate && nextServiceDate < todayStr)
-  const isLastCleanInvalid = Boolean(lastCleaningDate && lastCleaningDate > todayStr)
-  const isNextCleanInvalid = Boolean(
-    nextCleaningDueDate && (nextCleaningDueDate < todayStr || (lastCleaningDate && nextCleaningDueDate < lastCleaningDate))
-  )
 
   const cleanReg = registrationNumber.trim().toUpperCase()
   const isDuplicateReg = Boolean(
@@ -120,8 +143,9 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
     )
   )
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (photoBusy || saving) return
     const reg = cleanReg
     if (!reg) {
       notify('Please enter a registration number.', 'error')
@@ -169,11 +193,6 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
       return
     }
 
-    if (isRegExpInvalid || isInsExpInvalid || isPucExpInvalid || isNextSvcInvalid || isLastCleanInvalid || isNextCleanInvalid) {
-      notify('Date is invalid', 'error')
-      return
-    }
-
     let finalStatus = statusSelection
     if (statusSelection === '__other__') {
       const manualStatus = customStatus.trim()
@@ -185,6 +204,7 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
     }
 
     const payload: Vehicle = {
+      photoDataUrl,
       vehicleId: vehicle?.vehicleId ?? '',
       registrationNumber: reg,
       type: finalType,
@@ -199,21 +219,25 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
         foodGradeContainers: equipFoodContainers,
       },
       foodContactSuitable,
-      registrationExpiry: registrationExpiry || undefined,
-      insuranceExpiry: insuranceExpiry || undefined,
-      pollutionExpiry: pollutionExpiry || undefined,
-      nextServiceDate: nextServiceDate || undefined,
-      lastCleaningDate: lastCleaningDate || undefined,
-      nextCleaningDueDate: nextCleaningDueDate || undefined,
+      registrationExpiry: vehicle?.registrationExpiry,
+      insuranceExpiry: vehicle?.insuranceExpiry,
+      pollutionExpiry: vehicle?.pollutionExpiry,
+      nextServiceDate: vehicle?.nextServiceDate,
+      lastCleaningDate: vehicle?.lastCleaningDate,
+      nextCleaningDueDate: vehicle?.nextCleaningDueDate,
       driverId: finalDriverId,
       driverName: finalDriverName,
       status: finalStatus,
       lastMaintenance: vehicle?.lastMaintenance,
-      nextMaintenance: nextServiceDate || vehicle?.nextMaintenance,
+      nextMaintenance: vehicle?.nextMaintenance,
     }
 
-    onSave(payload)
-    onClose()
+    setSaving(true)
+    try {
+      if (await onSave(payload)) onClose()
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -224,6 +248,20 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
       onClose={onClose}
     >
       <form onSubmit={handleSubmit} className="dialog-form max-h-[calc(88vh-120px)] overflow-y-auto pr-1 space-y-4">
+        <section className="rounded-xl border border-emerald-200 bg-white p-4 space-y-3">
+          <h3 className="font-bold text-slate-800 text-sm">Vehicle Photo <span className="font-normal text-slate-500">(Optional)</span></h3>
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+            {photoDataUrl ? <img src={photoDataUrl} alt="Vehicle photo preview" className="h-36 w-52 rounded-lg border border-slate-200 object-contain bg-slate-50" /> : <div className="h-28 w-40 rounded-lg border-2 border-dashed border-emerald-200 bg-emerald-50 flex items-center justify-center text-emerald-700"><Truck size={36} /></div>}
+            <div className="space-y-2">
+              <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose vehicle photo" className="sr-only" onChange={e => void choosePhoto(e.target.files?.[0])} disabled={photoBusy || saving} />
+              <div className="flex gap-2">
+                <button type="button" className="button button-primary" disabled={photoBusy || saving} onClick={() => photoInput.current?.click()}>{photoBusy ? 'Preparing photo…' : photoDataUrl ? 'Change Photo' : 'Add Photo'}</button>
+                {photoDataUrl && <button type="button" className="button" disabled={photoBusy || saving} onClick={() => setPhotoDataUrl(null)}>Remove Photo</button>}
+              </div>
+              <p className="text-xs text-slate-500">JPG, PNG or WebP, up to 10 MB.</p>
+            </div>
+          </div>
+        </section>
         {/* 1. Vehicle Identity */}
         <div className="rounded-xl border border-emerald-200/80 bg-white hover:border-emerald-300 transition-colors shadow-xs p-4 space-y-3">
           <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
@@ -554,13 +592,20 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
               <select
                 id="veh-driver"
                 value={driverSelection}
-                onChange={e => setDriverSelection(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value
+                  setDriverSelection(val)
+                  if (val && val !== '__other__') {
+                    const d = drivers.find(drv => drv.driverId === val)
+                    if (d) setCustomDriverName(d.name)
+                  }
+                }}
                 required
               >
                 <option value="">Select a driver</option>
                 {drivers.map(d => (
                   <option key={d.driverId} value={d.driverId}>
-                    {d.name} ({d.status})
+                    {d.name} {d.phone ? `(${d.phone})` : ''} ({d.status})
                   </option>
                 ))}
                 <option value="__other__">Other (Enter name manually)</option>
@@ -590,140 +635,6 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
           </div>
         </div>
 
-        {/* 5. Compliance & Key Dates */}
-        <div className="rounded-xl border border-emerald-200/80 bg-white hover:border-emerald-300 transition-colors shadow-xs p-4 space-y-3">
-          <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
-            <div className="flex items-center gap-2">
-              <FileText className="text-emerald-700" size={18} />
-              <h3 className="font-bold text-slate-800 text-sm">5. Compliance & Key Dates</h3>
-            </div>
-            <span className="text-[11px] font-semibold bg-emerald-100/90 text-emerald-800 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-              New/Enhanced
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="field">
-              <label htmlFor="veh-reg-exp">
-                Registration Expiry <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="veh-reg-exp"
-                type="date"
-                min={todayStr}
-                value={registrationExpiry}
-                onChange={e => setRegistrationExpiry(e.target.value)}
-                className={isRegExpInvalid ? '!border-rose-500 !bg-rose-50/20' : ''}
-              />
-              {isRegExpInvalid && (
-                <span className="text-[11px] font-medium text-rose-600 flex items-center gap-1 mt-1">
-                  <AlertCircle size={12} className="shrink-0" /> Date is invalid
-                </span>
-              )}
-            </div>
-            <div className="field">
-              <label htmlFor="veh-ins-exp">
-                Insurance Expiry <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="veh-ins-exp"
-                type="date"
-                min={todayStr}
-                value={insuranceExpiry}
-                onChange={e => setInsuranceExpiry(e.target.value)}
-                className={isInsExpInvalid ? '!border-rose-500 !bg-rose-50/20' : ''}
-              />
-              {isInsExpInvalid && (
-                <span className="text-[11px] font-medium text-rose-600 flex items-center gap-1 mt-1">
-                  <AlertCircle size={12} className="shrink-0" /> Date is invalid
-                </span>
-              )}
-            </div>
-            <div className="field">
-              <label htmlFor="veh-puc-exp">
-                Pollution Certificate Expiry <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="veh-puc-exp"
-                type="date"
-                min={todayStr}
-                value={pollutionExpiry}
-                onChange={e => setPollutionExpiry(e.target.value)}
-                className={isPucExpInvalid ? '!border-rose-500 !bg-rose-50/20' : ''}
-              />
-              {isPucExpInvalid && (
-                <span className="text-[11px] font-medium text-rose-600 flex items-center gap-1 mt-1">
-                  <AlertCircle size={12} className="shrink-0" /> Date is invalid
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="field">
-              <label htmlFor="veh-next-svc">
-                Next Service Date <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="veh-next-svc"
-                type="date"
-                min={todayStr}
-                value={nextServiceDate}
-                onChange={e => setNextServiceDate(e.target.value)}
-                className={isNextSvcInvalid ? '!border-rose-500 !bg-rose-50/20' : ''}
-              />
-              {isNextSvcInvalid && (
-                <span className="text-[11px] font-medium text-rose-600 flex items-center gap-1 mt-1">
-                  <AlertCircle size={12} className="shrink-0" /> Date is invalid
-                </span>
-              )}
-            </div>
-            <div className="field">
-              <label htmlFor="veh-last-clean">
-                Last Cleaning Date <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="veh-last-clean"
-                type="date"
-                max={todayStr}
-                value={lastCleaningDate}
-                onChange={e => setLastCleaningDate(e.target.value)}
-                className={isLastCleanInvalid ? '!border-rose-500 !bg-rose-50/20' : ''}
-              />
-              {isLastCleanInvalid && (
-                <span className="text-[11px] font-medium text-rose-600 flex items-center gap-1 mt-1">
-                  <AlertCircle size={12} className="shrink-0" /> Date is invalid
-                </span>
-              )}
-            </div>
-            <div className="field">
-              <label htmlFor="veh-next-clean">
-                Next Cleaning Due Date <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="veh-next-clean"
-                type="date"
-                min={lastCleaningDate || todayStr}
-                value={nextCleaningDueDate}
-                onChange={e => setNextCleaningDueDate(e.target.value)}
-                className={isNextCleanInvalid ? '!border-rose-500 !bg-rose-50/20' : ''}
-              />
-              {isNextCleanInvalid && (
-                <span className="text-[11px] font-medium text-rose-600 flex items-center gap-1 mt-1">
-                  <AlertCircle size={12} className="shrink-0" /> Date is invalid
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-lg p-3 text-xs text-emerald-900 flex items-start gap-2.5">
-            <AlertCircle size={16} className="text-emerald-700 shrink-0 mt-0.5" />
-            <p className="leading-relaxed">
-              These dates are used to determine dispatch readiness. Vehicles with expired documents or overdue service/cleaning may not be available for assignment.
-            </p>
-          </div>
-        </div>
-
         {/* Modal Footer */}
         <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm pt-4 pb-2 border-t border-emerald-100 flex justify-end items-center gap-3">
           <button
@@ -735,10 +646,11 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
           </button>
           <button
             type="submit"
+            disabled={photoBusy || saving}
             className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-all shadow-md shadow-emerald-700/20 hover:shadow-lg hover:shadow-emerald-700/30 flex items-center gap-2 cursor-pointer border border-emerald-600"
           >
             <CheckCircle size={16} className="text-white" />
-            <span>Save Vehicle</span>
+            <span>{saving ? 'Saving…' : 'Save Vehicle'}</span>
           </button>
         </div>
       </form>

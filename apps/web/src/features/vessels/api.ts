@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import { apiRequest } from '../../api/client';
 import { getAuthHeaders } from '../pickups/adapters';
+=======
+import { ApiClientError, apiRequest } from '../../api/client';
+import { getLiveAccessToken } from '../pickups/adapters';
+>>>>>>> upstream/develop
 import type {
   CreateVessel,
   CreateVesselLog,
@@ -12,6 +17,15 @@ import type {
   VesselsSummary,
 } from '@aaharaconnect/shared';
 
+<<<<<<< HEAD
+=======
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getLiveAccessToken();
+  if (!token) throw new ApiClientError(401, 'UNAUTHENTICATED', 'Your session has expired. Sign in again in Settings to dispatch vessels.');
+  return { Authorization: `Bearer ${token}` };
+}
+
+>>>>>>> upstream/develop
 export async function apiFetchVessels(params: Partial<ListVesselsQuery> = {}): Promise<{ items: VesselItem[] }> {
   const query = new URLSearchParams();
   if (params.search) query.set('search', params.search);

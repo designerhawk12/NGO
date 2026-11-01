@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { uuidSchema } from './common';
+import { photoDataUrlSchema, uuidSchema } from './common';
 
 export const vehicleStatusSchema = z.enum(['ACTIVE', 'MAINTENANCE', 'RETIRED']);
 export const vehicleSizeCategorySchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 export const vehicleConditionSchema = z.enum(['GOOD', 'NEEDS_SERVICE', 'UNSAFE']);
+<<<<<<< HEAD
 export const vehicleLocationPointSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
@@ -11,12 +12,16 @@ export const vehicleLocationPointSchema = z.object({
 });
 export type VehicleLocationPoint = z.infer<typeof vehicleLocationPointSchema>;
 
+=======
+export const vehiclePhotoSchema = photoDataUrlSchema;
+>>>>>>> upstream/develop
 export const vehicleSchema = z.object({
   id: uuidSchema,
   registrationNumber: z.string(),
   kind: z.string(),
   capacityKg: z.number().positive(),
   status: vehicleStatusSchema,
+  photoDataUrl: vehiclePhotoSchema.nullable().optional(),
   sizeCategory: vehicleSizeCategorySchema.nullable().optional(),
   indicativeMaxVessels: z.number().int().positive().nullable().optional(),
   latestLocation: vehicleLocationPointSchema.nullable().optional(),
@@ -44,8 +49,10 @@ export const createVehicleSchema = z.object({
   kind: z.string().trim().min(1).max(64),
   capacityKg: z.number().positive(),
   status: vehicleStatusSchema.optional().default('ACTIVE'),
+  photoDataUrl: vehiclePhotoSchema.nullable().optional(),
   sizeCategory: vehicleSizeCategorySchema.nullable().optional(),
   indicativeMaxVessels: z.number().int().positive().nullable().optional(),
+  assignedDriverId: z.string().nullable().optional(),
 });
 export type CreateVehicle = z.infer<typeof createVehicleSchema>;
 
@@ -54,8 +61,10 @@ export const updateVehicleSchema = z.object({
   kind: z.string().trim().min(1).max(64).optional(),
   capacityKg: z.number().positive().optional(),
   status: vehicleStatusSchema.optional(),
+  photoDataUrl: vehiclePhotoSchema.nullable().optional(),
   sizeCategory: vehicleSizeCategorySchema.nullable().optional(),
   indicativeMaxVessels: z.number().int().positive().nullable().optional(),
+  assignedDriverId: z.string().nullable().optional(),
 }).refine(data => Object.keys(data).length > 0, {
   message: 'At least one field must be provided for update',
 });

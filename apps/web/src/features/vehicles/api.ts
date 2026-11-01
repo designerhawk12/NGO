@@ -10,6 +10,7 @@ import type {
 } from '@aaharaconnect/shared';
 
 export interface ApiVehicleItem {
+  photoDataUrl?: string | null;
   id: string;
   registrationNumber: string;
   kind: string;
