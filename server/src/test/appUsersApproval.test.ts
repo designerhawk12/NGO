@@ -15,8 +15,8 @@ describe('Volunteer application in authenticated app-user lookup', () => {
   it('loads the separate application status with its canonical Volunteer profile', async () => {
     query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{
       id: appUserId, auth_user_id: authUserId, role: 'VOLUNTEER', display_name: 'Applicant',
-      disabled_at: null, volunteer_application_status: 'PENDING', volunteer_profile_id: volunteerId,
-    }] });
+      disabled_at: null, volunteer_profile_id: volunteerId,
+    }] }).mockResolvedValueOnce({ rows: [{ status: 'PENDING' }] });
 
     expect(await findOrCreateAppUser(authUserId)).toEqual({
       id: appUserId, authUserId, role: 'VOLUNTEER', displayName: 'Applicant', volunteerApplicationStatus: 'PENDING',
@@ -24,16 +24,17 @@ describe('Volunteer application in authenticated app-user lookup', () => {
     expect(query.mock.calls[0][0]).toContain("VALUES ($1, 'DONOR')");
     expect(query.mock.calls[1][0]).toContain('LEFT JOIN app.people p');
     expect(query.mock.calls[1][0]).toContain('LEFT JOIN app.volunteers v');
-    expect(query.mock.calls[1][0]).toContain('LEFT JOIN app.volunteer_applications va ON va.volunteer_id = v.id');
-    expect(query.mock.calls[1][0]).toContain('va.status AS volunteer_application_status');
+    expect(query.mock.calls[1][0]).not.toContain('volunteer_applications');
     expect(query.mock.calls[1][1]).toEqual([authUserId]);
+    expect(query.mock.calls[2][0]).toContain('FROM app.volunteer_applications');
+    expect(query.mock.calls[2][1]).toEqual([volunteerId]);
   });
 
   it('preserves existing admin-created Volunteers with a profile and no application', async () => {
     query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{
       id: appUserId, auth_user_id: authUserId, role: 'VOLUNTEER', display_name: 'Legacy Volunteer',
-      disabled_at: null, volunteer_application_status: null, volunteer_profile_id: volunteerId,
-    }] });
+      disabled_at: null, volunteer_profile_id: volunteerId,
+    }] }).mockResolvedValueOnce({ rows: [] });
     await expect(findOrCreateAppUser(authUserId)).resolves.toMatchObject({
       role: 'VOLUNTEER', volunteerApplicationStatus: null,
     });
@@ -42,7 +43,7 @@ describe('Volunteer application in authenticated app-user lookup', () => {
   it('fails closed when a Volunteer account has neither a linked profile nor an application', async () => {
     query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{
       id: appUserId, auth_user_id: authUserId, role: 'VOLUNTEER', display_name: null,
-      disabled_at: null, volunteer_application_status: null, volunteer_profile_id: null,
+      disabled_at: null, volunteer_profile_id: null,
     }] });
     await expect(findOrCreateAppUser(authUserId)).rejects.toMatchObject({ status: 403, code: 'VOLUNTEER_PROFILE_REQUIRED' });
   });
@@ -50,9 +51,21 @@ describe('Volunteer application in authenticated app-user lookup', () => {
   it('does not attach Volunteer application data to Admin or Donor accounts', async () => {
     query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{
       id: appUserId, auth_user_id: authUserId, role: 'ADMIN', display_name: null,
-      disabled_at: null, volunteer_application_status: null, volunteer_profile_id: null,
+      disabled_at: null, volunteer_profile_id: null,
     }] });
     const user = await findOrCreateAppUser(authUserId);
     expect(user).not.toHaveProperty('volunteerApplicationStatus');
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query.mock.calls[1][0]).not.toContain('volunteer_applications');
+  });
+
+  it('fails closed for Volunteers when the application table is missing', async () => {
+    const missingTable = Object.assign(new Error('relation "app.volunteer_applications" does not exist'), { code: '42P01' });
+    query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{
+      id: appUserId, auth_user_id: authUserId, role: 'VOLUNTEER', display_name: 'Applicant',
+      disabled_at: null, volunteer_profile_id: volunteerId,
+    }] }).mockRejectedValueOnce(missingTable);
+
+    await expect(findOrCreateAppUser(authUserId)).rejects.toBe(missingTable);
   });
 });

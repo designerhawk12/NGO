@@ -28,18 +28,23 @@ export async function findOrCreateAppUser(authUserId: string): Promise<AppUser> 
     ON CONFLICT (auth_user_id) DO NOTHING`, [authUserId]);
   const result = await getPool().query<AppUserRow & { disabled_at: Date | null }>(
     `SELECT au.id, au.auth_user_id, au.role, au.display_name, au.disabled_at,
-       va.status AS volunteer_application_status,
        v.id AS volunteer_profile_id
      FROM app.app_users au
      LEFT JOIN app.people p ON p.app_user_id = au.id
      LEFT JOIN app.volunteers v ON v.person_id = p.id
-     LEFT JOIN app.volunteer_applications va ON va.volunteer_id = v.id
      WHERE au.auth_user_id = $1`,
     [authUserId]
   );
   const row = result.rows[0];
   if (!row) throw new HttpError(500, 'INTERNAL_ERROR', 'Application account could not be loaded.');
   if (row.disabled_at) throw new HttpError(403, 'FORBIDDEN', 'This account is disabled.');
+  if (row.role === 'VOLUNTEER' && row.volunteer_profile_id) {
+    const application = await getPool().query<{ status: VolunteerApplicationStatus }>(
+      'SELECT status FROM app.volunteer_applications WHERE volunteer_id = $1',
+      [row.volunteer_profile_id]
+    );
+    row.volunteer_application_status = application.rows[0]?.status ?? null;
+  }
   if (row.role === 'VOLUNTEER' && !row.volunteer_profile_id && !row.volunteer_application_status) {
     throw new HttpError(403, 'VOLUNTEER_PROFILE_REQUIRED', 'A Volunteer profile or application is required.');
   }
