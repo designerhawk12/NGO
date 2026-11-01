@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isDatabaseConnectionError, reportDevelopmentError } from '../utils/safeDiagnostics';
+import { isDatabaseConnectionError, reportDatabaseConnectionError, reportDevelopmentError } from '../utils/safeDiagnostics';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -7,6 +7,22 @@ afterEach(() => {
 });
 
 describe('safe development diagnostics', () => {
+  it('classifies production connection errors without logging sensitive messages', () => {
+    const output = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    reportDatabaseConnectionError(Object.assign(new Error('password=private host=private'), { code: 'ENOTFOUND' }), 'request-789');
+    const entry = JSON.parse(String(output.mock.calls[0][0]));
+    expect(entry).toMatchObject({ category: 'DNS', code: 'ENOTFOUND', requestId: 'request-789' });
+    expect(JSON.stringify(entry)).not.toContain('private');
+  });
+  it('drops unexpected codes and class names from production diagnostics', () => {
+    const output = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const error = Object.assign(new Error('secret message'), { code: 'PASSWORD_PRIVATE', name: 'SecretClass' });
+    reportDatabaseConnectionError(error, 'request-790');
+    const entry = JSON.parse(String(output.mock.calls[0][0]));
+    expect(entry).toMatchObject({ category: 'OTHER', errorClass: 'UnknownError' });
+    expect(entry).not.toHaveProperty('code');
+    expect(JSON.stringify(entry)).not.toContain('secret');
+  });
   it('logs a safe subsystem and code without error details', () => {
     vi.stubEnv('NODE_ENV', 'development');
     const output = vi.spyOn(console, 'error').mockImplementation(() => undefined);

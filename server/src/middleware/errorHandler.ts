@@ -1,6 +1,6 @@
 import type { ErrorRequestHandler } from 'express';
 import { sendError } from '../utils/response';
-import { isDatabaseConnectionError, reportDevelopmentError } from '../utils/safeDiagnostics';
+import { isDatabaseConnectionError, reportDatabaseConnectionError, reportDevelopmentError } from '../utils/safeDiagnostics';
 
 export class HttpError extends Error {
   constructor(public status: number, public code: string, message: string, public details?: { field?: string; reason: string }[]) { super(message); }
@@ -12,7 +12,7 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _request, resp
   if (error instanceof SyntaxError && 'body' in error) { sendError(response, 400, 'INVALID_JSON', 'Request body must be valid JSON.', { requestId }); return; }
   if (isDatabaseConnectionError(error)) {
     if ((process.env.NODE_ENV ?? 'development') === 'development') reportDevelopmentError(error, requestId, 'PostgreSQL');
-    else console.error(JSON.stringify({ level: 'error', requestId, kind: 'DatabaseError', message: 'Database connection failed' }));
+    else reportDatabaseConnectionError(error, requestId);
     sendError(response, 503, 'DATABASE_UNAVAILABLE', 'Database is temporarily unavailable.', { requestId });
     return;
   }
