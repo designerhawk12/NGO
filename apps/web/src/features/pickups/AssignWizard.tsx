@@ -39,10 +39,11 @@ const wizardSteps = [
 ]
 
 const demoVolunteersFallback = [
-  { volunteerId: 'vol-1', name: 'Kavya Iyer', role: 'Pickup Volunteer' },
-  { volunteerId: 'vol-2', name: 'Amit Patel', role: 'Pickup Volunteer' },
-  { volunteerId: 'vol-3', name: 'Neha Rao', role: 'Food Handling Volunteer' },
-  { volunteerId: 'vol-4', name: 'Rohan Verma', role: 'Distribution Volunteer' },
+  { volunteerId: 'vol-1', name: 'Kavya Iyer', role: 'Packing Volunteer', skills: ['Packing', 'Food Safety'] },
+  { volunteerId: 'vol-2', name: 'Amit Patel', role: 'Loading Crew', skills: ['Packing', 'Heavy Lifting'] },
+  { volunteerId: 'vol-3', name: 'Neha Rao', role: 'Food Inspector', skills: ['Food Safety', 'Packing'] },
+  { volunteerId: 'vol-4', name: 'Rohan Verma', role: 'Distribution Volunteer', skills: ['Distribution', 'Packaging'] },
+  { volunteerId: 'vol-5', name: 'Vikram Singh', role: 'Volunteer Driver', skills: ['Driving'] },
 ]
 
 const demoDriversFallback = [
@@ -113,6 +114,21 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
 
   useEffect(() => {
     if (!isLiveAdmin()) return
+
+    // Guard: pickup.id must be a real server UUID before hitting the API.
+    // Demo fixture IDs (e.g. 'p1000000-...') start with non-hex chars and
+    // will be rejected by the server uuidSchema with 'Pickup ID must be a UUID'.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_RE.test(pickup.id)) {
+      setCheckingVolunteerEligibility(false)
+      setVolunteerEligibility(null)
+      setVolunteerEligibilityError(
+        'This pickup has a demo ID and is not saved in the database. ' +
+        'Create the pickup via \"Schedule Pickup\" to enable live volunteer eligibility checks.'
+      )
+      return
+    }
+
     let active = true
     setCheckingVolunteerEligibility(true)
     setVolunteerEligibility(null)
@@ -134,7 +150,21 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
     return () => { active = false }
   }, [pickup.id])
 
-  const volunteersWithWindowEligibility = useMemo(() => activeVolunteers.map((volunteer: any) => {
+  // Detect whether a volunteer is categorized as a driver (has driving skill or driver role)
+  const isDriverVolunteer = (v: any) => {
+    const skills: string[] = Array.isArray(v.skills) ? v.skills : []
+    const hasDrivingSkill = skills.some(s => typeof s === 'string' && s.toLowerCase().includes('driv'))
+    const role = String(v.role || '').toLowerCase()
+    const hasDriverRole = role.includes('driv')
+    return hasDrivingSkill || hasDriverRole
+  }
+
+  // Step 0: Crew Volunteers — show volunteers whose skills DO NOT include driving (e.g. packing, food handling, heavy lifting)
+  const crewVolunteers = useMemo(() => {
+    return activeVolunteers.filter((v: any) => !isDriverVolunteer(v))
+  }, [activeVolunteers])
+
+  const volunteersWithWindowEligibility = useMemo(() => crewVolunteers.map((volunteer: any) => {
     if (!isLiveAdmin()) return volunteer
     const id = String(volunteer.volunteerId || volunteer.id || '')
     const reservationConflict = volunteerEligibility?.reservationConflictVolunteerIds.includes(id) ?? false
@@ -167,14 +197,39 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
       windowAvailabilityLabel: availabilityLabel,
     }
   }), [
-    activeVolunteers,
+    crewVolunteers,
     checkingVolunteerEligibility,
     volunteerEligibility,
     volunteerEligibilityError,
   ])
 
+  // Step 1: All Drivers — show registered drivers and any volunteer who has the driving skill
   const evaluatedDrivers = useMemo(() => {
-    return activeDrivers.map((drv: any) => {
+    const list: any[] = [...activeDrivers]
+    const existingNamesOrIds = new Set(
+      list.map((d: any) => (d.name || d.fullName || d.driverId || d.id || '').toLowerCase())
+    )
+
+    // Include volunteers with driving skill into drivers list
+    const drivingVolunteers: any[] = activeVolunteers.filter((v: any) => isDriverVolunteer(v))
+    for (const vol of drivingVolunteers) {
+      const volName = String(vol.name || vol.fullName || '')
+      const volId = String(vol.driverId || vol.id || vol.volunteerId || '')
+      if (volName && !existingNamesOrIds.has(volName.toLowerCase()) && !existingNamesOrIds.has(volId.toLowerCase())) {
+        list.push({
+          driverId: volId,
+          id: volId,
+          name: `${volName} (Volunteer Driver)`,
+          licenceNumber: vol.licenceNumber || 'Volunteer Driver on file',
+          licenceStatus: 'VALID',
+          status: vol.status || 'ACTIVE',
+        })
+        existingNamesOrIds.add(volName.toLowerCase())
+        existingNamesOrIds.add(volId.toLowerCase())
+      }
+    }
+
+    return list.map((drv: any) => {
       const id = String(drv.driverId || drv.id || '')
       const name = String(drv.name || drv.fullName || id)
       const licenceNumber = drv.licenceNumber || drv.licenseNumber || drv.dlNumber || ''
@@ -206,7 +261,7 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
         availability: 'Available for pickup window',
       }
     })
-  }, [activeDrivers])
+  }, [activeDrivers, activeVolunteers])
 
   const volunteerRanking = useMemo(
     () =>
@@ -288,6 +343,41 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
     setErrorMessage(null)
     try {
       if (isLiveAdmin()) {
+        // Sanitise numeric fields — NaN / 0 fail the server schema
+        const safeCount = Math.max(1, Math.floor(Number(containerCount) || 1))
+        const safeTotalKg = Math.max(0, Number(estimatedLoadKg) || 0)
+
+        const containers = selectedVesselIds.length > 0
+          ? selectedVesselIds.map(vid => {
+              const v = vessels.find(x => x.id === vid)
+              const perVesselKg = selectedVesselIds.length > 0
+                ? safeTotalKg / selectedVesselIds.length
+                : safeTotalKg
+              return {
+                containerType: v?.name || v?.vesselCode || 'Vessel',
+                count: 1,
+                estimatedLoadKg: Math.max(0, perVesselKg),
+              }
+            })
+          : [
+              {
+                containerType: aiAssessment.vessels[0]?.containerType || 'insulated crate',
+                count: safeCount,
+                estimatedLoadKg: safeTotalKg,
+              },
+            ]
+
+        if (!selectedDriverId) throw new Error('No driver selected.')
+        if (!selectedVehicleId) throw new Error('No vehicle selected.')
+        if (selectedVolunteerIds.length === 0) throw new Error('No volunteers selected.')
+
+        // DEBUG: log exact body sent to server
+        console.log('[AssignWizard] POST body:', JSON.stringify({
+          teamId: null, volunteerIds: selectedVolunteerIds, vesselIds: selectedVesselIds,
+          driverId: selectedDriverId, vehicleId: selectedVehicleId, role,
+          windowStartsAt: pickup.windowStartsAt, windowEndsAt: pickup.windowEndsAt, containers,
+        }, null, 2))
+
         const assignment = await createAssignment(
           pickup.id,
           {
@@ -299,20 +389,7 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
             role,
             windowStartsAt: pickup.windowStartsAt,
             windowEndsAt: pickup.windowEndsAt,
-            containers: selectedVesselIds.length > 0 ? selectedVesselIds.map(vid => {
-              const v = vessels.find(x => x.id === vid)
-              return {
-                containerType: v?.name || v?.vesselCode || 'Vessel',
-                count: 1,
-                estimatedLoadKg: Number(estimatedLoadKg) / selectedVesselIds.length,
-              }
-            }) : [
-              {
-                containerType: aiAssessment.vessels[0]?.containerType || 'insulated crate',
-                count: Number(containerCount),
-                estimatedLoadKg: Number(estimatedLoadKg),
-              },
-            ],
+            containers,
           },
           idempotencyKey
         )
@@ -378,7 +455,7 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
             <>
               <div className="wizard-title">
                 <h3>Select Volunteers</h3>
-                <p>Choose volunteers whose schedule covers this pickup window and who have no overlapping active reservation.</p>
+                <p>Choose packing and food rescue crew members for this pickup. (Drivers are selected in Step 2)</p>
               </div>
               {waitingTeam1 && volunteers.length === 0 ? (
                 <div className="wizard-tip" style={{ marginBottom: '1rem' }}>
@@ -432,7 +509,7 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
 
               {/* Selection summary */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem', color: '#64748b' }}>
-                <span>Showing candidate volunteers evaluated by logistics engine</span>
+                <span>Showing packing & food handling crew (skills except driving)</span>
                 <span style={{ fontWeight: 600, color: selectedVolunteerIds.length > 0 ? '#16a34a' : '#64748b' }}>
                   {`${selectedVolunteerIds.length} volunteer(s) selected`}
                 </span>
@@ -600,9 +677,9 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
             <>
               <div className="wizard-title">
                 <h3>Select Driver</h3>
-                <p>Choose an authorized driver with a valid licence for this pickup.</p>
+                <p>Choose an authorized driver or volunteer driver with a valid licence for this pickup.</p>
               </div>
-              {waitingTeam5Drivers && drivers.length === 0 ? (
+              {waitingTeam5Drivers && drivers.length === 0 && evaluatedDrivers.length === 0 ? (
                 <div className="wizard-tip" style={{ marginBottom: '1rem' }}>
                   <strong>{waitingTeam5Drivers}</strong>
                 </div>

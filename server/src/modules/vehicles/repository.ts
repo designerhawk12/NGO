@@ -223,8 +223,9 @@ const VEHICLE_SELECT_FRAGMENT = `
     LEFT JOIN app.drivers d ON d.id = a.driver_id
     LEFT JOIN app.people pe ON pe.id = d.person_id
     WHERE a.vehicle_id = v.id
-      AND a.status NOT IN ('REJECTED', 'CANCELLED', 'FAILED', 'DELIVERED')
+      AND a.status IN ('EN_ROUTE', 'ARRIVED_AT_DONOR', 'FOOD_COLLECTED')
       AND p.status NOT IN ('CANCELLED', 'FAILED', 'DELIVERED')
+      AND p.window_ends_at >= now()
     ORDER BY p.window_starts_at ASC
     LIMIT 1
   ) curr_assign ON true

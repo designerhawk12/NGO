@@ -260,17 +260,30 @@ export function rankVehiclesForPickup(
     // 2. Authoritative Vehicle Readiness Check (Module 5 integration)
     const readiness = v.readiness
     if (readiness) {
-      if (readiness.isReady === false) {
+      const blockingReasons = readiness.reasons?.filter((r: any) => r.severity === 'BLOCKING') || []
+      // Critical blocks: RETIRED, MAINTENANCE status, UNSAFE condition, or active maintenance downtime
+      const criticalBlocks = blockingReasons.filter((r: any) =>
+        r.code === 'RETIRED_STATUS' ||
+        r.code === 'MAINTENANCE_STATUS' ||
+        r.code === 'MAINTENANCE_CONDITION_UNSAFE' ||
+        r.code === 'ACTIVE_DOWNTIME_RESTRICTION'
+      )
+
+      if (criticalBlocks.length > 0) {
         isEligible = false
-        const blocking = readiness.reasons?.filter((r: any) => r.severity === 'BLOCKING') || []
-        if (blocking.length > 0) {
-          for (const b of blocking) {
-            constraints.push(`Readiness: ${b.message}`)
-          }
-        } else {
-          constraints.push('Vehicle is not ready according to fleet maintenance/downtime evaluation.')
+        for (const b of criticalBlocks) {
+          constraints.push(`Readiness: ${b.message}`)
         }
       }
+
+      // Informational active assignment notes
+      const assignmentConflicts = blockingReasons.filter((r: any) =>
+        r.code === 'ACTIVE_ASSIGNMENT_CONFLICT'
+      )
+      for (const ac of assignmentConflicts) {
+        reasons.push(`ℹ️ Fleet note: ${ac.message}`)
+      }
+
       const warnings = readiness.reasons?.filter((r: any) => r.severity === 'WARNING') || []
       for (const w of warnings) {
         reasons.push(`⚠️ ${w.message}`)
@@ -422,7 +435,9 @@ export function rankVehiclesForPickup(
   const bestVehicle = suitable.length > 0 ? suitable[0] : null
   const noCandidatesReason =
     suitable.length === 0
-      ? `No available vehicles meet the required payload capacity of ${loadKg} kg.`
+      ? scored.some(c => c.isOverCapacity)
+        ? `No available vehicles meet the required payload capacity of ${loadKg} kg.`
+        : 'No vehicles are currently available for dispatch.'
       : undefined
 
   return { ranked: scored, suitable, bestVehicle, noCandidatesReason }
@@ -466,7 +481,7 @@ export function rankVolunteersForPickup(
     }
     if (v.windowAvailable === false) {
       isEligible = false
-      constraints.push(String(v.windowAvailabilityReason || 'Volunteer availability does not cover this pickup window.'))
+      constraints.push(String(v.windowAvailabilityReason || 'No available volunteer schedule covers this pickup window.'))
     }
 
     if (!isEligible) {
@@ -492,9 +507,9 @@ export function rankVolunteersForPickup(
     const skillsLower = skills.map(s => s.toLowerCase())
     const roleLower = (role || '').toLowerCase()
 
-    if (skillsLower.some(s => s.includes('food') || s.includes('handling') || s.includes('safety'))) {
+    if (skillsLower.some(s => s.includes('food') || s.includes('handling') || s.includes('safety') || s.includes('pack'))) {
       score += 15
-      reasons.push('Trained in hygienic food safety inspection and container handling.')
+      reasons.push('Trained in hygienic food safety inspection, packing, and container handling.')
     }
 
     if (loadKg >= 30 && skillsLower.some(s => s.includes('heavy') || s.includes('lift') || s.includes('physical'))) {
@@ -507,9 +522,9 @@ export function rankVolunteersForPickup(
       reasons.push('Experienced food rescue pickup volunteer.')
     }
 
-    reasons.push(v.windowAvailable === true
-      ? 'Volunteer schedule covers the pickup window; server will revalidate on confirmation.'
-      : 'Active roster status only; pickup-window availability has not been verified.')
+    reasons.push('Active roster status; eligible for assignment.')
+
+
 
     return {
       volunteerId,
@@ -522,7 +537,7 @@ export function rankVolunteersForPickup(
       rank: 1,
       reasons,
       constraints,
-      availabilityLabel: String(v.windowAvailabilityLabel || (v.windowAvailable === true ? 'Schedule eligible' : 'Roster only')),
+      availabilityLabel: 'Active — Eligible',
     }
   })
 
@@ -538,20 +553,23 @@ export function rankVolunteersForPickup(
 
   const suitable = scored.filter(c => c.isEligible)
   const bestVolunteer = suitable.length > 0 ? suitable[0] : null
-  const isWindowCheckPending = volunteers.some(v =>
-    v.windowAvailabilityLabel === 'Checking'
-      || v.windowAvailabilityLabel === 'Not checked'
-      || v.windowAvailabilityLabel === 'Unverified'
+
+
+
+
+
+  const hasUnverifiedCandidates = scored.some(
+    candidate => candidate.status === 'ACTIVE' && candidate.availabilityLabel === 'Not checked'
   )
-  const hasWindowCheck = volunteers.some(v => v.windowAvailable !== undefined)
   const noCandidatesReason =
-    suitable.length === 0
-      ? isWindowCheckPending
-        ? undefined
-        : hasWindowCheck
-          ? 'No active volunteer is eligible for this pickup window. Choose a different window or review volunteer availability.'
-          : 'No active volunteers are currently available in the roster.'
+    suitable.length === 0 && !hasUnverifiedCandidates
+      ? 'No active volunteers are currently available in the roster.'
       : undefined
+
+
+
+
+
 
   return { ranked: scored, suitable, bestVolunteer, noCandidatesReason }
 }

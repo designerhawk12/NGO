@@ -113,9 +113,12 @@ export class DefaultDriverPort implements DriverPort {
       licence_expires_on: Date | string;
       status: 'ACTIVE' | 'INACTIVE';
     }>(
-      `SELECT id, person_id, licence_number, licence_expires_on, status FROM app.drivers WHERE id = $1`,
+      `SELECT d.id, d.person_id, d.licence_number, d.licence_expires_on, d.status
+       FROM app.drivers d
+       WHERE d.id = $1`,
       [driverId]
     );
+
     if (result.rows.length === 0) return null;
     const row = result.rows[0];
     return {

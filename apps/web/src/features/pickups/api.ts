@@ -75,7 +75,7 @@ export async function createAssignment(
 
 export async function transitionAssignment(
   assignmentId: string,
-  action: 'DELIVER' | 'CANCEL' | 'FAIL',
+  action: 'ACCEPT' | 'START' | 'ARRIVE' | 'COLLECT' | 'DELIVER' | 'CANCEL' | 'FAIL',
   expectedVersion: number,
   reason?: string
 ): Promise<LiveAssignment> {

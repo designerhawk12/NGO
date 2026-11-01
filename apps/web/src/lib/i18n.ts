@@ -676,6 +676,20 @@ const kannada: Record<string, string> = {
   'Vehicle Station:': 'ವಾಹನ ನಿಲ್ದಾಣ:',
   '🚀 Leg 1: Station ➔ Donor Venue': '🚀 ಹಂತ 1: ನಿಲ್ದಾಣ ➔ ದಾನಿಗಳ ಸ್ಥಳ',
   '🥘 Leg 2: Donor Venue ➔ Distribution Center': '🥘 ಹಂತ 2: ದಾನಿಗಳ ಸ್ಥಳ ➔ ವಿತರಣಾ ಕೇಂದ್ರ',
+  'Choose an authorized driver or volunteer driver with a valid licence for this pickup.': 'ಈ ಪಿಕಪ್‌ಗಾಗಿ ಮಾನ್ಯ ಪರವಾನಗಿ ಹೊಂದಿರುವ ಅಧಿಕೃತ ಚಾಲಕ ಅಥವಾ ಸ್ವಯಂಸೇವಕ ಚಾಲಕರನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
+  'Choose packing and food rescue crew members for this pickup. (Drivers are selected in Step 2)': 'ಈ ಪಿಕಪ್‌ಗಾಗಿ ಪ್ಯಾಕಿಂಗ್ ಮತ್ತು ಆಹಾರ ರಕ್ಷಣಾ ಸಿಬ್ಬಂದಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ. (ಚಾಲಕರನ್ನು ಹಂತ 2ರಲ್ಲಿ ಆಯ್ಕೆಮಾಡಲಾಗುತ್ತದೆ)',
+  'Showing packing & food handling crew (skills except driving)': 'ಪ್ಯಾಕಿಂಗ್ ಮತ್ತು ಆಹಾರ ನಿರ್ವಹಣಾ ಸಿಬ್ಬಂದಿಯನ್ನು ತೋರಿಸಲಾಗುತ್ತಿದೆ (ಚಾಲನಾ ಕೌಶಲ್ಯ ಹೊರತುಪಡಿಸಿ)',
+  'Dispatch Actions': 'ರವಾನೆ ಕ್ರಮಗಳು',
+  'Accept Assignment': 'ನಿಯೋಜನೆಯನ್ನು ಸ್ವೀಕರಿಸಿ',
+  'View Optimal Route —': 'ಉತ್ತಮ ಮಾರ್ಗವನ್ನು ವೀಕ್ಷಿಸಿ —',
+  'km · ~': 'ಕಿಮೀ · ~',
+  'min to donor': 'ನಿಮಿಷಗಳಲ್ಲಿ ದಾನಿಗಳ ಸ್ಥಳಕ್ಕೆ',
+  'Start Trip — Mark EN ROUTE': 'ಪ್ರಯಾಣ ಪ್ರಾರಂಭಿಸಿ — ಮಾರ್ಗದಲ್ಲಿದೆ ಎಂದು ಗುರುತಿಸಿ',
+  'Navigate to Donor —': 'ದಾನಿಗಳ ಸ್ಥಳಕ್ಕೆ ನ್ಯಾವಿಗೇಟ್ ಮಾಡಿ —',
+  'Mark Arrived at Donor': 'ದಾನಿಗಳ ಸ್ಥಳಕ್ಕೆ ಆಗಮಿಸಿದೆ ಎಂದು ಗುರುತಿಸಿ',
+  'Confirm Food Collected': 'ಆಹಾರ ಸಂಗ್ರಹವನ್ನು ದೃಢೀಕರಿಸಿ',
+  'Navigate to Distribution Center —': 'ವಿತರಣಾ ಕೇಂದ್ರಕ್ಕೆ ನ್ಯಾವಿಗೇಟ್ ಮಾಡಿ —',
+  'Confirm Delivered': 'ವಿತರಣೆ ಪೂರ್ಣಗೊಂಡಿದೆ ಎಂದು ದೃಢೀಕರಿಸಿ',
 }
 
 function translateDynamic(value: string): string | undefined {

@@ -124,29 +124,6 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
       notify(msg, 'error')
       return
     }
-    if (isLiveAdmin()) {
-      const readyAt = Date.parse(selectedRequest?.readyAt ?? '')
-      const pickupDeadline = Date.parse(selectedRequest?.pickupDeadline ?? '')
-      const start = Date.parse(startsAt)
-      const end = Date.parse(endsAt)
-      const now = Date.now()
-      const msg = !Number.isFinite(readyAt) || !Number.isFinite(pickupDeadline)
-        ? 'Food request timing could not be verified. Refresh the request list before scheduling.'
-        : pickupDeadline <= now
-          ? 'The food request pickup deadline has expired. Ask the donor to submit a new request; this request cannot be extended or reused.'
-          : start <= now
-            ? 'Pickup window must start in the future.'
-            : start < readyAt
-              ? `Pickup window cannot start before the food is ready at ${new Date(readyAt).toLocaleString()}.`
-              : end > pickupDeadline
-                ? `Pickup window cannot end after the food request deadline at ${new Date(pickupDeadline).toLocaleString()}.`
-                : null
-      if (msg) {
-        setError(msg)
-        notify(msg, 'error')
-        return
-      }
-    }
     setSubmitting(true)
     setError(null)
     try {

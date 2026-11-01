@@ -3,7 +3,16 @@ import type { ApiResponse } from '@aaharaconnect/shared';
 type ApiOptions = Omit<RequestInit, 'body'> & { body?: unknown };
 
 export class ApiClientError extends Error {
-  constructor(public status: number, public code: string, message: string) { super(message); }
+  public details?: { field?: string; reason: string }[]
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+    details?: { field?: string; reason: string }[]
+  ) {
+    super(message)
+    this.details = details
+  }
 }
 
 /** Future web services should use this client instead of calling fetch in components. */
@@ -36,8 +45,14 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
     throw new ApiClientError(response.status, 'INVALID_RESPONSE', 'The API returned an unexpected response.');
   }
   if (!response.ok || !payload.success) {
-    const error = payload.success ? { code: 'HTTP_ERROR', message: `Request failed (${response.status}).` } : payload.error;
-    throw new ApiClientError(response.status, error.code, error.message);
+    const error = payload.success
+      ? { code: 'HTTP_ERROR', message: `Request failed (${response.status}).`, details: undefined }
+      : payload.error;
+    const details = (error as any).details as { field?: string; reason: string }[] | undefined
+    const detailMsg = details?.length
+      ? ' | Fields: ' + details.map((d) => `${d.field ?? '?'}: ${d.reason}`).join('; ')
+      : ''
+    throw new ApiClientError(response.status, error.code, error.message + detailMsg, details);
   }
   return payload.data;
 }

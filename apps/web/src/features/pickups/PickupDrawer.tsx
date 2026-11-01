@@ -177,7 +177,7 @@ export function PickupDrawer({
   const [submittingAction, setSubmittingAction] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const handleAdminAction = async (action: 'DELIVER' | 'CANCEL' | 'FAIL') => {
+  const handleAdminAction = async (action: 'ACCEPT' | 'START' | 'ARRIVE' | 'COLLECT' | 'DELIVER' | 'CANCEL' | 'FAIL') => {
     if (!currentAssignment) return
     if ((action === 'CANCEL' || action === 'FAIL') && !transitionReason.trim()) {
       notify('A reason is required to cancel or mark failure.', 'error')
@@ -669,57 +669,166 @@ export function PickupDrawer({
           currentAssignment &&
           !TERMINAL_STATUSES.has(currentAssignment.status) &&
           !isCancelledOrFailed &&
-          pickup.status !== 'DELIVERED' && (
-          <div className="detail-section">
-            <h3>Admin Actions</h3>
-            {actionError && (
-              <div style={{ color: '#dc2626', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
-                {actionError}
-              </div>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {currentAssignment.status === 'FOOD_COLLECTED' && (
-                <button
-                  type="button"
-                  className="button button-primary full-width"
-                  disabled={submittingAction}
-                  onClick={() => handleAdminAction('DELIVER')}
-                >
-                  Deliver
-                </button>
-              )}
+          pickup.status !== 'DELIVERED' && (() => {
+            // Compute trip route once for this assignment (vehicle location -> donor -> delivery)
+            // We pass a minimal vehicle stub so getVehicleLocation resolves the fleet depot from vehicleId
+            const tripRoute = buildTripRoute(
+              { id: currentAssignment.vehicleId },
+              pickup.donorLocation,
+              pickup.deliveryAddress
+            )
+            const [dLat, dLng] = tripRoute.donorLocation.coordinates
+            const [delivLat, delivLng] = tripRoute.deliveryLocation.coordinates
 
-              <label className="field">
-                <span>Reason for Cancellation / Failure</span>
-                <input
-                  type="text"
-                  placeholder="Enter reason"
-                  value={transitionReason}
-                  onChange={e => setTransitionReason(e.target.value)}
-                />
-              </label>
+            // Individual Maps URLs
+            const mapsTodonor = `https://www.google.com/maps/dir/?api=1&destination=${dLat},${dLng}&travelmode=driving`
+            const mapsToDelivery = `https://www.google.com/maps/dir/?api=1&destination=${delivLat},${delivLng}&travelmode=driving`
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  className="button button-danger"
-                  disabled={submittingAction}
-                  onClick={() => handleAdminAction('CANCEL')}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="button button-danger"
-                  disabled={submittingAction}
-                  onClick={() => handleAdminAction('FAIL')}
-                >
-                  Fail
-                </button>
+            return (
+              <div className="detail-section">
+                <h3>Dispatch Actions</h3>
+
+                {/* Route summary chip */}
+                <div style={{ fontSize: '0.78rem', color: '#475569', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.4rem 0.6rem', marginBottom: '0.6rem' }}>
+                  📍 {tripRoute.routeSummary}
+                </div>
+
+                {actionError && (
+                  <div style={{ color: '#dc2626', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                    {actionError}
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+                  {/* ACCEPT: PENDING -> ACCEPTED */}
+                  {currentAssignment.status === 'PENDING' && (
+                    <button
+                      type="button"
+                      className="button button-primary full-width"
+                      disabled={submittingAction}
+                      onClick={() => handleAdminAction('ACCEPT')}
+                    >
+                      Accept Assignment
+                    </button>
+                  )}
+
+                  {/* START TRIP: ACCEPTED -> EN_ROUTE */}
+                  {currentAssignment.status === 'ACCEPTED' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <a
+                        href={tripRoute.navigationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.55rem 0.8rem', background: '#f0fdf4', border: '1.5px solid #6ee7b7', borderRadius: '7px', color: '#065f46', fontWeight: 600, fontSize: '0.84rem', textDecoration: 'none' }}
+                      >
+                        <Navigation size={15} style={{ color: '#059669' }} />
+                        View Optimal Route — {tripRoute.distanceToDonorKm} km · ~{tripRoute.durationToDonorMins} min to donor
+                        <ExternalLink size={12} style={{ marginLeft: 'auto' }} />
+                      </a>
+                      <button
+                        type="button"
+                        className="button button-primary full-width"
+                        disabled={submittingAction}
+                        onClick={() => handleAdminAction('START')}
+                      >
+                        Start Trip — Mark EN ROUTE
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ARRIVE: EN_ROUTE -> ARRIVED_AT_DONOR */}
+                  {currentAssignment.status === 'EN_ROUTE' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <a
+                        href={mapsTodonor}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.55rem 0.8rem', background: '#eff6ff', border: '1.5px solid #93c5fd', borderRadius: '7px', color: '#1d4ed8', fontWeight: 600, fontSize: '0.84rem', textDecoration: 'none' }}
+                      >
+                        <Navigation size={15} />
+                        Navigate to Donor — {tripRoute.donorLocation.name}
+                        <ExternalLink size={12} style={{ marginLeft: 'auto' }} />
+                      </a>
+                      <button
+                        type="button"
+                        className="button button-primary full-width"
+                        disabled={submittingAction}
+                        onClick={() => handleAdminAction('ARRIVE')}
+                      >
+                        Mark Arrived at Donor
+                      </button>
+                    </div>
+                  )}
+
+                  {/* COLLECT: ARRIVED_AT_DONOR -> FOOD_COLLECTED */}
+                  {currentAssignment.status === 'ARRIVED_AT_DONOR' && (
+                    <button
+                      type="button"
+                      className="button button-primary full-width"
+                      disabled={submittingAction}
+                      onClick={() => handleAdminAction('COLLECT')}
+                    >
+                      Confirm Food Collected
+                    </button>
+                  )}
+
+                  {/* DELIVER: FOOD_COLLECTED -> DELIVERED */}
+                  {currentAssignment.status === 'FOOD_COLLECTED' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <a
+                        href={mapsToDelivery}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.55rem 0.8rem', background: '#fefce8', border: '1.5px solid #fde68a', borderRadius: '7px', color: '#92400e', fontWeight: 600, fontSize: '0.84rem', textDecoration: 'none' }}
+                      >
+                        <Navigation size={15} />
+                        Navigate to Distribution Center — {tripRoute.deliveryLocation.name}
+                        <ExternalLink size={12} style={{ marginLeft: 'auto' }} />
+                      </a>
+                      <button
+                        type="button"
+                        className="button button-primary full-width"
+                        disabled={submittingAction}
+                        onClick={() => handleAdminAction('DELIVER')}
+                      >
+                        Confirm Delivered
+                      </button>
+                    </div>
+                  )}
+
+                  <label className="field">
+                    <span>Reason for Cancellation / Failure</span>
+                    <input
+                      type="text"
+                      placeholder="Enter reason"
+                      value={transitionReason}
+                      onChange={e => setTransitionReason(e.target.value)}
+                    />
+                  </label>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="button button-danger"
+                      disabled={submittingAction}
+                      onClick={() => handleAdminAction('CANCEL')}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-danger"
+                      disabled={submittingAction}
+                      onClick={() => handleAdminAction('FAIL')}
+                    >
+                      Fail
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )
+          })()
+        }
 
         {/* Vehicle Projection View */}
         {currentAssignment?.vehicleId && (
