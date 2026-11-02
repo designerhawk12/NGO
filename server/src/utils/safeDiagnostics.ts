@@ -37,6 +37,29 @@ export function isDatabaseConnectionError(error: unknown): boolean {
   return false;
 }
 
+/** Production-safe PostgreSQL diagnostics. Never include driver messages or URLs. */
+export function reportDatabaseConnectionError(error: unknown, requestId: string | undefined): void {
+  const candidate = errorCode(error)?.toUpperCase();
+  const knownCodes = new Set([...databaseConnectionCodes, 'SELF_SIGNED_CERT_IN_CHAIN',
+    '28P01', '28000', 'XX000']);
+  const code = candidate && (knownCodes.has(candidate) || /^08[A-Z0-9]{3}$/.test(candidate))
+    ? candidate : undefined;
+  const category = code === 'ENOTFOUND' || code === 'EAI_AGAIN' ? 'DNS'
+    : code === 'ECONNREFUSED' ? 'CONNECTION_REFUSED'
+    : code === 'ETIMEDOUT' ? 'TIMEOUT'
+    : code === '28P01' || code === '28000' ? 'AUTHENTICATION'
+    : code === 'SELF_SIGNED_CERT_IN_CHAIN' || code === 'DEPTH_ZERO_SELF_SIGNED_CERT'
+      || code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' || code === 'ERR_TLS_CERT_ALTNAME_INVALID'
+      || code === 'CERT_HAS_EXPIRED' ? 'TLS'
+    : code?.startsWith('08') ? 'CONNECTION'
+    : 'OTHER';
+  const candidateClass = errorClass(error);
+  const safeClass = ['Error', 'TypeError', 'AggregateError', 'SystemError'].includes(candidateClass)
+    ? candidateClass : 'UnknownError';
+  console.error(JSON.stringify({ level: 'error', requestId, subsystem: 'PostgreSQL',
+    errorClass: safeClass, category, ...(code ? { code } : {}) }));
+}
+
 function identifySubsystem(error: unknown, code: string | undefined): DiagnosticSubsystem {
   if (isDatabaseConnectionError(error) || (code && /^[0-9A-Z]{5}$/.test(code))) return 'PostgreSQL';
   const name = errorClass(error);

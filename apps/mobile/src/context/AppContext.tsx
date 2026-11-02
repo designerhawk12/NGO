@@ -8,6 +8,8 @@ import { restoreAppUser, signOut } from '../api/auth';
 
 type AppValue = {
   role: Role; mode: 'demo' | 'live' | null; login: (role: Exclude<Role, null>) => void; loginAuthenticated: (role: Exclude<Role, null>) => void; logout: () => void;
+  volunteerApplicationStatus: 'PENDING' | 'DENIED' | null;
+  setVolunteerApplicationStatus: (status: 'PENDING' | 'DENIED' | null) => void;
   assignments: VolunteerAssignment[]; updateAssignment: (id: string, status: AssignmentStatus, reason?: string) => void;
   slots: AvailabilitySlot[]; saveSlot: (slot: AvailabilitySlot) => void; deleteSlot: (id: string) => void;
   volunteer: VolunteerProfile; saveVolunteer: (profile: VolunteerProfile) => void;
@@ -20,11 +22,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const { t } = useLanguage();
   const [role, setRole] = useState<Role>(null);
   const [mode, setMode] = useState<'demo' | 'live' | null>(null);
+  const [volunteerApplicationStatus, setVolunteerApplicationStatus] = useState<'PENDING' | 'DENIED' | null>(null);
   const demoChosen = useRef(false);
   useEffect(() => {
     let active = true;
     restoreAppUser().then(user => {
-      if (active && !demoChosen.current && (user?.role === 'DONOR' || user?.role === 'VOLUNTEER')) {
+      if (!active || demoChosen.current) return;
+      if (user?.role === 'VOLUNTEER' && (user.volunteerApplicationStatus === 'PENDING' || user.volunteerApplicationStatus === 'DENIED')) {
+        setVolunteerApplicationStatus(user.volunteerApplicationStatus === 'DENIED' ? 'DENIED' : 'PENDING');
+        return;
+      }
+      if (user?.role === 'DONOR' || user?.role === 'VOLUNTEER') {
+        setVolunteerApplicationStatus(null);
         setMode('live');
         setRole(user.role === 'DONOR' ? 'donor' : 'volunteer');
       }
@@ -61,9 +70,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const value = {
     role, mode,
-    login: (next: Exclude<Role, null>) => { demoChosen.current = true; void signOut(); setMode('demo'); setRole(next); },
-    loginAuthenticated: (next: Exclude<Role, null>) => { demoChosen.current = false; setMode('live'); setRole(next); },
-    logout: () => { demoChosen.current = false; setMode(null); setRole(null); void signOut(); },
+    volunteerApplicationStatus, setVolunteerApplicationStatus,
+    login: (next: Exclude<Role, null>) => { demoChosen.current = true; setVolunteerApplicationStatus(null); void signOut(); setMode('demo'); setRole(next); },
+    loginAuthenticated: (next: Exclude<Role, null>) => { demoChosen.current = false; setVolunteerApplicationStatus(null); setMode('live'); setRole(next); },
+    logout: () => { demoChosen.current = false; setVolunteerApplicationStatus(null); setMode(null); setRole(null); void signOut(); },
     assignments: mode === 'live' && role === 'volunteer' ? [] : assignments, updateAssignment,
     slots: mode === 'live' && role === 'volunteer' ? [] : slots, saveSlot, deleteSlot,
     volunteer, saveVolunteer, donor, saveDonor, requests: mode === 'live' && role === 'donor' ? [] : requests, submitRequest, cancelRequest, notify };

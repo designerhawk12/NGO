@@ -1,12 +1,32 @@
-import { uuidSchema, type AppUser, type Availability, type CreateAvailabilityRequest, type Team, type Volunteer } from '@aaharaconnect/shared';
+import {
+  uuidSchema,
+  type AppUser,
+  type Availability,
+  type CreateAvailabilityRequest,
+  type Team,
+  type Volunteer,
+  type VolunteerApplication,
+  type VolunteerApprovalDecision,
+  type VolunteerRegistrationResult,
+} from '@aaharaconnect/shared';
 import type { PoolClient } from 'pg';
 import { withTransaction } from '../../db/pool';
-import { inviteSupabaseUserByEmail } from '../../auth/supabase';
+import { getSupabaseUserEmail, inviteSupabaseUserByEmail } from '../../auth/supabase';
 import { HttpError } from '../../middleware/errorHandler';
 import * as volunteerRepository from './repository';
 import type { VolunteerProfileRow } from './repository';
 import type { AvailabilityRow } from './repository';
-import type { CreateAdminVolunteerInput, CreateTeamInput, ListTeamsQuery, ListVolunteersQuery, UpdateAdminVolunteerInput, UpdateOwnProfileInput, UpdateTeamInput } from './schemas';
+import type {
+  CreateAdminVolunteerInput,
+  CreateSelfRegistrationInput,
+  CreateTeamInput,
+  ListApplicationsQuery,
+  ListTeamsQuery,
+  ListVolunteersQuery,
+  UpdateAdminVolunteerInput,
+  UpdateOwnProfileInput,
+  UpdateTeamInput,
+} from './schemas';
 
 function requireVolunteer(actor: AppUser): void {
   if (actor.role !== 'VOLUNTEER') throw new HttpError(403, 'FORBIDDEN', 'Volunteer access is required.');
@@ -198,6 +218,80 @@ export async function createAdminVolunteer(actor: AppUser, input: CreateAdminVol
     console.error(JSON.stringify({ level: 'error', subsystem: 'VolunteerProvisioning', code: 'INVITE_RECOVERY_REQUIRED' }));
     throw new HttpError(503, 'INVITE_RECOVERY_REQUIRED', 'Volunteer provisioning needs administrator review before retrying.');
   }
+}
+
+function registrationConflict(): HttpError {
+  return new HttpError(409, 'VOLUNTEER_REGISTRATION_CONFLICT', 'An account or volunteer record already uses these details.');
+}
+
+export async function registerVolunteer(input: CreateSelfRegistrationInput): Promise<VolunteerRegistrationResult> {
+  const conflict = await volunteerRepository.findAdminVolunteerConflict(input.registrationCode, input.phoneE164);
+  if (conflict) throw registrationConflict();
+
+  let invited: Awaited<ReturnType<typeof inviteSupabaseUserByEmail>>;
+  try {
+    invited = await inviteSupabaseUserByEmail(input.email, input.name);
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 409) throw registrationConflict();
+    throw error;
+  }
+
+  try {
+    await withTransaction(client => volunteerRepository.insertSelfRegisteredVolunteer(invited.authUserId, input, client));
+  } catch {
+    // The Auth invitation is an external side effect and cannot be rolled back
+    // with the PostgreSQL transaction. Keep the identity and require review.
+    console.error(JSON.stringify({ level: 'error', subsystem: 'VolunteerRegistration', code: 'REGISTRATION_REVIEW_REQUIRED' }));
+    throw new HttpError(503, 'VOLUNTEER_REGISTRATION_REVIEW_REQUIRED', 'Your invitation may have been sent, but the application needs administrator review before retrying.');
+  }
+
+  return {
+    status: 'PENDING',
+    message: 'Application submitted. Check your email to set your password. Volunteer access begins after administrator approval.',
+  };
+}
+
+export async function listPendingVolunteerApplications(
+  actor: AppUser,
+  query: ListApplicationsQuery
+): Promise<{ items: VolunteerApplication[]; nextCursor: string | null }> {
+  requireAdmin(actor);
+  const result = await volunteerRepository.listPendingVolunteerApplications(query);
+  const items = await Promise.all(result.rows.map(async row => ({
+    volunteerId: row.volunteer_id,
+    email: await getSupabaseUserEmail(row.auth_user_id),
+    name: row.name,
+    phoneE164: row.phone_e164,
+    registrationCode: row.registration_code,
+    skills: row.skills,
+    applicationId: row.application_id,
+    status: row.status,
+    submittedAt: row.submitted_at.toISOString(),
+  })));
+  return { items, nextCursor: result.nextCursor };
+}
+
+export async function decideVolunteerApplication(
+  actor: AppUser,
+  volunteerId: string,
+  decision: VolunteerApprovalDecision
+): Promise<{ volunteerId: string; status: 'APPROVED' | 'DENIED' }> {
+  requireAdmin(actor);
+  return withTransaction(async client => {
+    const application = await volunteerRepository.findVolunteerApplicationForUpdate(volunteerId, client);
+    if (!application) throw new HttpError(404, 'NOT_FOUND', 'Volunteer application not found.');
+    if (application.app_user_role !== 'VOLUNTEER') {
+      throw new HttpError(409, 'RESOURCE_CONFLICT', 'The linked account is not a Volunteer account.');
+    }
+    if (application.status !== 'PENDING') {
+      throw new HttpError(409, 'RESOURCE_CONFLICT', 'This volunteer application has already been reviewed.');
+    }
+    const updated = await volunteerRepository.setVolunteerApplicationDecision(
+      volunteerId, decision.status, actor.id, client
+    );
+    if (!updated) throw new HttpError(409, 'RESOURCE_CONFLICT', 'This volunteer application has already been reviewed.');
+    return { volunteerId: updated.volunteer_id, status: updated.status as 'APPROVED' | 'DENIED' };
+  });
 }
 
 export async function updateAdminVolunteer(actor: AppUser, id: string, input: UpdateAdminVolunteerInput): Promise<Volunteer> {

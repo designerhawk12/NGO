@@ -27,6 +27,7 @@ const actor = {
   authUserId: '076f89a1-77a8-44de-bef3-189291a0f331',
   role: 'VOLUNTEER',
   displayName: null,
+  volunteerApplicationStatus: 'APPROVED',
 };
 const volunteerId = '7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5';
 const personId = '3c597e69-6be5-4d29-97fc-a946fa8a5300';
@@ -103,7 +104,7 @@ describe('Volunteer self-profile API', () => {
     expect(query).not.toHaveBeenCalled();
   });
 
-  it.each(['role', 'status', 'approvalStatus', 'registrationCode', 'id', 'volunteerId', 'volunteer_id', 'userId', 'user_id', 'authUserId', 'auth_user_id', 'personId', 'adminNotes', 'skills'])(
+  it.each(['role', 'status', 'approvalStatus', 'applicationStatus', 'registrationCode', 'id', 'volunteerId', 'volunteer_id', 'userId', 'user_id', 'authUserId', 'auth_user_id', 'personId', 'adminNotes', 'skills'])(
     'rejects a forbidden %s field with 400', async field => {
       const result = await request(app).patch(path).set('Authorization', 'Bearer verified-token')
         .send({ name: 'Other', [field]: 'changed' });

@@ -137,3 +137,17 @@ export async function inviteSupabaseUserByEmail(
     );
   }
 }
+
+export async function getSupabaseUserEmail(authUserId: string): Promise<string> {
+  const supabase = getSupabaseAdminClient();
+  let result: Awaited<ReturnType<typeof supabase.auth.admin.getUserById>>;
+  try {
+    result = await supabase.auth.admin.getUserById(authUserId);
+  } catch {
+    throw new HttpError(503, 'AUTH_USER_LOOKUP_FAILED', 'Applicant email could not be loaded.');
+  }
+  if (result.error || !result.data.user || result.data.user.id !== authUserId || !result.data.user.email) {
+    throw new HttpError(503, 'AUTH_USER_LOOKUP_FAILED', 'Applicant email could not be loaded.');
+  }
+  return result.data.user.email;
+}

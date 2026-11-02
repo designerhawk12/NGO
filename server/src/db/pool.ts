@@ -1,19 +1,22 @@
-import { existsSync, readFileSync } from 'node:fs';
 import { Pool, type PoolClient } from 'pg';
 import { env } from '../config/env';
 import { HttpError } from '../middleware/errorHandler';
+import { databaseSslOptions } from './tls';
 
 let pool: Pool | undefined;
 
 export function getPool(): Pool {
   if (!env.databaseUrl) throw new HttpError(503, 'SERVICE_UNAVAILABLE', 'Database is not configured.');
   if (!pool) {
-    let caCert: string | undefined;
-    if (env.databaseSsl && env.databaseSslCaPath) {
-      if (!existsSync(env.databaseSslCaPath)) {
-        throw new HttpError(503, 'SERVICE_UNAVAILABLE', 'Database SSL CA file not found at configured path.');
-      }
-      caCert = readFileSync(env.databaseSslCaPath, 'utf8');
+    let ssl: ReturnType<typeof databaseSslOptions>;
+    try {
+      ssl = databaseSslOptions({
+        enabled: env.databaseSsl,
+        inlineCa: env.databaseSslCa,
+        caPath: env.databaseSslCaPath,
+      });
+    } catch {
+      throw new HttpError(503, 'SERVER_CONFIGURATION_ERROR', 'Database SSL CA configuration is invalid or unavailable.');
     }
 
     pool = new Pool({
@@ -23,7 +26,7 @@ export function getPool(): Pool {
       idleTimeoutMillis: 30000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
-      ssl: env.databaseSsl ? { rejectUnauthorized: true, ...(caCert ? { ca: caCert } : {}) } : undefined,
+      ssl,
     });
 
     pool.on('error', (error) => {

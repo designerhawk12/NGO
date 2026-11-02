@@ -20,10 +20,10 @@ if (!['development', 'test', 'production'].includes(nodeEnv)) {
   throw new Error('NODE_ENV must be development, test, or production.');
 }
 
-const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+const corsOrigins = (process.env.CORS_ORIGIN ?? (nodeEnv === 'production' ? '' : 'http://localhost:5173'))
   .split(',').map(origin => origin.trim()).filter(Boolean);
-if (corsOrigins.length === 0 || corsOrigins.some(origin => !/^https?:\/\//.test(origin))) {
-  throw new Error('CORS_ORIGIN must contain one or more http(s) origins.');
+if (corsOrigins.some(origin => !/^https?:\/\//.test(origin))) {
+  throw new Error('CORS_ORIGIN must contain only http(s) origins.');
 }
 
 export function parseDatabaseUrl(rawUrl?: string): string | undefined {
@@ -63,6 +63,7 @@ export const env = {
   corsOrigins,
   databaseUrl: parseDatabaseUrl(process.env.DATABASE_URL),
   databaseSsl: process.env.DATABASE_SSL === 'true' || (nodeEnv === 'production' && process.env.DATABASE_SSL !== 'false'),
+  databaseSslCa: process.env.DATABASE_SSL_CA?.trim() || undefined,
   databaseSslCaPath: process.env.DATABASE_SSL_CA_PATH?.trim() || undefined,
   supabaseUrl: process.env.SUPABASE_URL || undefined,
   supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || undefined,
@@ -76,7 +77,16 @@ if (!Number.isInteger(env.locationRetentionDays) || env.locationRetentionDays < 
 }
 if (env.supabaseUrl && !/^https:\/\//.test(env.supabaseUrl)) throw new Error('SUPABASE_URL must use https.');
 validateVolunteerInviteRedirectUrl(env.volunteerInviteRedirectUrl, env.nodeEnv);
-if (env.nodeEnv === 'production' && (!env.databaseUrl || !env.supabaseUrl || !env.supabasePublishableKey || !process.env.CORS_ORIGIN)) {
-  throw new Error('Production requires DATABASE_URL, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY and CORS_ORIGIN.');
+export const missingProductionConfig = env.nodeEnv === 'production'
+  ? [
+      !env.databaseUrl && 'DATABASE_URL',
+      !env.supabaseUrl && 'SUPABASE_URL',
+      !env.supabasePublishableKey && 'SUPABASE_PUBLISHABLE_KEY',
+      corsOrigins.length === 0 && 'CORS_ORIGIN',
+    ].filter((name): name is string => typeof name === 'string')
+  : [];
+export const invalidProductionConfig = env.nodeEnv === 'production' && !env.databaseSsl
+  ? ['DATABASE_SSL'] : [];
+if (missingProductionConfig.length > 0 || invalidProductionConfig.length > 0) {
+  console.error(JSON.stringify({ level: 'error', kind: 'ServerConfigurationError', missing: missingProductionConfig, invalid: invalidProductionConfig }));
 }
-if (env.nodeEnv === 'production' && !env.databaseSsl) throw new Error('Production database TLS cannot be disabled.');

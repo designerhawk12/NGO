@@ -2,13 +2,18 @@ import { Router } from 'express';
 import { sendSuccess } from '../utils/response';
 import { getPool } from '../db/pool';
 import { HttpError } from '../middleware/errorHandler';
-import { reportDevelopmentError } from '../utils/safeDiagnostics';
+import { reportDatabaseConnectionError } from '../utils/safeDiagnostics';
+import { invalidProductionConfig, missingProductionConfig } from '../config/env';
 
 export const healthRouter = Router();
 healthRouter.get('/', (_request, response) => {
   sendSuccess(response, { status: 'ok', timestamp: new Date().toISOString() });
 });
 healthRouter.get('/ready', async (_request, response, next) => {
+  if (missingProductionConfig.length > 0 || invalidProductionConfig.length > 0) {
+    next(new HttpError(503, 'SERVER_CONFIGURATION_ERROR', 'The API is not configured for this environment.'));
+    return;
+  }
   try {
     await getPool().query('SELECT 1');
     sendSuccess(response, { status: 'ready' });
@@ -17,7 +22,7 @@ healthRouter.get('/ready', async (_request, response, next) => {
       next(error);
       return;
     }
-    reportDevelopmentError(error, response.locals.requestId as string | undefined, 'PostgreSQL');
+    reportDatabaseConnectionError(error, response.locals.requestId as string | undefined);
     next(new HttpError(503, 'DATABASE_UNAVAILABLE', 'Database is temporarily unavailable.'));
   }
 });

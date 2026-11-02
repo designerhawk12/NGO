@@ -1,5 +1,13 @@
 import { z } from 'zod';
-import { availabilityInputSchema, pageQuerySchema, phoneE164Schema, uuidSchema, volunteerStatusSchema } from '@aaharaconnect/shared';
+import {
+  availabilityInputSchema,
+  pageQuerySchema,
+  phoneE164Schema,
+  uuidSchema,
+  volunteerApprovalDecisionSchema,
+  volunteerRegistrationInputSchema,
+  volunteerStatusSchema,
+} from '@aaharaconnect/shared';
 
 export const updateOwnProfileSchema = z.strictObject({
   name: z.string().trim().min(1).max(200).optional(),
@@ -35,6 +43,15 @@ export const createAdminVolunteerSchema = z.strictObject({
   status: volunteerStatusSchema.default('ACTIVE'),
 });
 export type CreateAdminVolunteerInput = z.infer<typeof createAdminVolunteerSchema>;
+
+export const createSelfRegistrationSchema = volunteerRegistrationInputSchema;
+export type CreateSelfRegistrationInput = z.infer<typeof createSelfRegistrationSchema>;
+
+export const decideVolunteerApplicationSchema = volunteerApprovalDecisionSchema;
+export type DecideVolunteerApplicationInput = z.infer<typeof decideVolunteerApplicationSchema>;
+
+export const listApplicationsQuerySchema = pageQuerySchema.strict();
+export type ListApplicationsQuery = z.infer<typeof listApplicationsQuerySchema>;
 
 export const updateAdminVolunteerSchema = z.strictObject({
   name: z.string().trim().min(1).max(200).optional(),

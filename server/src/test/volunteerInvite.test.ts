@@ -12,7 +12,7 @@ const { createClient, invite, getUserById, deleteUser, testEnv } = vi.hoisted(()
 vi.mock('@supabase/supabase-js', () => ({ createClient }))
 vi.mock('../config/env', () => ({ env: testEnv }))
 
-import { inviteSupabaseUserByEmail } from '../auth/supabase'
+import { getSupabaseUserEmail, inviteSupabaseUserByEmail } from '../auth/supabase'
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -83,5 +83,20 @@ describe('server-only Supabase volunteer invitations', () => {
     invite.mockResolvedValueOnce({ data: { user: null }, error: { status: 422, code: 'email_address_not_authorized', message: 'provider details' } })
     await expect(inviteSupabaseUserByEmail('new@example.com', 'New')).rejects.toMatchObject({ status: 422, code: 'INVITE_EMAIL_NOT_AUTHORIZED' })
     expect(deleteUser).not.toHaveBeenCalled()
+  })
+})
+
+describe('Admin-only Volunteer application email lookup', () => {
+  it('reads the submitted address through Supabase Admin API without returning Auth metadata', async () => {
+    getUserById.mockResolvedValueOnce({ data: { user: { id: 'auth-user-id', email: 'applicant@example.test' } }, error: null })
+    await expect(getSupabaseUserEmail('auth-user-id')).resolves.toBe('applicant@example.test')
+    expect(getUserById).toHaveBeenCalledWith('auth-user-id')
+  })
+
+  it('returns a safe service error if the linked Auth email cannot be read', async () => {
+    getUserById.mockResolvedValueOnce({ data: { user: null }, error: { status: 404 } })
+    await expect(getSupabaseUserEmail('missing-auth-user')).rejects.toMatchObject({
+      status: 503, code: 'AUTH_USER_LOOKUP_FAILED', message: 'Applicant email could not be loaded.',
+    })
   })
 })

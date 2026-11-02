@@ -29,6 +29,7 @@ const volunteer = {
   authUserId: 'b0000000-0000-4000-8000-000000000002',
   role: 'VOLUNTEER',
   displayName: 'Volunteer User',
+  volunteerApplicationStatus: 'APPROVED',
 };
 
 const unassignedVolunteer = {
@@ -36,6 +37,7 @@ const unassignedVolunteer = {
   authUserId: 'b0000000-0000-4000-8000-000000000004',
   role: 'VOLUNTEER',
   displayName: 'Unassigned Volunteer User',
+  volunteerApplicationStatus: 'APPROVED',
 };
 
 const donor = {
