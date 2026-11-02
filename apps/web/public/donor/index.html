@@ -159,6 +159,18 @@ body.dev .tag{display:inline-block}
       <button class="primary" id="btnLog">Log in <span class="tag">login()</span></button>
     </div>
 
+    <!-- Live Supabase Sign-In Panel -->
+    <div class="panel" id="emailSignInPanel" style="margin-top:12px;background:var(--surface);border:1px solid var(--line)">
+      <label style="margin-top:0;font-size:0.9rem;color:var(--leaf);font-weight:700">Supabase Live Sign-In</label>
+      <p class="hint" style="font-size:0.8rem;margin:2px 0 8px">Sign in with your verified Supabase donor/admin account to connect directly to PostgreSQL.</p>
+      <label style="font-size:0.85rem">Email</label>
+      <input id="sbEmail" type="email" placeholder="e.g. admin_test@gmail.com" autocomplete="email">
+      <label style="font-size:0.85rem">Password</label>
+      <input id="sbPass" type="password" placeholder="Password" autocomplete="current-password">
+      <div class="err" id="sbErr"></div>
+      <button type="button" class="secondary" id="btnSbLogin" style="width:100%;margin-top:10px">Sign In to Live Account</button>
+    </div>
+
     <!-- Live Auth Details Panel -->
     <div class="panel" id="tokenPanel" style="margin-top:12px;background:var(--leaf-soft);border:1px solid var(--line)">
       <label style="margin-top:0;font-size:0.85rem;color:var(--leaf);display:flex;justify-content:space-between">
@@ -249,7 +261,9 @@ body.dev .tag{display:inline-block}
 <script>
 /* ===== Mode & API Configuration ===== */
 const API_BASE = (window.VITE_API_BASE_URL || (location.port === '5173' ? 'http://localhost:4000/api/v1' : '/api/v1')).replace(/\/+$/, '');
-let isLiveMode = localStorage.getItem('aa:donor-live-mode') !== '0';
+const savedMode = localStorage.getItem('aa:donor-live-mode');
+let isLiveMode = savedMode === null ? true : savedMode === '1';
+
 
 function getStoredToken() {
   const custom = document.getElementById('tokenInput')?.value.trim();
@@ -302,6 +316,52 @@ const autoToken = getStoredToken();
 if (autoToken && document.getElementById('tokenInput')) {
   document.getElementById('tokenInput').value = autoToken;
   document.getElementById('tokenStatus').textContent = '(Session token found)';
+}
+
+const SUPABASE_AUTH_URL = 'https://oneiwcfdnqzcyfvxufhc.supabase.co/auth/v1';
+const SUPABASE_ANON_KEY = 'sb_publishable_FD8PY57Z8hN_opU4tRFAIg_NnRnq99o';
+
+const sbBtn = document.getElementById('btnSbLogin');
+if (sbBtn) {
+  sbBtn.onclick = async () => {
+    const email = document.getElementById('sbEmail')?.value.trim();
+    const password = document.getElementById('sbPass')?.value;
+    const errBox = document.getElementById('sbErr');
+    if (!email || !password) {
+      if (errBox) errBox.textContent = 'Enter your email and password.';
+      return;
+    }
+    if (errBox) errBox.textContent = '';
+    sbBtn.disabled = true;
+    sbBtn.textContent = 'Signing in…';
+    try {
+      const res = await fetch(`${SUPABASE_AUTH_URL}/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.access_token) {
+        throw new Error(data.error_description || data.msg || 'Authentication failed. Please verify credentials.');
+      }
+      localStorage.setItem('aaharaconnect-donor-token', data.access_token);
+      if (document.getElementById('tokenInput')) {
+        document.getElementById('tokenInput').value = data.access_token;
+      }
+      if (document.getElementById('tokenStatus')) {
+        document.getElementById('tokenStatus').textContent = `(Signed in: ${data.user?.email || email})`;
+      }
+      toast('Signed in to Supabase Live Account!');
+    } catch (err) {
+      if (errBox) errBox.textContent = err.message || 'Failed to sign in.';
+    } finally {
+      sbBtn.disabled = false;
+      sbBtn.textContent = 'Sign In to Live Account';
+    }
+  };
 }
 
 /* ===== Model classes, following the class diagram ===== */
@@ -648,6 +708,29 @@ $("btnSubmit").onclick = async () => {
       localStorage.setItem('aa:last-persisted-food-request-id', created.id);
       localStorage.setItem('aa:last-persisted-food-request-data', JSON.stringify(created));
 
+      const list = Store.get("donations") || [];
+      const donationItem = {
+        id: created.id,
+        donorName: created.donorName || created.sourceName || donorName,
+        location: created.location || created.pickupAddress || locStr,
+        readyAt: created.readyAt,
+        pickupDeadline: created.pickupDeadline,
+        status: created.status || "SUBMITTED",
+        safetyReview: created.safetyReview || "PENDING",
+        foods: created.foods || foodsList,
+        totalFeeds: $("feedsNum") ? parseInt($("feedsNum").textContent) : 50,
+        isDemo: false
+      };
+      Store.set("donations", [donationItem, ...list.filter(d => d.id !== created.id)]);
+
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('aahara_donations');
+          bc.postMessage({ type: 'NEW_DONATION', data: donationItem });
+          setTimeout(() => bc.close(), 1000);
+        }
+      } catch {}
+
       toast('Donation persisted to live database!');
       renderStatus(created);
       show('s-status');
@@ -659,9 +742,8 @@ $("btnSubmit").onclick = async () => {
       $("btnSubmit").innerHTML = 'Send for pickup <span class="tag">submitDonation()</span>';
     }
   } else {
-    // Demo Mode fallback
+    // Demo Mode fallback - creates food request ONLY (does not auto-create pickup)
     const donationId = "f1000000-0000-4000-8000-" + String(Date.now()).slice(-12).padStart(12, '0');
-    const pickupId = "p" + donationId.slice(1);
     const donationRecord = {
       id: donationId,
       donorName: donorName,
@@ -675,30 +757,12 @@ $("btnSubmit").onclick = async () => {
       isDemo: true
     };
     const list = Store.get("donations") || [];
-    Store.set("donations", [donationRecord, ...list.filter(d => d.donorName !== donationRecord.donorName)]);
-
-    const pickupRecord = {
-      id: pickupId,
-      foodRequestId: donationId,
-      status: "PLANNED",
-      windowStartsAt: donationRecord.readyAt,
-      windowEndsAt: donationRecord.pickupDeadline,
-      deliveryAddress: "AaharaConnect Distribution Center, Indiranagar",
-      version: 1,
-      createdAt: new Date().toISOString(),
-      donorName: donorName,
-      donorLocation: locStr,
-      foods: foodsList,
-      totalFeeds: donationRecord.totalFeeds,
-      isDemo: true
-    };
-    const existingPickups = Store.get("demo-pickups") || [];
-    Store.set("demo-pickups", [pickupRecord, ...existingPickups.filter(p => p.foodRequestId !== donationId)]);
+    Store.set("donations", [donationRecord, ...list.filter(d => d.id !== donationRecord.id)]);
 
     try {
       if (typeof BroadcastChannel !== 'undefined') {
         const bc = new BroadcastChannel('aahara_donations');
-        bc.postMessage({ type: 'NEW_DONATION', data: pickupRecord });
+        bc.postMessage({ type: 'NEW_DONATION', data: donationRecord });
         setTimeout(() => bc.close(), 1000);
       }
     } catch {}

@@ -79,6 +79,30 @@ export async function findById(id: string, client?: PoolClient): Promise<PickupR
   }
 }
 
+export async function listReservedPersonIds(
+  personIds: string[],
+  startsAt: Date,
+  endsAt: Date,
+  client?: PoolClient
+): Promise<string[]> {
+  if (personIds.length === 0) return [];
+  const db = client ?? getPool();
+  try {
+    const result = await db.query<{ person_id: string }>(
+      `SELECT DISTINCT person_id
+       FROM app.resource_reservations
+       WHERE person_id = ANY($1::uuid[])
+         AND state = 'ACTIVE'
+         AND starts_at < $3
+         AND ends_at > $2`,
+      [personIds, startsAt, endsAt]
+    );
+    return result.rows.map(row => row.person_id);
+  } catch (error) {
+    handleDbError(error);
+  }
+}
+
 export async function findPickupForUpdate(id: string, client: PoolClient): Promise<PickupRow | null> {
   try {
     const result = await client.query<PickupRow>(
@@ -423,6 +447,34 @@ export async function releaseReservations(
        WHERE assignment_id = $1 AND state = 'ACTIVE'`,
       [assignmentId]
     );
+    return result.rowCount ?? 0;
+  } catch (error) {
+    handleDbError(error);
+  }
+}
+
+export async function releaseVesselIssuancesForPickup(
+  pickupId: string,
+  client: PoolClient,
+  reason = 'Pickup cancelled'
+): Promise<number> {
+  try {
+    const result = await client.query<{ vessel_id: string }>(
+      `UPDATE app.vessel_issuances
+       SET status = 'RETURNED', returned_at = now(), return_cleanliness = 'DIRTY', return_notes = $2
+       WHERE pickup_id = $1 AND status = 'ACTIVE'
+       RETURNING vessel_id`,
+      [pickupId, reason]
+    );
+    if (result.rows.length > 0) {
+      const vesselIds = result.rows.map(r => r.vessel_id);
+      await client.query(
+        `UPDATE app.vessels
+         SET status = 'CLEANING_REQUIRED', cleaning_status = 'DIRTY', updated_at = now()
+         WHERE id = ANY($1::uuid[]) AND status = 'IN_USE'`,
+        [vesselIds]
+      );
+    }
     return result.rowCount ?? 0;
   } catch (error) {
     handleDbError(error);

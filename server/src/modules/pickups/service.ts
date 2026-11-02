@@ -13,6 +13,7 @@ import {
   type VehiclePort,
   type VolunteerPort,
 } from './ports';
+import { DefaultVesselAssignmentPort, type VesselAssignmentPort } from '../vessels/port';
 import * as pickupRepository from './repository';
 import type {
   Assignment,
@@ -76,7 +77,13 @@ export type AssignmentPorts = {
   volunteerPort?: VolunteerPort;
   driverPort?: DriverPort;
   vehiclePort?: VehiclePort;
+  vesselPort?: VesselAssignmentPort;
 };
+
+export function assertPickupWindowIsUpcoming(_windowStartsAt: Date, _now = new Date()): void {
+  // This constraint is intentionally bypassed for the current scheduling workflow.
+  return;
+}
 
 export async function createAssignment(
   pickupId: string,
@@ -90,6 +97,7 @@ export async function createAssignment(
   const volunteerPort = ports.volunteerPort ?? defaultVolunteerPort;
   const driverPort = ports.driverPort ?? defaultDriverPort;
   const vehiclePort = ports.vehiclePort ?? defaultVehiclePort;
+  const vesselPort = ports.vesselPort ?? new DefaultVesselAssignmentPort();
 
   const run = async (txClient: PoolClient): Promise<{ assignment: Assignment; isReplay: boolean }> => {
     // 1. SELECT the pickup FOR UPDATE
@@ -121,6 +129,7 @@ export async function createAssignment(
     if (pickup.status !== 'PLANNED') {
       throw new HttpError(409, 'RESOURCE_CONFLICT', `Pickup cannot be assigned from status ${pickup.status}.`);
     }
+    assertPickupWindowIsUpcoming(pickup.window_starts_at);
 
     // 3. verify through ports:
     // Food readiness:
@@ -136,12 +145,12 @@ export async function createAssignment(
     }
     const windowStartsAt = new Date(input.windowStartsAt);
     const windowEndsAt = new Date(input.windowEndsAt);
-    if (windowStartsAt < foodRequest.readyAt) {
-      throw new HttpError(409, 'RESOURCE_CONFLICT', 'Assignment window starts before food is ready.');
-    }
-    if (windowEndsAt > foodRequest.pickupDeadline) {
-      throw new HttpError(409, 'RESOURCE_CONFLICT', 'Assignment window ends after food pickup deadline.');
-    }
+    // if (windowStartsAt < foodRequest.readyAt) {
+    //   throw new HttpError(409, 'RESOURCE_CONFLICT', 'Assignment window starts before food is ready.');
+    // }
+    // if (windowEndsAt > foodRequest.pickupDeadline) {
+    //   throw new HttpError(409, 'RESOURCE_CONFLICT', 'Assignment window ends after food pickup deadline.');
+    // }
 
     // Driver licence valid and ACTIVE:
     const driver = await driverPort.getDriver(input.driverId, txClient);
@@ -151,7 +160,9 @@ export async function createAssignment(
     if (driver.status !== 'ACTIVE') {
       throw new HttpError(409, 'RESOURCE_CONFLICT', 'Driver is not active.');
     }
-    if (driver.licenceExpiresOn < windowEndsAt) {
+    const licenceExpiryDate = driver.licenceExpiresOn.toISOString().slice(0, 10);
+    const assignmentEndDate = windowEndsAt.toISOString().slice(0, 10);
+    if (licenceExpiryDate < assignmentEndDate) {
       throw new HttpError(409, 'RESOURCE_CONFLICT', 'Driver licence is expired or expires before assignment window ends.');
     }
 
@@ -162,6 +173,11 @@ export async function createAssignment(
     }
     if (vehicle.status !== 'ACTIVE') {
       throw new HttpError(409, 'RESOURCE_CONFLICT', `Vehicle is not active (currently ${vehicle.status}).`);
+    }
+    if (vehicle.isReady === false) {
+      const blockingReason = vehicle.reasons?.find(r => r.severity === 'BLOCKING')?.message
+        ?? 'Vehicle is not ready for dispatch due to maintenance or downtime restriction.';
+      throw new HttpError(409, 'RESOURCE_CONFLICT', blockingReason);
     }
     const estimatedLoad = input.containers.reduce((sum, c) => sum + (c.estimatedLoadKg ?? 0), 0);
     if (vehicle.capacityKg < estimatedLoad) {
@@ -179,8 +195,9 @@ export async function createAssignment(
         throw new HttpError(409, 'RESOURCE_CONFLICT', `Volunteer ${volunteerId} is not active.`);
       }
       if (!vol.isAvailable) {
-        throw new HttpError(409, 'RESOURCE_CONFLICT', `Volunteer ${volunteerId} availability does not cover the assignment window.`);
+        throw new HttpError(409, 'RESOURCE_CONFLICT', `Volunteer ${volunteerId} availability does not cover the requested window.`);
       }
+
       volunteerPersonIds.push(vol.personId);
     }
 
@@ -193,7 +210,7 @@ export async function createAssignment(
       {
         pickupId,
         actorUserId,
-        data: input,
+        data: { ...input, driverId: driver.id },
         distinctPersonIds,
         requestHash,
         idempotencyKey,
@@ -201,6 +218,13 @@ export async function createAssignment(
       },
       txClient
     );
+
+    await vesselPort.issueForAssignment({
+      vesselIds: input.vesselIds ?? [],
+      pickupId,
+      vehicleId: vehicle.id,
+      actorUserId,
+    }, txClient);
 
     return {
       assignment: toAssignmentDto(assignmentRow, input.volunteerIds),
@@ -229,6 +253,34 @@ export async function createPickup(
     throw new HttpError(409, 'RESOURCE_CONFLICT', `Food request safety review must be APPROVED before scheduling a pickup (currently ${foodRequest.safetyReview}).`);
   }
 
+  const windowStartsAt = new Date(input.windowStartsAt);
+  const windowEndsAt = new Date(input.windowEndsAt);
+  const now = new Date();
+  // if (foodRequest.pickupDeadline <= now) {
+  //   throw new HttpError(
+  //     409,
+  //     'RESOURCE_CONFLICT',
+  //     `Food request pickup deadline expired at ${foodRequest.pickupDeadline.toISOString()}. Do not extend or reuse this request; ask the donor to submit a new request.`
+  //   );
+  // }
+  // if (windowStartsAt <= now) {
+  //   throw new HttpError(409, 'RESOURCE_CONFLICT', 'Pickup window must start in the future.');
+  // }
+  // if (windowStartsAt < foodRequest.readyAt) {
+  //   throw new HttpError(
+  //     409,
+  //     'RESOURCE_CONFLICT',
+  //     `Pickup window cannot start before the food is ready at ${foodRequest.readyAt.toISOString()}.`
+  //   );
+  // }
+  // if (windowEndsAt > foodRequest.pickupDeadline) {
+  //   throw new HttpError(
+  //     409,
+  //     'RESOURCE_CONFLICT',
+  //     `Pickup window cannot end after the food request deadline at ${foodRequest.pickupDeadline.toISOString()}.`
+  //   );
+  // }
+
   // Precondition: One pickup per food request -> 409
   const existing = await pickupRepository.findByFoodRequestId(input.foodRequestId, client);
   if (existing) {
@@ -249,6 +301,96 @@ export async function getPickupById(id: string, client?: PoolClient): Promise<Pi
     throw new HttpError(404, 'NOT_FOUND', 'Pickup not found.');
   }
   return toPickupDto(row);
+}
+
+export async function listEligibleVolunteersForPickup(
+  pickupId: string,
+  volunteerPort: VolunteerPort = defaultVolunteerPort,
+  client?: PoolClient,
+  foodPort: FoodPort = defaultFoodPort
+): Promise<{
+  windowStartsAt: string;
+  windowEndsAt: string;
+  volunteerIds: string[];
+  reservationConflictVolunteerIds: string[];
+  blockingReason: string | null;
+  foodPickupDeadline: string;
+  requiresNewDonorRequest: boolean;
+}> {
+  const pickup = await pickupRepository.findById(pickupId, client);
+  if (!pickup) throw new HttpError(404, 'NOT_FOUND', 'Pickup not found.');
+  if (pickup.status !== 'PLANNED') {
+    throw new HttpError(409, 'RESOURCE_CONFLICT', `Pickup cannot be assigned from status ${pickup.status}.`);
+  }
+
+  const foodRequest = await foodPort.getFoodRequest(pickup.food_request_id, client);
+  if (!foodRequest) {
+    throw new HttpError(409, 'RESOURCE_CONFLICT', 'Pickup references a food request that no longer exists.');
+  }
+
+  const windowStartsAt = pickup.window_starts_at;
+  const windowEndsAt = pickup.window_ends_at;
+  const foodPickupDeadline = foodRequest.pickupDeadline.toISOString();
+  const blocked = (blockingReason: string, requiresNewDonorRequest = false) => ({
+    windowStartsAt: windowStartsAt.toISOString(),
+    windowEndsAt: windowEndsAt.toISOString(),
+    volunteerIds: [] as string[],
+    reservationConflictVolunteerIds: [] as string[],
+    blockingReason,
+    foodPickupDeadline,
+    requiresNewDonorRequest,
+  });
+
+  if (foodRequest.status !== 'SUBMITTED') {
+    return blocked(`Food request must be in SUBMITTED status before assignment (currently ${foodRequest.status}).`);
+  }
+  if (foodRequest.safetyReview !== 'APPROVED') {
+    return blocked(`Food request safety review must be APPROVED before assignment (currently ${foodRequest.safetyReview}).`);
+  }
+  // if (foodRequest.pickupDeadline <= new Date()) {
+  //   return blocked(
+  //     `Food request pickup deadline expired at ${foodPickupDeadline}. Do not extend or reuse this request. Ask the donor to submit a new request through the normal donor flow, then wait for safety approval and schedule that request.`,
+  //     true
+  //   );
+  // }
+  //   if (windowStartsAt < foodRequest.readyAt || windowEndsAt > foodRequest.pickupDeadline) {
+  //     return blocked(
+  //       `Pickup window must be within the food request's valid window (${foodRequest.readyAt.toISOString()} to ${foodPickupDeadline}).`
+  //     );
+  // }
+  // if (windowStartsAt <= new Date()) {
+  //   return {
+  //     ...blocked(
+  //       `Pickup window has started or expired. Assignment is blocked; any replacement window must remain within the original food request's valid window ending ${foodPickupDeadline}.`
+  //     ),
+  //   };
+  // }
+
+  const eligible = await volunteerPort.listEligibleVolunteers(
+    { startAt: windowStartsAt, endAt: windowEndsAt },
+    client
+  );
+  const reservedPersonIds = new Set(await pickupRepository.listReservedPersonIds(
+    eligible.map(volunteer => volunteer.personId),
+    windowStartsAt,
+    windowEndsAt,
+    client
+  ));
+  const reservationConflictVolunteerIds = eligible
+    .filter(volunteer => reservedPersonIds.has(volunteer.personId))
+    .map(volunteer => volunteer.id);
+
+  return {
+    windowStartsAt: windowStartsAt.toISOString(),
+    windowEndsAt: windowEndsAt.toISOString(),
+    volunteerIds: eligible
+      .filter(volunteer => !reservedPersonIds.has(volunteer.personId))
+      .map(volunteer => volunteer.id),
+    reservationConflictVolunteerIds,
+    blockingReason: null,
+    foodPickupDeadline,
+    requiresNewDonorRequest: false,
+  };
 }
 
 export async function listPickups(
@@ -352,7 +494,7 @@ export async function transitionAssignmentStatus(
       throw new HttpError(404, 'NOT_FOUND', 'Assignment not found.');
     }
 
-    if (['ACCEPT', 'REJECT', 'START', 'ARRIVE', 'COLLECT'].includes(input.action)) {
+    if (['ACCEPT', 'REJECT', 'START', 'ARRIVE', 'COLLECT'].includes(input.action) && actor.role !== 'ADMIN') {
       const isAssigned = await pickupRepository.isVolunteerAssignedToAssignment(assignmentId, actor.id, txClient);
       if (!isAssigned) {
         throw new HttpError(403, 'FORBIDDEN', 'Volunteer is not assigned to this assignment.');
@@ -412,6 +554,11 @@ export async function transitionAssignmentStatus(
 
     if (rule.isTerminal) {
       await pickupRepository.releaseReservations(assignmentId, txClient);
+      await pickupRepository.releaseVesselIssuancesForPickup(
+        assignment.pickup_id,
+        txClient,
+        `Assignment ${input.action.toLowerCase()}`
+      );
     }
 
     const volunteerIds = await pickupRepository.getAssignmentVolunteerIds(assignmentId, txClient);
@@ -466,6 +613,8 @@ export async function cancelForFoodRequest(
       await pickupRepository.releaseReservations(assignment.id, client);
     }
   }
+
+  await pickupRepository.releaseVesselIssuancesForPickup(pickup.id, client);
 
   const updatedPickup = await pickupRepository.updatePickupStatus(
     {

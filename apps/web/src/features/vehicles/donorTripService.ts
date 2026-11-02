@@ -1,6 +1,6 @@
 import type { Vehicle } from '../../types'
 import { apiRequest } from '../../api/client'
-import { getLiveAccessToken } from '../pickups/adapters'
+import { getAuthHeaders, isLiveAdmin } from '../pickups/adapters'
 
 export interface FoodItemDetail {
   name: string
@@ -32,7 +32,16 @@ export interface DonorPickupRequest {
   foods: FoodItemDetail[]
   handlingRequirements: string
   equipment: EquipmentRequirement
+  safetyReview?: 'PENDING' | 'APPROVED' | 'REJECTED'
   status: 'SUBMITTED' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'COMPLETED' | 'CANCELLED'
+  pickup?: {
+    id: string
+    status: string
+    windowStartsAt: string
+    windowEndsAt: string
+    deliveryAddress: string
+    assignmentStatus?: string | null
+  } | null
   assignedVehicleId?: string
   assignedVehicleReg?: string
 }
@@ -242,97 +251,124 @@ export async function fetchAllDonorRequests(liveOnly = false): Promise<DonorPick
   const result: DonorPickupRequest[] = []
   const seenIds = new Set<string>()
 
-  // 1. Try fetching from live backend Express endpoint
-  try {
-    const token = await getLiveAccessToken().catch(() => null)
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
-    const data = await apiRequest<{ items: any[] }>('food-requests', { headers })
-    if (data && Array.isArray(data.items)) {
-      for (const item of data.items) {
-        const foods: FoodItemDetail[] = (item.items || item.foods || []).map((f: any) => ({
-          name: f.foodType || f.name || 'Food item',
-          quantity: Number(f.quantity) || 1,
-          unit: (f.unit || 'kg').toLowerCase(),
-          foodType: f.foodType,
-        }))
+  // 1. Live Admin Mode: Fetch exclusively from live backend Express endpoint
+  if (isLiveAdmin()) {
+    try {
+      const headers = await getAuthHeaders()
+      const data = await apiRequest<{ items: any[] }>('food-requests', { headers })
+      if (data && Array.isArray(data.items)) {
+        for (const item of data.items) {
+          const foods: FoodItemDetail[] = (item.items || item.foods || []).map((f: any) => ({
+            name: f.foodType || f.name || 'Food item',
+            quantity: Number(f.quantity) || 1,
+            unit: (f.unit || 'kg').toLowerCase(),
+            foodType: f.foodType,
+          }))
 
-        const eq = calculateEquipmentRequirements(foods, item.handlingRequirements || '')
-        const weightProvided = item.estimatedWeightKg != null && Number(item.estimatedWeightKg) > 0
-        const totalVessels = weightProvided ? Math.max(1, Math.ceil(Number(item.estimatedWeightKg) / 15)) : 0
-        const pickupStatus = item.pickup?.status
-        const status: DonorPickupRequest['status'] = item.status === 'CANCELLED' ? 'CANCELLED'
-          : pickupStatus === 'DELIVERED' ? 'DELIVERED'
-          : ['EN_ROUTE', 'ARRIVED_AT_DONOR', 'FOOD_COLLECTED'].includes(pickupStatus) ? 'IN_TRANSIT'
-          : pickupStatus === 'ASSIGNED' ? 'ASSIGNED' : 'SUBMITTED'
+          const eq = calculateEquipmentRequirements(foods, item.handlingRequirements || '')
+          const weightProvided = item.estimatedWeightKg != null && Number(item.estimatedWeightKg) > 0
+          const totalVessels = weightProvided ? Math.max(1, Math.ceil(Number(item.estimatedWeightKg) / 15)) : 0
+          const pickup = item.pickup
+            ? {
+                id: item.pickup.id,
+                status: item.pickup.status,
+                windowStartsAt: item.pickup.windowStartsAt,
+                windowEndsAt: item.pickup.windowEndsAt,
+                deliveryAddress: item.pickup.deliveryAddress,
+                assignmentStatus: item.pickup.assignmentStatus ?? null,
+              }
+            : null
+          const pickupStatus = item.pickup?.status
+          const status: DonorPickupRequest['status'] = item.status === 'CANCELLED'
+            ? 'CANCELLED'
+            : pickup?.assignmentStatus
+              ? 'ASSIGNED'
+              : pickupStatus === 'DELIVERED'
+                ? 'DELIVERED'
+                : ['EN_ROUTE', 'ARRIVED_AT_DONOR', 'FOOD_COLLECTED'].includes(pickupStatus ?? '')
+                  ? 'IN_TRANSIT'
+                  : pickupStatus === 'ASSIGNED'
+                    ? 'ASSIGNED'
+                    : item.status || 'SUBMITTED'
 
-        result.push({
-          id: item.id,
-          donorName: item.sourceName || item.donorName || 'Food Donor',
-          pickupAddress: item.pickupAddress || item.location || 'Bengaluru',
-          contactName: item.contactName,
-          contactPhone: item.contactPhoneE164,
-          readyAt: item.readyAt,
-          pickupDeadline: item.pickupDeadline,
-          estimatedWeightKg: weightProvided ? Number(item.estimatedWeightKg) : 0,
-          weightProvided,
-          totalVessels,
-          foods,
-          handlingRequirements: item.handlingRequirements || '',
-          equipment: eq,
-          status,
-        })
-        seenIds.add(item.id)
+          result.push({
+            id: item.id,
+            donorName: item.sourceName || item.donorName || 'Food Donor',
+            pickupAddress: item.pickupAddress || item.location || 'Bengaluru',
+            contactName: item.contactName,
+            contactPhone: item.contactPhoneE164,
+            readyAt: item.readyAt,
+            pickupDeadline: item.pickupDeadline,
+            estimatedWeightKg: weightProvided ? Number(item.estimatedWeightKg) : (Number(item.estimatedWeightKg) || 0),
+            weightProvided,
+            totalVessels,
+            foods,
+            handlingRequirements: item.handlingRequirements || '',
+            equipment: eq,
+            safetyReview: item.safetyReview,
+            status,
+            pickup,
+          })
+          seenIds.add(item.id)
+        }
+        return result
       }
+    } catch (error) {
+      if (liveOnly || isLiveAdmin()) throw error
+      // Demo mode may use local donor records when the API is unavailable.
     }
-  } catch (error) {
-    if (liveOnly) throw error
-    // Demo mode may use local donor records when the API is unavailable.
   }
 
-  if (liveOnly) return result
+  if (liveOnly || isLiveAdmin()) return result
 
   // 2. Read from teammate's donor portal storage (aa:donations)
   if (typeof window !== 'undefined') {
     try {
       const raw = window.localStorage.getItem('aa:donations')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) {
-          for (const d of parsed) {
-            if (!seenIds.has(d.id)) {
-              const foods: FoodItemDetail[] = (d.foods || []).map((f: any) => ({
-                name: f.name || f.foodType || 'Food item',
-                quantity: Number(f.quantity) || 1,
-                unit: (f.unit || 'kg').toLowerCase(),
-                foodType: f.foodType,
-              }))
-              const eq = calculateEquipmentRequirements(foods, d.handlingRequirements || '')
-              const totalWeight = foods.reduce((acc, f) => acc + (f.unit === 'kg' ? f.quantity : f.quantity * 0.1), 0)
-              const weightKg = totalWeight > 0 ? Math.round(totalWeight) : 25
-              const totalVessels = Math.max(1, Math.ceil(weightKg / 15))
+      const donationsList: any[] = raw ? JSON.parse(raw) : []
+      const persistedRaw = window.localStorage.getItem('aa:last-persisted-food-request-data')
+      if (persistedRaw) {
+        const persisted = JSON.parse(persistedRaw)
+        if (persisted && persisted.id && !donationsList.some(d => d.id === persisted.id)) {
+          donationsList.unshift(persisted)
+        }
+      }
 
-              result.push({
-                id: d.id,
-                donorName: d.donorName || 'Food Donor',
-                pickupAddress: d.location || 'Bengaluru',
-                readyAt: d.readyAt || new Date().toISOString(),
-                pickupDeadline: d.pickupDeadline || new Date(Date.now() + 10800000).toISOString(),
-                estimatedWeightKg: weightKg,
-                totalVessels,
-                foods,
-                handlingRequirements: d.handlingRequirements || '',
-                equipment: eq,
-                status: 'SUBMITTED',
-              })
-              seenIds.add(d.id)
-            }
+      if (Array.isArray(donationsList)) {
+        for (const d of donationsList) {
+          if (!seenIds.has(d.id)) {
+            const foods: FoodItemDetail[] = (d.foods || d.items || []).map((f: any) => ({
+              name: f.name || f.foodType || 'Food item',
+              quantity: Number(f.quantity) || 1,
+              unit: (f.unit || 'kg').toLowerCase(),
+              foodType: f.foodType,
+            }))
+            const eq = calculateEquipmentRequirements(foods, d.handlingRequirements || '')
+            const totalWeight = foods.reduce((acc, f) => acc + (f.unit === 'kg' ? f.quantity : f.quantity * 0.1), 0)
+            const weightKg = totalWeight > 0 ? Math.round(totalWeight) : 25
+            const totalVessels = Math.max(1, Math.ceil(weightKg / 15))
+
+            result.push({
+              id: d.id,
+              donorName: d.donorName || d.sourceName || 'Food Donor',
+              pickupAddress: d.location || d.pickupAddress || 'Bengaluru',
+              readyAt: d.readyAt || new Date().toISOString(),
+              pickupDeadline: d.pickupDeadline || new Date(Date.now() + 10800000).toISOString(),
+              estimatedWeightKg: weightKg,
+              totalVessels,
+              foods,
+              handlingRequirements: d.handlingRequirements || '',
+              equipment: eq,
+              status: d.status || 'SUBMITTED',
+            })
+            seenIds.add(d.id)
           }
         }
       }
     } catch {}
   }
 
-  // 3. Fallback to seeded requests so live data is always rich and reliable
+  // 3. Demo Mode fallback only: Seeded sample requests for offline prototype evaluation
   for (const s of SEEDED_DONOR_REQUESTS) {
     if (!seenIds.has(s.id)) {
       result.push(s)

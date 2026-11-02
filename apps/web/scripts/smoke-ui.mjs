@@ -15,6 +15,65 @@ const { createRoot } = await import('react-dom/client')
 
 const server = await createServer({ server:{ middlewareMode:true }, appType:'custom' })
 try {
+  const { localDateTimeInputToUtcIso, toLocalDateTimeInputValue } = await server.ssrLoadModule('/src/features/pickups/dateTime.ts')
+  const sourceInstant = '2026-01-15T12:30:00.000Z'
+  const originalTimezone = process.env.TZ
+  process.env.TZ = 'Asia/Kolkata'
+  const localInputValue = toLocalDateTimeInputValue(sourceInstant)
+  assert.equal(localInputValue, '2026-01-15T18:00', 'UTC instants must be displayed in the operator local timezone')
+  assert.equal(localDateTimeInputToUtcIso(localInputValue), sourceInstant, 'Local datetime display and submission must preserve the same instant')
+  if (originalTimezone === undefined) delete process.env.TZ
+  else process.env.TZ = originalTimezone
+  assert.equal(toLocalDateTimeInputValue('not-a-date'), '')
+  assert.equal(localDateTimeInputToUtcIso(''), null)
+  const { rankVolunteersForPickup: rankVolunteersForWindow } = await server.ssrLoadModule('/src/features/pickups/aiLogistics.ts')
+  const volunteerWindowRanking = rankVolunteersForWindow([
+    {
+      id: '071cb1f9-b0a8-4e99-8661-1ef180591083',
+      name: 'Unavailable volunteer',
+      status: 'ACTIVE',
+      windowAvailable: false,
+      windowAvailabilityReason: 'No available volunteer schedule covers this pickup window.',
+      windowAvailabilityLabel: 'Unavailable',
+    },
+    {
+      id: 'c0000000-0000-4000-8000-000000000002',
+      name: 'Eligible alternative',
+      status: 'ACTIVE',
+      windowAvailable: true,
+      windowAvailabilityLabel: 'Schedule eligible',
+    },
+  ], { totalEstimatedWeightKg: 20, foods: [] })
+  assert.equal(volunteerWindowRanking.ranked.find(item => item.volunteerId === '071cb1f9-b0a8-4e99-8661-1ef180591083').isEligible, false)
+  assert.equal(volunteerWindowRanking.bestVolunteer?.volunteerId, 'c0000000-0000-4000-8000-000000000002')
+  assert.equal(volunteerWindowRanking.ranked.find(item => item.volunteerId === '071cb1f9-b0a8-4e99-8661-1ef180591083').constraints[0], 'No available volunteer schedule covers this pickup window.')
+  const failedWindowCheckReason = 'Pickup window has started or expired. Reschedule the pickup before assigning resources.'
+  const failedWindowCheckRanking = rankVolunteersForWindow([
+    {
+      id: 'c0000000-0000-4000-8000-000000000003',
+      name: 'Unverified volunteer',
+      status: 'ACTIVE',
+      windowAvailable: false,
+      windowAvailabilityReason: `Pickup-window eligibility was not checked: ${failedWindowCheckReason}`,
+      windowAvailabilityLabel: 'Not checked',
+    },
+    {
+      id: 'c0000000-0000-4000-8000-000000000004',
+      name: 'Inactive volunteer',
+      status: 'INACTIVE',
+      windowAvailable: false,
+      windowAvailabilityReason: `Pickup-window eligibility was not checked: ${failedWindowCheckReason}`,
+      windowAvailabilityLabel: 'Not checked',
+    },
+  ], { totalEstimatedWeightKg: 20, foods: [] })
+  const uncheckedVolunteer = failedWindowCheckRanking.ranked.find(item => item.volunteerId === 'c0000000-0000-4000-8000-000000000003')
+  const inactiveVolunteer = failedWindowCheckRanking.ranked.find(item => item.volunteerId === 'c0000000-0000-4000-8000-000000000004')
+  assert.equal(uncheckedVolunteer.isEligible, false, 'A failed server check must never make a volunteer eligible')
+  assert.equal(uncheckedVolunteer.availabilityLabel, 'Not checked', 'API failures must not be presented as confirmed unavailability')
+  assert.match(uncheckedVolunteer.constraints[0], new RegExp(failedWindowCheckReason))
+  assert.equal(inactiveVolunteer.availabilityLabel, 'Inactive roster', 'Inactive roster status remains distinct from window-check failures')
+  assert.equal(failedWindowCheckRanking.noCandidatesReason, undefined, 'A failed check must not imply that all volunteers lack availability')
+
   const { default:Root } = await server.ssrLoadModule('/src/Root.tsx')
   const root = createRoot(document.getElementById('root'))
   const click = async element => { assert.ok(element, 'Expected clickable element'); await act(async () => { element.click(); await Promise.resolve() }) }
@@ -371,6 +430,9 @@ try {
   assert.doesNotMatch(donorHtml, /🚚 Open Pickup &amp; Logistics/, 'Donor page must not contain header pickup action')
   assert.doesNotMatch(donorHtml, /Open in Pickup &amp; Logistics/, 'Donor page must not contain status pickup action')
   assert.doesNotMatch(donorHtml, /Go to Volunteer Workspace/, 'Donor page must not link to volunteer workspace')
+  const assignWizardSource = readFileSync(resolve(process.cwd(), 'src/features/pickups/AssignWizard.tsx'), 'utf8')
+  assert.match(assignWizardSource, /requiresNewDonorRequest/, 'Expired food deadlines must expose safe donor-request recovery')
+  assert.match(assignWizardSource, /donor\/index\.html/, 'Expired food deadlines must link to the existing donor submission flow')
 
   // Verify Requirement: Recommendation algorithm handles over-capacity, inactive status, and does not assign automatically
   const { rankVehiclesForPickup, rankVolunteersForPickup } = await server.ssrLoadModule('/src/features/pickups/aiLogistics.ts')
@@ -404,8 +466,43 @@ try {
   const skilled = volResult.ranked.find(v => v.volunteerId === 'vol-skilled')
   assert.equal(skilled.isEligible, true, 'Active skilled volunteer must be eligible')
   assert.ok(skilled.suitabilityScore > 80, 'Relevant skills should boost match score')
+  // Verify Requirement: Protected API Authentication & Token Propagation
+  const { getAuthHeaders } = await server.ssrLoadModule('/src/api/auth.ts')
+  const { fetchPickups, fetchFoodRequests } = await server.ssrLoadModule('/src/features/pickups/api.ts')
+  const { fetchVehicles, fetchDrivers } = await server.ssrLoadModule('/src/features/vehicles/api.ts')
+  const { apiFetchVessels } = await server.ssrLoadModule('/src/features/vessels/api.ts')
 
-  console.log('Smoke check passed: bilingual demo UI, live Volunteer create/edit/error flows, donor isolation, logistics recommendations and team flows.')
+  // 1. With no active session, getAuthHeaders must reject with 401 UNAUTHENTICATED
+  let authError = null
+  try {
+    await getAuthHeaders()
+  } catch (err) {
+    authError = err
+  }
+  assert.ok(authError, 'getAuthHeaders must throw when no authenticated session exists')
+  assert.equal(authError.status, 401, 'Must reject with HTTP 401 status')
+  assert.equal(authError.code, 'UNAUTHENTICATED', 'Must have UNAUTHENTICATED error code')
+
+  // 2. Protected consumers must not send anonymous requests when unauthenticated
+  for (const [name, fn] of [
+    ['fetchPickups', fetchPickups],
+    ['fetchFoodRequests', fetchFoodRequests],
+    ['fetchVehicles', fetchVehicles],
+    ['fetchDrivers', fetchDrivers],
+    ['apiFetchVessels', apiFetchVessels],
+  ]) {
+    let fnError = null
+    try {
+      await fn()
+    } catch (err) {
+      fnError = err
+    }
+    assert.ok(fnError, `${name} must reject when unauthenticated`)
+    assert.equal(fnError.status, 401, `${name} must fail with 401 UNAUTHENTICATED`)
+    assert.equal(fnError.code, 'UNAUTHENTICATED', `${name} must return UNAUTHENTICATED code`)
+  }
+
+  console.log('Smoke check passed: bilingual demo UI, live Volunteer create/edit/error flows, donor isolation, logistics recommendations, auth propagation and team flows.')
 } finally {
   dom.window.close()
   await server.close()

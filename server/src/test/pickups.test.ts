@@ -47,8 +47,8 @@ const donor = {
 
 const validPickupPayload = {
   foodRequestId: 'f0000000-0000-4000-8000-000000000001',
-  windowStartsAt: '2026-10-10T10:00:00.000Z',
-  windowEndsAt: '2026-10-10T12:00:00.000Z',
+  windowStartsAt: '2030-10-10T10:00:00.000Z',
+  windowEndsAt: '2030-10-10T12:00:00.000Z',
   deliveryAddress: 'Central Food Hub, Bengaluru',
 };
 
@@ -160,8 +160,8 @@ describe('Pickups API (PR1)', () => {
               id: validPickupPayload.foodRequestId,
               status: 'CANCELLED',
               safety_review: 'APPROVED',
-              pickup_deadline: new Date('2026-10-10T14:00:00Z'),
-              ready_at: new Date('2026-10-10T09:00:00Z'),
+              pickup_deadline: new Date('2030-10-10T14:00:00Z'),
+              ready_at: new Date('2030-10-10T09:00:00Z'),
             }],
           };
         }
@@ -186,8 +186,8 @@ describe('Pickups API (PR1)', () => {
               id: validPickupPayload.foodRequestId,
               status: 'SUBMITTED',
               safety_review: 'PENDING',
-              pickup_deadline: new Date('2026-10-10T14:00:00Z'),
-              ready_at: new Date('2026-10-10T09:00:00Z'),
+              pickup_deadline: new Date('2030-10-10T14:00:00Z'),
+              ready_at: new Date('2030-10-10T09:00:00Z'),
             }],
           };
         }
@@ -204,6 +204,84 @@ describe('Pickups API (PR1)', () => {
       expect(res.body.error.message).toContain('APPROVED');
     });
 
+    it('does not schedule a food request whose pickup deadline has expired', async () => {
+      query.mockImplementation(async (sql: string) => {
+        if (sql.includes('FROM app.food_requests')) {
+          return {
+            rows: [{
+              id: validPickupPayload.foodRequestId,
+              status: 'SUBMITTED',
+              safety_review: 'APPROVED',
+              pickup_deadline: new Date(Date.now() - 60_000),
+              ready_at: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            }],
+          };
+        }
+        return { rows: [] };
+      });
+
+      const res = await request(app)
+        .post('/api/v1/pickups')
+        .set('Authorization', 'Bearer test-token')
+        .send(validPickupPayload);
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.message).toContain('Do not extend or reuse this request');
+      expect(query.mock.calls.some(([sql]) => sql.includes('INSERT INTO app.pickups'))).toBe(false);
+    });
+
+    it('rejects a pickup window before food readiness', async () => {
+      query.mockImplementation(async (sql: string) => {
+        if (sql.includes('FROM app.food_requests')) {
+          return {
+            rows: [{
+              id: validPickupPayload.foodRequestId,
+              status: 'SUBMITTED',
+              safety_review: 'APPROVED',
+              pickup_deadline: new Date('2030-10-10T14:00:00.000Z'),
+              ready_at: new Date('2030-10-10T10:30:00.000Z'),
+            }],
+          };
+        }
+        return { rows: [] };
+      });
+
+      const res = await request(app)
+        .post('/api/v1/pickups')
+        .set('Authorization', 'Bearer test-token')
+        .send(validPickupPayload);
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.message).toContain('before the food is ready');
+      expect(query.mock.calls.some(([sql]) => sql.includes('INSERT INTO app.pickups'))).toBe(false);
+    });
+
+    it('rejects a pickup window ending after the food deadline', async () => {
+      query.mockImplementation(async (sql: string) => {
+        if (sql.includes('FROM app.food_requests')) {
+          return {
+            rows: [{
+              id: validPickupPayload.foodRequestId,
+              status: 'SUBMITTED',
+              safety_review: 'APPROVED',
+              pickup_deadline: new Date('2030-10-10T11:00:00.000Z'),
+              ready_at: new Date('2030-10-10T09:00:00.000Z'),
+            }],
+          };
+        }
+        return { rows: [] };
+      });
+
+      const res = await request(app)
+        .post('/api/v1/pickups')
+        .set('Authorization', 'Bearer test-token')
+        .send(validPickupPayload);
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.message).toContain('cannot end after the food request deadline');
+      expect(query.mock.calls.some(([sql]) => sql.includes('INSERT INTO app.pickups'))).toBe(false);
+    });
+
     it('returns 409 RESOURCE_CONFLICT when a pickup already exists for this food request', async () => {
       query.mockImplementation(async (sql: string) => {
         if (sql.includes('FROM app.food_requests')) {
@@ -212,8 +290,8 @@ describe('Pickups API (PR1)', () => {
               id: validPickupPayload.foodRequestId,
               status: 'SUBMITTED',
               safety_review: 'APPROVED',
-              pickup_deadline: new Date('2026-10-10T14:00:00Z'),
-              ready_at: new Date('2026-10-10T09:00:00Z'),
+              pickup_deadline: new Date('2030-10-10T14:00:00Z'),
+              ready_at: new Date('2030-10-10T09:00:00Z'),
             }],
           };
         }
@@ -251,8 +329,8 @@ describe('Pickups API (PR1)', () => {
               id: validPickupPayload.foodRequestId,
               status: 'SUBMITTED',
               safety_review: 'APPROVED',
-              pickup_deadline: new Date('2026-10-10T14:00:00Z'),
-              ready_at: new Date('2026-10-10T09:00:00Z'),
+              pickup_deadline: new Date('2030-10-10T14:00:00Z'),
+              ready_at: new Date('2030-10-10T09:00:00Z'),
             }],
           };
         }
@@ -289,8 +367,8 @@ describe('Pickups API (PR1)', () => {
               id: validPickupPayload.foodRequestId,
               status: 'SUBMITTED',
               safety_review: 'APPROVED',
-              pickup_deadline: new Date('2026-10-10T14:00:00Z'),
-              ready_at: new Date('2026-10-10T09:00:00Z'),
+              pickup_deadline: new Date('2030-10-10T14:00:00Z'),
+              ready_at: new Date('2030-10-10T09:00:00Z'),
             }],
           };
         }
@@ -458,8 +536,8 @@ const validAssignmentPayload = {
   driverId: testDriverId,
   vehicleId: testVehicleId,
   role: 'Pickup Volunteer',
-  windowStartsAt: '2026-10-10T10:00:00.000Z',
-  windowEndsAt: '2026-10-10T12:00:00.000Z',
+  windowStartsAt: '2030-10-30T10:00:00.000Z',
+  windowEndsAt: '2030-10-30T12:00:00.000Z',
   containers: [{ containerType: 'insulated crate', count: 2, estimatedLoadKg: 20 }],
 };
 
@@ -486,8 +564,8 @@ function setupDefaultAssignmentDb(overrides: {
         rows: [{
           id: testPickupId,
           food_request_id: testFoodRequestId,
-          window_starts_at: new Date('2026-10-10T09:00:00.000Z'),
-          window_ends_at: new Date('2026-10-10T13:00:00.000Z'),
+          window_starts_at: new Date('2030-10-30T09:00:00.000Z'),
+          window_ends_at: new Date('2030-10-30T13:00:00.000Z'),
           delivery_address: '123 Food Street',
           status: 'PLANNED',
           version: 0,
@@ -516,8 +594,8 @@ function setupDefaultAssignmentDb(overrides: {
           id: testFoodRequestId,
           status: 'SUBMITTED',
           safety_review: 'APPROVED',
-          pickup_deadline: new Date('2026-10-10T14:00:00.000Z'),
-          ready_at: new Date('2026-10-10T09:00:00.000Z'),
+          pickup_deadline: new Date('2030-10-30T14:00:00.000Z'),
+          ready_at: new Date('2030-10-30T09:00:00.000Z'),
           estimated_weight_kg: 20,
           ...overrides.foodRequest,
         }],
@@ -530,7 +608,7 @@ function setupDefaultAssignmentDb(overrides: {
           id: testDriverId,
           person_id: testPersonDriver,
           licence_number: 'DL12345678',
-          licence_expires_on: new Date('2027-01-01'),
+          licence_expires_on: new Date('2031-01-01'),
           status: 'ACTIVE',
           ...overrides.driver,
         }],
@@ -546,6 +624,19 @@ function setupDefaultAssignmentDb(overrides: {
           capacity_kg: 500,
           status: 'ACTIVE',
           ...overrides.vehicle,
+        }],
+      };
+    }
+    if (sql.includes('AS is_available') && sql.includes('FROM app.volunteers v')) {
+      if (overrides.volunteer === null) return { rows: [] };
+      const isAvailable = overrides.volunteerAvailable === false || overrides.volunteerUnavailable ? false : true;
+      return {
+        rows: [{
+          id: (params?.[0] as string) || testVolunteerId1,
+          person_id: overrides.volunteer?.person_id ?? (params?.[0] === testVolunteerId2 ? testPersonVol2 : testPersonVol1),
+          status: (overrides.volunteer?.status as 'ACTIVE' | 'INACTIVE') ?? 'ACTIVE',
+          is_available: isAvailable,
+          ...overrides.volunteer,
         }],
       };
     }
@@ -690,6 +781,20 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
+
+    it('rejects duplicate physical vessel IDs in payload with 400 VALIDATION_ERROR', async () => {
+      const vesselId = '80000000-0000-4000-8000-000000000001';
+      const res = await request(app)
+        .post(`/api/v1/pickups/${testPickupId}/assignments`)
+        .set('Authorization', 'Bearer test-token')
+        .set('Idempotency-Key', 'key-duplicate-vessel')
+        .send({
+          ...validAssignmentPayload,
+          vesselIds: [vesselId, vesselId],
+        });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
   });
 
   describe('Preconditions via Ports & Conflict Rules', () => {
@@ -763,7 +868,7 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
 
     it('returns 409 RESOURCE_CONFLICT when assignment window starts before food is ready', async () => {
       setupDefaultAssignmentDb({
-        foodRequest: { ready_at: new Date('2026-10-10T11:00:00.000Z') },
+        foodRequest: { ready_at: new Date('2030-10-30T11:00:00.000Z') },
       });
 
       const res = await request(app)
@@ -779,7 +884,7 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
 
     it('returns 409 RESOURCE_CONFLICT when assignment window ends after food pickup deadline', async () => {
       setupDefaultAssignmentDb({
-        foodRequest: { pickup_deadline: new Date('2026-10-10T11:00:00.000Z') },
+        foodRequest: { pickup_deadline: new Date('2030-10-30T11:00:00.000Z') },
       });
 
       const res = await request(app)
@@ -821,7 +926,7 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
     });
 
     it('returns 409 RESOURCE_CONFLICT when driver licence expires before window ends', async () => {
-      setupDefaultAssignmentDb({ driver: { licence_expires_on: new Date('2026-10-10T11:00:00.000Z') } });
+      setupDefaultAssignmentDb({ driver: { licence_expires_on: new Date('2026-10-09T00:00:00.000Z') } });
 
       const res = await request(app)
         .post(`/api/v1/pickups/${testPickupId}/assignments`)
@@ -832,6 +937,19 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('RESOURCE_CONFLICT');
       expect(res.body.error.message).toContain('licence');
+    });
+
+    it('allows a driver licence valid through the assignment end date', async () => {
+      setupDefaultAssignmentDb({ driver: { licence_expires_on: new Date('2030-10-30T00:00:00.000Z') } });
+
+      const res = await request(app)
+        .post(`/api/v1/pickups/${testPickupId}/assignments`)
+        .set('Authorization', 'Bearer test-token')
+        .set('Idempotency-Key', 'key-expiry-day')
+        .send(validAssignmentPayload);
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.status).toBe('PENDING');
     });
 
     it('returns 404 NOT_FOUND when vehicle does not exist', async () => {
@@ -859,6 +977,34 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('RESOURCE_CONFLICT');
       expect(res.body.error.message).toContain('MAINTENANCE');
+    });
+
+    it('returns 409 RESOURCE_CONFLICT when vehicle has active downtime restriction', async () => {
+      setupDefaultAssignmentDb({ vehicle: { has_active_downtime: true } });
+
+      const res = await request(app)
+        .post(`/api/v1/pickups/${testPickupId}/assignments`)
+        .set('Authorization', 'Bearer token')
+        .set('Idempotency-Key', 'key-1')
+        .send(validAssignmentPayload);
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('RESOURCE_CONFLICT');
+      expect(res.body.error.message).toContain('downtime');
+    });
+
+    it('returns 409 RESOURCE_CONFLICT when vehicle latest maintenance condition is UNSAFE', async () => {
+      setupDefaultAssignmentDb({ vehicle: { latest_condition: 'UNSAFE' } });
+
+      const res = await request(app)
+        .post(`/api/v1/pickups/${testPickupId}/assignments`)
+        .set('Authorization', 'Bearer token')
+        .set('Idempotency-Key', 'key-1')
+        .send(validAssignmentPayload);
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('RESOURCE_CONFLICT');
+      expect(res.body.error.message).toContain('UNSAFE');
     });
 
     it('returns 409 RESOURCE_CONFLICT when vehicle capacity is less than estimated load', async () => {
@@ -902,19 +1048,29 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
       expect(res.body.error.message).toContain('active');
     });
 
-    it('returns 409 RESOURCE_CONFLICT when volunteer availability does not cover window', async () => {
+    it('rejects the reported volunteer when availability does not cover the assignment window, without partial writes', async () => {
       setupDefaultAssignmentDb({ volunteerAvailable: false });
 
+      const payload = {
+        ...validAssignmentPayload,
+        volunteerIds: ['071cb1f9-b0a8-4e99-8661-1ef180591083'],
+      };
       const res = await request(app)
         .post(`/api/v1/pickups/${testPickupId}/assignments`)
         .set('Authorization', 'Bearer token')
         .set('Idempotency-Key', 'key-1')
-        .send(validAssignmentPayload);
+        .send(payload);
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('RESOURCE_CONFLICT');
       expect(res.body.error.message).toContain('availability');
+      expect(res.body.error.message).toContain('071cb1f9-b0a8-4e99-8661-1ef180591083');
+      const sqlCalls = query.mock.calls.map(([sql]) => sql as string);
+      expect(sqlCalls.some(sql => sql.includes('INSERT INTO app.assignments'))).toBe(false);
+      expect(sqlCalls.some(sql => sql.includes('INSERT INTO app.resource_reservations'))).toBe(false);
+      expect(sqlCalls.some(sql => sql.includes("SET status = 'ASSIGNED'"))).toBe(false);
     });
+
   });
 
   describe('Successful Assignment & Database Insertion', () => {
@@ -1473,6 +1629,9 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
 
         const releaseCall = query.mock.calls.find(([sql]) => sql.includes('UPDATE app.resource_reservations') && sql.includes("state = 'RELEASED'"));
         expect(releaseCall).toBeDefined();
+
+        const vesselRelease = query.mock.calls.find(([sql]) => sql.includes('UPDATE app.vessel_issuances'));
+        expect(vesselRelease).toBeDefined();
       });
 
       it('assigned VOLUNTEER can REJECT: PENDING -> REJECTED, returns pickup to PLANNED, releases reservations', async () => {
@@ -1491,6 +1650,9 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
 
         const releaseCall = query.mock.calls.find(([sql]) => sql.includes('UPDATE app.resource_reservations') && sql.includes("state = 'RELEASED'"));
         expect(releaseCall).toBeDefined();
+
+        const vesselRelease = query.mock.calls.find(([sql]) => sql.includes('UPDATE app.vessel_issuances'));
+        expect(vesselRelease).toBeDefined();
       });
 
       it('ADMIN can CANCEL from PENDING with reason: mirrors pickup CANCELLED, releases reservations', async () => {
@@ -1805,6 +1967,9 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
 
         const pickupCancel = calls.find(([sql, params]) => sql.includes('UPDATE app.pickups') && params?.[0] === 'CANCELLED');
         expect(pickupCancel).toBeDefined();
+
+        const vesselRelease = calls.find(([sql]) => sql.includes('vessel_issuances'));
+        expect(vesselRelease).toBeDefined();
       });
 
       it('cancels pickup from PLANNED status without assignment', async () => {

@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { closePool, withTransaction } from './pool';
 
-const migrationDirectory = resolve(process.cwd(), 'db/migrations');
+const migrationDirectory = existsSync(resolve(process.cwd(), 'db/migrations'))
+  ? resolve(process.cwd(), 'db/migrations')
+  : resolve(__dirname, '../../db/migrations');
 const mode = process.argv[2];
 if (mode !== 'up' && mode !== 'status') throw new Error('Use migrate.ts up or migrate.ts status.');
 
@@ -23,7 +25,7 @@ async function main() {
     const existing = new Map(applied.rows.map(row => [row.name, row.checksum]));
     const files = readdirSync(migrationDirectory).filter(name => /^\d+_[a-z0-9_]+\.sql$/.test(name)).sort();
     for (const name of files) {
-      const sql = readFileSync(resolve(migrationDirectory, name), 'utf8');
+      const sql = readFileSync(resolve(migrationDirectory, name), 'utf8').replace(/\r\n/g, '\n');
       const checksum = createHash('sha256').update(sql).digest('hex');
       if (existing.has(name)) {
         if (existing.get(name) !== checksum) throw new Error(`Applied migration changed: ${name}`);

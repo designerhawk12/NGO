@@ -16,7 +16,7 @@ export function getPool(): Pool {
       caCert = readFileSync(env.databaseSslCaPath, 'utf8');
     }
 
-        pool = new Pool({
+    pool = new Pool({
       connectionString: env.databaseUrl,
       max: 4,
       connectionTimeoutMillis: 5000,

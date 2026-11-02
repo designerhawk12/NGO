@@ -1,4 +1,14 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+dotenv.config();
+if (!process.env.DATABASE_URL) {
+  const serverEnv = resolve(__dirname, '../../.env');
+  if (existsSync(serverEnv)) {
+    dotenv.config({ path: serverEnv });
+  }
+}
 
 const port = Number(process.env.PORT ?? 4000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {

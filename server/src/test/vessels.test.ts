@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
+import type { PoolClient } from 'pg';
 
 const { verify, findUser, query } = vi.hoisted(() => ({
   verify: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock('../db/pool', () => ({
 }));
 
 import { app } from '../app';
+import { issueVesselForAssignment } from '../modules/vessels/service';
 
 const adminActor = {
   id: 'b0000000-0000-4000-8000-000000000001',
@@ -258,11 +260,13 @@ describe('Vessels & Food Container Management API', () => {
       query.mockResolvedValueOnce({ rows: [{ id: 'veh-123', registration_number: 'KA-09-AB-2048', kind: 'Van 02', status: 'ACTIVE' }] });
       // 3. Lookup active pickup assignment for vehicle
       query.mockResolvedValueOnce({ rows: [{ pickup_id: '6b597e69-6be5-4d29-97fc-a946fa8a5600' }] });
-      // 4. Insert issuance
+      // 4. Verify the resolved pickup
+      query.mockResolvedValueOnce({ rows: [{ id: '6b597e69-6be5-4d29-97fc-a946fa8a5600' }] });
+      // 5. Insert issuance
       query.mockResolvedValueOnce({ rows: [{ id: 'iss-v-1', issued_at: new Date() }] });
-      // 5. Update status
+      // 6. Update status
       query.mockResolvedValueOnce({ rows: [] });
-      // 6. Append log
+      // 7. Append log
       query.mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
@@ -276,6 +280,42 @@ describe('Vessels & Food Container Management API', () => {
       expect(res.status).toBe(200);
       expect(res.body.data.success).toBe(true);
       expect(res.body.data.registrationNumber).toBe('KA-09-AB-2048');
+    });
+
+    it('issues assignment vessels against the selected vehicle ID without creating a vehicle', async () => {
+      const vehicleId = 'c0000000-0000-4000-8000-000000000001';
+      const pickupId = 'c0000000-0000-4000-8000-000000000002';
+      query.mockResolvedValueOnce({
+        rows: [mockVesselDbRow({ status: 'AVAILABLE', cleaning_status: 'CLEAN' })],
+      });
+      query.mockResolvedValueOnce({
+        rows: [{ id: vehicleId, registration_number: 'KA-09-AB-2048', kind: 'Van', status: 'ACTIVE' }],
+      });
+      query.mockResolvedValueOnce({ rows: [{ id: pickupId }] });
+      query.mockResolvedValueOnce({ rows: [{ id: 'iss-v-2', issued_at: sampleDate }] });
+      query.mockResolvedValueOnce({ rows: [] });
+      query.mockResolvedValueOnce({ rows: [] });
+
+      const result = await issueVesselForAssignment({
+        vesselId: sampleVesselId,
+        pickupId,
+        vehicleId,
+        issuedNotes: 'Assignment vessel',
+      }, adminActor.id, { query } as unknown as PoolClient);
+
+      expect(result.vehicleId).toBe(vehicleId);
+      expect(query.mock.calls[1][0]).toContain('FROM app.vehicles WHERE id = $1');
+      expect(query.mock.calls[1][1]).toEqual([vehicleId]);
+      expect(query.mock.calls[3][0]).toContain('INSERT INTO app.vessel_issuances');
+      expect(query.mock.calls[3][1]).toEqual([
+        sampleVesselId,
+        pickupId,
+        vehicleId,
+        'KA-09-AB-2048',
+        adminActor.id,
+        'Assignment vessel',
+      ]);
+      expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.vehicles'))).toBe(false);
     });
 
     it('strictly rejects registration numbers not found in vehicle details', async () => {

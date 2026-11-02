@@ -50,6 +50,7 @@ export interface ContainerPlan {
 export interface CreateAssignmentInput {
   teamId?: string | null
   volunteerIds: string[]
+  vesselIds?: string[]
   driverId: string
   vehicleId: string
   role: string
@@ -73,7 +74,10 @@ export interface VehicleAssignmentSummary {
   assignmentId: string
   pickupId: string
   status: string
-  pickupWindow: {
+  windowStartsAt?: string
+  windowEndsAt?: string
+  /** Legacy nested shape; the API returns flat windowStartsAt/windowEndsAt. */
+  pickupWindow?: {
     windowStartsAt: string
     windowEndsAt: string
   }
@@ -147,6 +151,11 @@ export interface VehicleCandidateScore {
   rank: number
   reasons: string[]
   constraints: string[]
+  distanceToDonorKm?: number
+  durationToDonorMins?: number
+  locationLabel?: string
+  isLiveLocation?: boolean
+  route?: import('./vehicleRouting').SpecifiedTripRoute
 }
 
 export interface VolunteerCandidateScore {
@@ -160,4 +169,5 @@ export interface VolunteerCandidateScore {
   rank: number
   reasons: string[]
   constraints: string[]
+  availabilityLabel?: string
 }

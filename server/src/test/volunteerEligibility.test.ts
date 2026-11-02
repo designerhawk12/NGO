@@ -42,11 +42,25 @@ describe('Volunteer module read and eligibility port', () => {
     expect(await port.getVolunteerAvailability(volunteerId, startAt, endAt, client)).toEqual(result);
   });
 
-  it('rejects an unavailable volunteer', async () => {
+  it('rejects a volunteer without a covering AVAILABLE interval', async () => {
     findWindowAvailability.mockResolvedValue({ ...window, is_available: false });
     await expect(assertVolunteerAssignable({ volunteerId, startAt, endAt })).rejects.toMatchObject({ status: 409, code: 'RESOURCE_CONFLICT' });
     listEligibleVolunteerRows.mockResolvedValue([]);
     expect(await listEligibleVolunteers({ startAt, endAt })).toEqual([]);
+  });
+
+  it('preserves exact UTC instants across a local calendar-date boundary', async () => {
+    const startsAtBoundary = new Date('2026-10-29T00:30:00.000Z');
+    const endsAtBoundary = new Date('2026-10-29T01:30:00.000Z');
+    findWindowAvailability.mockResolvedValue(window);
+
+    await expect(assertVolunteerAssignable({
+      volunteerId,
+      startAt: startsAtBoundary,
+      endAt: endsAtBoundary,
+    })).resolves.toMatchObject({ isAvailable: true });
+
+    expect(findWindowAvailability).toHaveBeenCalledWith(volunteerId, startsAtBoundary, endsAtBoundary, undefined);
   });
 
   it('rejects an inactive volunteer even if an availability slot exists', async () => {

@@ -90,6 +90,14 @@ export async function issueVessel(
   return vesselRepo.issueVessel(input, actorUserId, client);
 }
 
+export async function issueVesselForAssignment(
+  input: IssueVessel & { vehicleId: string },
+  actorUserId: string,
+  client: PoolClient
+) {
+  return vesselRepo.issueVessel(input, actorUserId, client);
+}
+
 export async function returnVessel(
   vesselId: string,
   input: ReturnVessel,
