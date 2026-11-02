@@ -34,6 +34,15 @@ export async function runMigrations(mode: MigrationMode): Promise<void> {
     const files = readdirSync(migrationDirectory)
       .filter(name => /^\d+_[a-z0-9_]+\.sql$/.test(name))
       .sort();
+    const numberedMigrations = new Map<string, string>();
+    for (const name of files) {
+      const number = name.split('_', 1)[0];
+      const previous = numberedMigrations.get(number);
+      if (previous) {
+        throw new Error(`Duplicate migration number ${number}: ${previous}, ${name}`);
+      }
+      numberedMigrations.set(number, name);
+    }
     const migrationContents = new Map<string, { sql: string; checksum: string }>();
 
     for (const name of files) {
@@ -62,20 +71,17 @@ export async function runMigrations(mode: MigrationMode): Promise<void> {
             'Missing applied migration 005_functions.sql has an unexpected ledger checksum.'
           );
         }
+        if (name === '007_volunteer_applications.sql') {
+          throw new Error(
+            'Applied legacy 007_volunteer_applications.sql is absent from source; ' +
+            'reconcile this database before using 008_volunteer_applications.sql.'
+          );
+        }
         throw new Error('Applied migration missing from repository: ' + name);
       }
       if (localMigration.checksum !== checksum) {
         throw new Error('Applied migration changed: ' + name);
       }
-    }
-
-    if (
-      !migrationContents.has(verifiedHistoricalMigration.name) &&
-      !existing.has(verifiedHistoricalMigration.name)
-    ) {
-      throw new Error(
-        'Missing migration 005_functions.sql is not recorded as applied in the database ledger.'
-      );
     }
 
     for (const name of files) {
