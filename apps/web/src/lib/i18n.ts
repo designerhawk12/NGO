@@ -99,6 +99,8 @@ const kannada: Record<string, string> = {
   'Food request timing could not be verified. Refresh the request list before scheduling.':'ಆಹಾರ ವಿನಂತಿಯ ಸಮಯವನ್ನು ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ. ನಿಗದಿಪಡಿಸುವ ಮೊದಲು ವಿನಂತಿಗಳ ಪಟ್ಟಿಯನ್ನು ಮರುಲೋಡ್ ಮಾಡಿ.',
   'The food request pickup deadline has expired. Ask the donor to submit a new request; this request cannot be extended or reused.':'ಆಹಾರ ವಿನಂತಿಯ ಪಿಕಪ್ ಗಡುವು ಮುಗಿದಿದೆ. ದಾನಿಗೆ ಹೊಸ ವಿನಂತಿ ಸಲ್ಲಿಸಲು ತಿಳಿಸಿ; ಈ ವಿನಂತಿಯನ್ನು ವಿಸ್ತರಿಸಲು ಅಥವಾ ಮರುಬಳಕೆ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ.',
   'Pickup window must start in the future.':'ಪಿಕಪ್ ಸಮಯಾವಧಿ ಭವಿಷ್ಯದಲ್ಲಿ ಪ್ರಾರಂಭವಾಗಬೇಕು.',
+  'Pickup window cannot start before the food is ready.':'ಆಹಾರ ಸಿದ್ಧವಾಗುವ ಮೊದಲು ಪಿಕಪ್ ಸಮಯಾವಧಿ ಪ್ರಾರಂಭವಾಗಬಾರದು.',
+  'Pickup window cannot end after the food request deadline.':'ಆಹಾರ ವಿನಂತಿಯ ಗಡುವಿನ ನಂತರ ಪಿಕಪ್ ಸಮಯಾವಧಿ ಮುಗಿಯಬಾರದು.',
   'Not checked':'ಪರಿಶೀಲಿಸಲಾಗಿಲ್ಲ',
   'Inactive roster':'ನಿಷ್ಕ್ರಿಯ ಪಟ್ಟಿಯಲ್ಲಿ',
   'Window blocked':'ಸಮಯಾವಧಿ ನಿರ್ಬಂಧಿಸಲಾಗಿದೆ',

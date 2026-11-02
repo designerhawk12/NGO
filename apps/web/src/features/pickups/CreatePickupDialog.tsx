@@ -124,6 +124,24 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
       notify(msg, 'error')
       return
     }
+    const now = Date.now()
+    const readyAt = selectedRequest?.readyAt ? Date.parse(selectedRequest.readyAt) : NaN
+    const pickupDeadline = selectedRequest?.pickupDeadline ? Date.parse(selectedRequest.pickupDeadline) : NaN
+    let timingError: string | null = null
+    if (Number.isFinite(pickupDeadline) && pickupDeadline <= now) {
+      timingError = 'The food request pickup deadline has expired. Ask the donor to submit a new request; this request cannot be extended or reused.'
+    } else if (Date.parse(startsAt) <= now) {
+      timingError = 'Pickup window must start in the future.'
+    } else if (Number.isFinite(readyAt) && Date.parse(startsAt) < readyAt) {
+      timingError = 'Pickup window cannot start before the food is ready.'
+    } else if (Number.isFinite(pickupDeadline) && Date.parse(endsAt) > pickupDeadline) {
+      timingError = 'Pickup window cannot end after the food request deadline.'
+    }
+    if (timingError) {
+      setError(timingError)
+      notify(timingError, 'error')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {

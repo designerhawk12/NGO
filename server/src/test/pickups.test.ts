@@ -54,6 +54,13 @@ const validPickupPayload = {
   deliveryAddress: 'Central Food Hub, Bengaluru',
 };
 
+async function withClock<T>(instant: string, run: () => Promise<T>): Promise<T> {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(instant));
+  try { return await run(); }
+  finally { vi.useRealTimers(); }
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   query.mockReset();
@@ -354,6 +361,66 @@ describe('Pickups API (PR1)', () => {
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('RESOURCE_CONFLICT');
+    });
+  });
+
+  describe('Strict pickup timing boundaries', () => {
+    function mockScheduling(readyAt: string, pickupDeadline: string) {
+      query.mockImplementation(async (sql: string, params?: unknown[]) => {
+        if (sql.includes('FROM app.food_requests')) return { rows: [{
+          id: validPickupPayload.foodRequestId, status: 'SUBMITTED', safety_review: 'APPROVED',
+          ready_at: new Date(readyAt), pickup_deadline: new Date(pickupDeadline),
+        }] };
+        if (sql.includes('FROM app.pickups')) return { rows: [] };
+        if (sql.includes('INSERT INTO app.pickups')) return { rows: [{
+          id: 'c0000000-0000-4000-8000-000000000001',
+          food_request_id: validPickupPayload.foodRequestId,
+          window_starts_at: new Date(String(params?.[1])),
+          window_ends_at: new Date(String(params?.[2])),
+          delivery_address: validPickupPayload.deliveryAddress,
+          status: 'PLANNED', version: 0, created_at: new Date(),
+        }] };
+        return { rows: [] };
+      });
+    }
+
+    it.each([
+      ['2030-10-10T09:00:00.000Z', 'at the current instant'],
+      ['2030-10-10T08:59:59.999Z', 'before the current instant'],
+    ])('rejects a pickup starting %s (%s) without writing', async (startAt) => {
+      await withClock('2030-10-10T09:00:00.000Z', async () => {
+        mockScheduling('2030-10-10T08:00:00.000Z', '2030-10-10T12:00:00.000Z');
+        const result = await request(app).post('/api/v1/pickups').set('Authorization', 'Bearer token')
+          .send({ ...validPickupPayload, windowStartsAt: startAt });
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('future');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.pickups'))).toBe(false);
+      });
+    });
+
+    it('accepts exact food readiness and deadline boundaries across IST and UTC offsets', async () => {
+      await withClock('2030-10-10T09:00:00.000Z', async () => {
+        mockScheduling('2030-10-10T10:00:00.000Z', '2030-10-10T12:00:00.000Z');
+        const result = await request(app).post('/api/v1/pickups').set('Authorization', 'Bearer token')
+          .send({ ...validPickupPayload,
+            windowStartsAt: '2030-10-10T15:30:00+05:30',
+            windowEndsAt: '2030-10-10T17:30:00+05:30',
+          });
+        expect(result.status).toBe(201);
+        expect(result.body.data.windowStartsAt).toBe('2030-10-10T10:00:00.000Z');
+        expect(result.body.data.windowEndsAt).toBe('2030-10-10T12:00:00.000Z');
+      });
+    });
+
+    it('rejects a donor deadline at the current instant before any pickup insert', async () => {
+      await withClock('2030-10-10T09:00:00.000Z', async () => {
+        mockScheduling('2030-10-10T08:00:00.000Z', '2030-10-10T09:00:00.000Z');
+        const result = await request(app).post('/api/v1/pickups').set('Authorization', 'Bearer token')
+          .send(validPickupPayload);
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('Do not extend or reuse this request');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.pickups'))).toBe(false);
+      });
     });
   });
 
@@ -1156,6 +1223,69 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
     });
   });
 
+  describe('Strict new assignment timing', () => {
+    it('rejects a started persisted pickup before reserving resources', async () => {
+      await withClock('2030-10-30T09:00:00.000Z', async () => {
+        setupDefaultAssignmentDb();
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'started-pickup')
+          .send(validAssignmentPayload);
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('Reschedule the pickup');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.assignments'))).toBe(false);
+      });
+    });
+
+    it('rejects an assignment starting at the current instant without a partial write', async () => {
+      await withClock('2030-10-30T08:30:00.000Z', async () => {
+        setupDefaultAssignmentDb();
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'started-assignment')
+          .send({ ...validAssignmentPayload, windowStartsAt: '2030-10-30T08:30:00.000Z' });
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('Reschedule the pickup');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.assignments'))).toBe(false);
+      });
+    });
+
+    it('requires the requested assignment window to stay inside the persisted pickup window', async () => {
+      await withClock('2030-10-30T08:00:00.000Z', async () => {
+        setupDefaultAssignmentDb();
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'outside-pickup')
+          .send({ ...validAssignmentPayload, windowEndsAt: '2030-10-30T13:00:00.001Z' });
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('scheduled pickup window');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.assignments'))).toBe(false);
+      });
+    });
+
+    it('allows exact readiness and deadline boundaries when the persisted window also fits', async () => {
+      await withClock('2030-10-30T08:00:00.000Z', async () => {
+        setupDefaultAssignmentDb({
+          pickup: { window_starts_at: new Date('2030-10-30T10:00:00.000Z'), window_ends_at: new Date('2030-10-30T12:00:00.000Z') },
+          foodRequest: { ready_at: new Date('2030-10-30T10:00:00.000Z'), pickup_deadline: new Date('2030-10-30T12:00:00.000Z') },
+        });
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'exact-bounds')
+          .send(validAssignmentPayload);
+        expect(result.status).toBe(201);
+      });
+    });
+
+    it('blocks a new assignment when the donor deadline has expired', async () => {
+      await withClock('2030-10-30T08:00:00.000Z', async () => {
+        setupDefaultAssignmentDb({ foodRequest: { pickup_deadline: new Date('2030-10-30T08:00:00.000Z') } });
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'expired-food')
+          .send(validAssignmentPayload);
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('submit a new request');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.assignments'))).toBe(false);
+      });
+    });
+  });
+
   describe('Idempotency Replay & Conflict', () => {
     it('returns stored assignment on idempotent replay with same key and same hash', async () => {
       const { computeRequestHash } = await import('../modules/pickups/service');
@@ -1182,6 +1312,25 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
       // Should NOT insert a new assignment
       const insertCalls = query.mock.calls.filter(([sql]) => sql.includes('INSERT INTO app.assignments'));
       expect(insertCalls).toHaveLength(0);
+    });
+
+    it('replays a committed assignment after its pickup window has elapsed', async () => {
+      await withClock('2030-11-01T08:00:00.000Z', async () => {
+        const { computeRequestHash } = await import('../modules/pickups/service');
+        setupDefaultAssignmentDb({
+          pickup: { status: 'ASSIGNED' },
+          idempotency: {
+            key: 'key-1', request_hash: computeRequestHash(testPickupId, validAssignmentPayload),
+            assignment_id: testAssignmentId,
+          },
+        });
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'key-1')
+          .send(validAssignmentPayload);
+        expect(result.status).toBe(200);
+        expect(result.body.data.id).toBe(testAssignmentId);
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.assignments'))).toBe(false);
+      });
     });
 
     it('returns 409 RESOURCE_CONFLICT when reusing idempotency key with different payload', async () => {
@@ -1583,6 +1732,17 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
 
         const pickupUpdate = query.mock.calls.find(([sql, params]) => sql.includes('UPDATE app.pickups') && params?.[0] === 'EN_ROUTE');
         expect(pickupUpdate).toBeDefined();
+      });
+
+      it('allows an already active assignment to progress after its original pickup window', async () => {
+        await withClock('2030-11-01T08:00:00.000Z', async () => {
+          findUser.mockResolvedValue(volunteer);
+          mockDbForTransition({ assignmentStatus: 'ACCEPTED', assignmentVersion: 1, pickupStatus: 'ASSIGNED', isAssigned: true });
+          const result = await request(app).patch(`/api/v1/assignments/${pr3AssignmentId}/status`)
+            .set('Authorization', 'Bearer token').send({ action: 'START', expectedVersion: 1 });
+          expect(result.status).toBe(200);
+          expect(result.body.data.status).toBe('EN_ROUTE');
+        });
       });
 
       it('assigned VOLUNTEER can ARRIVE: EN_ROUTE -> ARRIVED_AT_DONOR, mirrors pickup', async () => {
