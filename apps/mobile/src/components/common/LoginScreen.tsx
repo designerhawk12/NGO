@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { volunteerRegistrationInputSchema } from '@aaharaconnect/shared';
 import { Button, Card, Field, Header, Icon, LanguageSwitcher, Screen, T } from './UI';
@@ -135,6 +135,15 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         <Field label="Email or phone number" value={identifier} onChangeText={setIdentifier} autoCapitalize="none" keyboardType="email-address" />
         <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry />
         <Button title="Sign in" onPress={() => { if (role === 'volunteer') void submitLive(); else submit(); }} loading={role === 'volunteer' && busy} disabled={busy} style={{ marginTop: 6 }} />
+        {role === 'volunteer' && isLiveAuthConfigured() && <Button title="Forgot password?" onPress={() => {
+          const origin = process.env.EXPO_PUBLIC_WEB_BASE_URL;
+          if (!origin) { app.notify('Password recovery is not configured for this app.'); return; }
+          try {
+            const url = new URL(origin);
+            if (url.origin !== origin || url.protocol !== 'https:') throw new Error('Invalid recovery origin');
+            void Linking.openURL(`${url.origin}/forgot-password`).catch(() => app.notify('Could not open password recovery. Try again later.'));
+          } catch { app.notify('Password recovery is not configured for this app.'); }
+        }} disabled={busy} variant="quiet" style={{ marginTop: 8 }} />}
         {role === 'donor' && isLiveAuthConfigured() && <Button title="Sign in to shared API" onPress={() => { void submitLive(); }} loading={busy} disabled={busy} variant="outline" style={{ marginTop: 8 }} />}
         {role === 'volunteer' && isLiveAuthConfigured() && <Button title="Register as a volunteer" onPress={() => { setRegistration(emptyRegistration); setRegistrationResult(null); setRegistrationError(null); setRegisterMode(true); }} disabled={busy} variant="outline" style={{ marginTop: 8 }} />}
         <Button title="Use demo account" onPress={() => submit(true)} disabled={busy} variant="quiet" style={{ marginTop: 8 }} />

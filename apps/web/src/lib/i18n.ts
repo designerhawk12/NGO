@@ -5,6 +5,23 @@ export type Language = 'en' | 'kn'
 // The English UI remains the source text. This layer changes only rendered copy;
 // option values, IDs, names and the volunteer/assignment data stay untouched.
 const kannada: Record<string, string> = {
+  'Email address':'ಇಮೇಲ್ ವಿಳಾಸ',
+  'Forgot password?':'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?',
+  'Enter the email address for your Volunteer account to request a recovery link.':'ಮರುಪಡೆಯುವ ಲಿಂಕ್‌ಗಾಗಿ ನಿಮ್ಮ ಸ್ವಯಂಸೇವಕ ಖಾತೆಯ ಇಮೇಲ್ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ.',
+  'Check your email':'ನಿಮ್ಮ ಇಮೇಲ್ ಪರಿಶೀಲಿಸಿ',
+  'If an account uses that address and email delivery is available, follow the password recovery instructions sent there.':'ಆ ವಿಳಾಸದಲ್ಲಿ ಖಾತೆ ಇದ್ದು ಇಮೇಲ್ ಸೇವೆ ಲಭ್ಯವಿದ್ದರೆ, ಕಳುಹಿಸಲಾದ ಪಾಸ್‌ವರ್ಡ್ ಮರುಪಡೆಯುವ ಸೂಚನೆಗಳನ್ನು ಅನುಸರಿಸಿ.',
+  'Back to AaharaConnect':'AaharaConnect‌ಗೆ ಹಿಂತಿರುಗಿ',
+  'Could not request password recovery. Please try again later.':'ಪಾಸ್‌ವರ್ಡ್ ಮರುಪಡೆಯುವಿಕೆಯನ್ನು ವಿನಂತಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  'Requesting link…':'ಲಿಂಕ್ ವಿನಂತಿಸಲಾಗುತ್ತಿದೆ…',
+  'Send recovery link':'ಮರುಪಡೆಯುವ ಲಿಂಕ್ ಕಳುಹಿಸಿ',
+  'Checking recovery link…':'ಮರುಪಡೆಯುವ ಲಿಂಕ್ ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…',
+  'This recovery link is invalid or has expired.':'ಈ ಮರುಪಡೆಯುವ ಲಿಂಕ್ ಅಮಾನ್ಯವಾಗಿದೆ ಅಥವಾ ಅವಧಿ ಮೀರಿದೆ.',
+  'Request a new link to reset your password.':'ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಲು ಹೊಸ ಲಿಂಕ್ ವಿನಂತಿಸಿ.',
+  'Request a new link':'ಹೊಸ ಲಿಂಕ್ ವಿನಂತಿಸಿ',
+  'Choose a new password':'ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಆಯ್ಕೆಮಾಡಿ',
+  'Use your new password when you return to Volunteer sign in.':'ಸ್ವಯಂಸೇವಕರ ಪ್ರವೇಶಕ್ಕೆ ಹಿಂತಿರುಗಿದಾಗ ನಿಮ್ಮ ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಬಳಸಿ.',
+  'Password updated':'ಪಾಸ್‌ವರ್ಡ್ ನವೀಕರಿಸಲಾಗಿದೆ',
+  'Return to the mobile app and sign in with your new password. Volunteer access still depends on your application status.':'ಮೊಬೈಲ್ ಆ್ಯಪ್‌ಗೆ ಹಿಂತಿರುಗಿ ಹೊಸ ಪಾಸ್‌ವರ್ಡ್‌ನೊಂದಿಗೆ ಪ್ರವೇಶಿಸಿ. ಸ್ವಯಂಸೇವಕರ ಪ್ರವೇಶವು ಇನ್ನೂ ನಿಮ್ಮ ಅರ್ಜಿಯ ಸ್ಥಿತಿಯನ್ನು ಅವಲಂಬಿಸಿದೆ.',
   'Volunteer Approval':'ಸ್ವಯಂಸೇವಕರ ಅನುಮೋದನೆ',
   'Review new applications before granting access to Volunteer features.':'ಸ್ವಯಂಸೇವಕರ ಸೌಲಭ್ಯಗಳ ಪ್ರವೇಶ ನೀಡುವ ಮೊದಲು ಹೊಸ ಅರ್ಜಿಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.',
   'Refresh applications':'ಅರ್ಜಿಗಳನ್ನು ನವೀಕರಿಸಿ',

@@ -1,4 +1,7 @@
 export const kn: Record<string, string> = {
+  'Forgot password?': 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?',
+  'Password recovery is not configured for this app.': 'ಈ ಆ್ಯಪ್‌ಗೆ ಪಾಸ್‌ವರ್ಡ್ ಮರುಪಡೆಯುವಿಕೆ ಹೊಂದಿಸಲಾಗಿಲ್ಲ.',
+  'Could not open password recovery. Try again later.': 'ಪಾಸ್‌ವರ್ಡ್ ಮರುಪಡೆಯುವ ಪುಟವನ್ನು ತೆರೆಯಲಾಗಲಿಲ್ಲ. ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
   'Volunteer registration': 'ಸ್ವಯಂಸೇವಕರ ನೋಂದಣಿ',
   'Apply to join AaharaConnect': 'AaharaConnect‌ಗೆ ಸೇರಲು ಅರ್ಜಿ ಸಲ್ಲಿಸಿ',
   'Email address': 'ಇಮೇಲ್ ವಿಳಾಸ', 'Full name': 'ಪೂರ್ಣ ಹೆಸರು',
