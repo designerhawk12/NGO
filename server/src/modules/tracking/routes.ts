@@ -1,3 +1,4 @@
+import { requireRole } from '../../middleware/authorize';
 import { Router } from 'express';
 import {
   trackingConsentInputSchema,
@@ -249,6 +250,53 @@ vehicleTrackingRoutes.post(
       );
 
       sendSuccess(response, result.rows[0]);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+/**
+ * GET /api/v1/vehicles/:id/locations
+ * Returns recent, non-expired locations for a vehicle.
+ */
+vehicleTrackingRoutes.get(
+  '/:id/locations',
+  requireAuth,
+  requireRole('ADMIN'),
+  async (request, response, next) => {
+    try {
+      const vehicleId = uuidSchema.safeParse(request.params.id);
+
+      if (!vehicleId.success) {
+        throw new HttpError(
+          400,
+          'VALIDATION_ERROR',
+          'Vehicle ID must be a UUID.'
+        );
+      }
+
+      const pool = getPool();
+
+      const result = await pool.query(
+        `
+        SELECT
+          id,
+          vehicle_id AS "vehicleId",
+          pickup_id AS "pickupId",
+          latitude,
+          longitude,
+          recorded_at AS "recordedAt",
+          expires_at AS "expiresAt"
+        FROM app.vehicle_locations
+        WHERE vehicle_id = $1
+          AND expires_at > now()
+        ORDER BY recorded_at DESC
+        LIMIT 100
+        `,
+        [vehicleId.data]
+      );
+
+      sendSuccess(response, { items: result.rows });
     } catch (error) {
       next(error);
     }
