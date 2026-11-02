@@ -142,3 +142,23 @@ export async function deleteVehicle(id: string): Promise<{ success: boolean }> {
     headers: await getAuthHeaders(),
   });
 }
+export interface ApiVehicleLocation {
+  id: string;
+  vehicleId: string;
+  pickupId: string;
+  latitude: number;
+  longitude: number;
+  recordedAt: string;
+  expiresAt: string;
+}
+
+export async function fetchVehicleLocations(
+  vehicleId: string
+): Promise<{ items: ApiVehicleLocation[] }> {
+  return apiRequest<{ items: ApiVehicleLocation[] }>(
+    `vehicles/${encodeURIComponent(vehicleId)}/locations`,
+    {
+      headers: await getAuthHeaders(),
+    }
+  );
+}
