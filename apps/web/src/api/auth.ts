@@ -7,6 +7,11 @@ export function getCurrentAppUser(accessToken: string): Promise<AppUser> {
 }
 
 let client: SupabaseClient | undefined;
+let cachedAdminUser: { token: string; user: AppUser; timestamp: number } | null = null;
+
+export function clearAdminAuthCache(): void {
+  cachedAdminUser = null;
+}
 
 export function isLiveAuthConfigured(): boolean {
   return !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY && import.meta.env.VITE_API_BASE_URL);
@@ -30,36 +35,118 @@ export async function signInAsAdmin(email: string, password: string): Promise<Ap
   try {
     const user = await getCurrentAppUser(data.session.access_token);
     if (user.role !== 'ADMIN') throw new Error('Administrator access is required.');
+    cachedAdminUser = { token: data.session.access_token, user, timestamp: Date.now() };
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('aaharaconnect-admin-session', '1');
+    }
     return user;
   } catch (cause) {
-    await auth.auth.signOut();
+    cachedAdminUser = null;
+    await auth.auth.signOut().catch(() => {});
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('aaharaconnect-admin-session');
+    }
     throw cause;
   }
 }
 
 export async function restoreAdminSession(): Promise<AppUser | null> {
   if (!isLiveAuthConfigured()) return null;
-  const auth = getAuthClient();
-  const { data, error } = await auth.auth.getSession();
-  if (error || !data.session) return null;
-  const user = await getCurrentAppUser(data.session.access_token);
-  if (user.role !== 'ADMIN') {
-    await auth.auth.signOut();
+  try {
+    const auth = getAuthClient();
+    const { data, error } = await auth.auth.getSession();
+    if (error || !data.session) {
+      cachedAdminUser = null;
+      if (typeof window !== 'undefined') window.localStorage.removeItem('aaharaconnect-admin-session');
+      return null;
+    }
+
+    let session = data.session;
+    if (session.expires_at && session.expires_at * 1000 < Date.now() + 30000) {
+      const refreshed = await auth.auth.refreshSession();
+      if (refreshed.error || !refreshed.data.session) {
+        cachedAdminUser = null;
+        await auth.auth.signOut().catch(() => {});
+        if (typeof window !== 'undefined') window.localStorage.removeItem('aaharaconnect-admin-session');
+        return null;
+      }
+      session = refreshed.data.session;
+    }
+
+    const user = await getCurrentAppUser(session.access_token);
+    if (user.role !== 'ADMIN') {
+      cachedAdminUser = null;
+      await auth.auth.signOut().catch(() => {});
+      if (typeof window !== 'undefined') window.localStorage.removeItem('aaharaconnect-admin-session');
+      return null;
+    }
+
+    cachedAdminUser = { token: session.access_token, user, timestamp: Date.now() };
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('aaharaconnect-admin-session', '1');
+    }
+    return user;
+  } catch {
+    cachedAdminUser = null;
+    if (typeof window !== 'undefined') window.localStorage.removeItem('aaharaconnect-admin-session');
     return null;
   }
-  return user;
 }
 
 export async function getAdminAccessToken(): Promise<string | null> {
   if (!isLiveAuthConfigured()) return null;
-  const { data, error } = await getAuthClient().auth.getSession();
-  if (error) throw error;
-  if (!data.session) return null;
-  const user = await getCurrentAppUser(data.session.access_token);
-  if (user.role !== 'ADMIN') throw new ApiClientError(403, 'FORBIDDEN', 'Administrator access is required.');
-  return data.session.access_token;
+  try {
+    const auth = getAuthClient();
+    const { data, error } = await auth.auth.getSession();
+    if (error || !data.session) return null;
+
+    let session = data.session;
+    if (session.expires_at && session.expires_at * 1000 < Date.now() + 30000) {
+      const refreshed = await auth.auth.refreshSession();
+      if (refreshed.error || !refreshed.data.session) {
+        cachedAdminUser = null;
+        return null;
+      }
+      session = refreshed.data.session;
+    }
+
+    if (!cachedAdminUser || cachedAdminUser.token !== session.access_token) {
+      const user = await getCurrentAppUser(session.access_token);
+      if (user.role !== 'ADMIN') {
+        cachedAdminUser = null;
+        throw new ApiClientError(403, 'FORBIDDEN', 'Administrator access is required.');
+      }
+      cachedAdminUser = { token: session.access_token, user, timestamp: Date.now() };
+    }
+
+    return session.access_token;
+  } catch (err) {
+    if (err instanceof ApiClientError) throw err;
+    return null;
+  }
+}
+
+/**
+ * Shared authorization header helper for protected API requests.
+ * Throws ApiClientError(401, 'UNAUTHENTICATED') if no valid administrator session exists,
+ * preventing anonymous requests from reaching protected endpoints.
+ */
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getAdminAccessToken();
+  if (!token) {
+    throw new ApiClientError(
+      401,
+      'UNAUTHENTICATED',
+      'Administrator sign-in is required to access live records. Please sign in under Settings.'
+    );
+  }
+  return { Authorization: `Bearer ${token}` };
 }
 
 export async function signOutAdmin(): Promise<void> {
-  if (client) await client.auth.signOut();
+  cachedAdminUser = null;
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem('aaharaconnect-admin-session');
+  }
+  if (client) await client.auth.signOut().catch(() => {});
 }

@@ -20,8 +20,15 @@ import {
   getAllActiveTrips,
   type DonorPickupRequest,
 } from '../features/vehicles/donorTripService'
-import type { Vehicle } from '../types'
+import {
+  createAssignment,
+  createPickup,
+  fetchDrivers,
+  fetchVehicles,
+  fetchVolunteers,
+} from '../features/pickups/api'
 import { isLiveAdmin } from '../features/pickups/adapters'
+import type { Vehicle } from '../types'
 
 interface Props {
   vehicles?: Vehicle[]
@@ -32,11 +39,16 @@ interface Props {
 export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props) {
   const [requests, setRequests] = useState<DonorPickupRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState(false)
+  const [liveVehicles, setLiveVehicles] = useState<Vehicle[]>([])
   const [selectedVehicleMap, setSelectedVehicleMap] = useState<Record<string, string>>({})
+  const [assigningId, setAssigningId] = useState<string | null>(null)
 
   const loadRequests = async () => {
-    setLoading(true); setLoadError(false)
+    setLoading(true)
+    setError(null)
+    setLoadError(false)
     try {
       const live = isLiveAdmin()
       const data = await fetchAllDonorRequests(live)
@@ -57,12 +69,36 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
       })
 
       setRequests(enriched)
-    } catch {
+    } catch (err: unknown) {
       setLoadError(true)
+      setError(err instanceof Error ? err.message : 'Could not load food requests from the API. Check your Admin session and retry.')
     } finally {
       setLoading(false)
     }
   }
+
+  // Load live vehicles directly from PostgreSQL in live admin mode
+  useEffect(() => {
+    if (isLiveAdmin()) {
+      fetchVehicles()
+        .then(res => {
+          if (Array.isArray(res?.items) && res.items.length > 0) {
+            const mapped: Vehicle[] = res.items.map((v: any) => ({
+              vehicleId: v.vehicleId || v.id,
+              registrationNumber: v.registrationNumber || v.registration_number,
+              type: v.type || v.vehicleType || 'Van',
+              capacityKg: Number(v.capacityKg || v.capacity_kg) || 500,
+              status: v.status || 'AVAILABLE',
+              fuelType: v.fuelType || 'DIESEL',
+              driverId: v.assignedDriverId || v.driverId,
+              driverName: v.driverName,
+            }))
+            setLiveVehicles(mapped)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [])
 
   useEffect(() => {
     void loadRequests()
@@ -83,16 +119,24 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
     }
   }, [])
 
-  const availableVehicles = vehicles.filter(v => v.status === 'AVAILABLE')
+  // Live mode must not make a mock vehicle dispatchable when the API has not
+  // returned a canonical vehicle record.
+  const displayVehicles = isLiveAdmin() ? liveVehicles : vehicles
+  const availableVehicles = displayVehicles.filter(v => v.status === 'AVAILABLE')
 
-  const handleAssign = (request: DonorPickupRequest) => {
+  const handleAssign = async (request: DonorPickupRequest) => {
+    if (isLiveAdmin() && request.safetyReview !== 'APPROVED') {
+      notify?.('An administrator must complete the food-safety review before this pickup can be scheduled.', 'error')
+      return
+    }
+
     const chosenVehicleId = selectedVehicleMap[request.id] || availableVehicles[0]?.vehicleId
     if (!chosenVehicleId) {
       notify?.('Please select an available vehicle to assign.', 'error')
       return
     }
 
-    const vehicle = vehicles.find(v => v.vehicleId === chosenVehicleId)
+    const vehicle = displayVehicles.find(v => v.vehicleId === chosenVehicleId)
     if (!vehicle) {
       notify?.('Selected vehicle was not found.', 'error')
       return
@@ -106,9 +150,86 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
       return
     }
 
+    if (isLiveAdmin()) {
+      setAssigningId(request.id)
+      try {
+        // The backend rechecks the approved safety review before scheduling.
+        const pickup = request.pickup || await createPickup({
+          foodRequestId: request.id,
+          deliveryAddress: 'AaharaConnect Distribution Center, Indiranagar',
+          windowStartsAt: request.readyAt || new Date().toISOString(),
+          windowEndsAt: request.pickupDeadline || new Date(Date.now() + 10800000).toISOString(),
+        })
+        if (pickup.status !== 'PLANNED') {
+          notify?.(`This pickup is already ${pickup.status.toLowerCase()}. Refresh the request before assigning it again.`, 'error')
+          await loadRequests()
+          return
+        }
+
+        // Find available driver & volunteer to assign.
+        const [driverRes, volRes] = await Promise.allSettled([fetchDrivers(), fetchVolunteers()])
+        const driverItem: any =
+          driverRes.status === 'fulfilled' && Array.isArray(driverRes.value?.items)
+            ? driverRes.value.items.find((d: any) => d.status === 'ACTIVE') || driverRes.value.items[0]
+            : null
+        const volItem: any =
+          volRes.status === 'fulfilled' && Array.isArray(volRes.value?.items)
+            ? volRes.value.items[0]
+            : null
+
+        const driverId = vehicle.driverId || driverItem?.driverId || driverItem?.id || null
+        const volunteerIds = volItem ? [volItem.volunteerId || volItem.id] : []
+
+        await createAssignment(
+          pickup.id,
+          {
+            teamId: null,
+            volunteerIds,
+            driverId: driverId || '',
+            vehicleId: vehicle.vehicleId,
+            role: 'Pickup Volunteer',
+            windowStartsAt: pickup.windowStartsAt,
+            windowEndsAt: pickup.windowEndsAt,
+            containers: [
+              {
+                containerType: 'insulated crate',
+                count: request.totalVessels,
+                estimatedLoadKg: request.estimatedWeightKg,
+              },
+            ],
+          },
+          crypto.randomUUID()
+        )
+
+        setRequests(prev =>
+          prev.map(r =>
+            r.id === request.id
+              ? {
+                  ...r,
+                  status: 'ASSIGNED',
+                  assignedVehicleId: vehicle.vehicleId,
+                  assignedVehicleReg: vehicle.registrationNumber,
+                }
+              : r
+          )
+        )
+
+        notify?.(
+          `Scheduled pickup & assigned vehicle ${vehicle.registrationNumber} in PostgreSQL!`,
+          'success'
+        )
+        return
+      } catch (err: unknown) {
+        notify?.(err instanceof Error ? err.message : 'Backend assignment failed.', 'error')
+        return
+      } finally {
+        setAssigningId(null)
+      }
+    }
+
+    // Demo mode fallback
     const res = assignDonorPickupToVehicle(vehicle, request)
     if (res.success && res.trip) {
-      // Mark vehicle as ON TRIP
       if (setVehicles) {
         setVehicles(prev =>
           prev.map(v => (v.vehicleId === vehicle.vehicleId ? { ...v, status: 'ON TRIP' } : v))
@@ -199,7 +320,23 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
           </span>
         </div>
 
-        {loadError ? <div className="p-8 text-center bg-white rounded-2xl border border-slate-200" role="alert">Could not load food requests from the API. Check your Admin session and retry.</div> : requests.length === 0 ? (
+        {loading ? (
+          <div className="p-8 text-center bg-white rounded-2xl border border-slate-200">
+            <RefreshCw size={24} className="mx-auto text-emerald-600 animate-spin mb-2" />
+            <p className="text-sm text-slate-600">Loading donor requests from backend…</p>
+          </div>
+        ) : loadError || error ? (
+          <div className="p-8 text-center bg-white rounded-2xl border border-red-200 text-red-600" role="alert">
+            <p className="text-sm font-semibold">{error || 'Could not load food requests from the API. Check your Admin session and retry.'}</p>
+            <button
+              type="button"
+              className="button button-secondary mt-3"
+              onClick={() => void loadRequests()}
+            >
+              Retry
+            </button>
+          </div>
+        ) : requests.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-slate-200">
             <Package size={32} className="mx-auto text-slate-300 mb-2" />
             <h3 className="font-bold text-slate-700">No donor requests found</h3>
@@ -211,7 +348,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {requests.map(req => {
               const selectedVehId = selectedVehicleMap[req.id] || availableVehicles[0]?.vehicleId || ''
-              const candidateVehicle = vehicles.find(v => v.vehicleId === selectedVehId)
+              const candidateVehicle = displayVehicles.find(v => v.vehicleId === selectedVehId)
               const hasCapacity = candidateVehicle
                 ? candidateVehicle.capacityKg >= req.estimatedWeightKg
                 : false
@@ -333,15 +470,20 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
                           <button
                             type="button"
                             onClick={() => handleAssign(req)}
-                            disabled={availableVehicles.length === 0 || !hasCapacity}
+                            disabled={availableVehicles.length === 0 || !hasCapacity || assigningId === req.id || (isLiveAdmin() && req.safetyReview !== 'APPROVED')}
                             className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-sm transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
                           >
-                            <Truck size={14} /> Assign Vehicle
+                            <Truck size={14} className={assigningId === req.id ? 'animate-spin' : ''} /> {assigningId === req.id ? 'Assigning…' : 'Assign Vehicle'}
                           </button>
                         </div>
                         {candidateVehicle && !hasCapacity && (
                           <p className="text-[11px] text-rose-600 font-medium">
                             {`Selected vehicle capacity (${candidateVehicle.capacityKg} kg) is less than pickup weight (${req.estimatedWeightKg} kg).`}
+                          </p>
+                        )}
+                        {isLiveAdmin() && req.safetyReview !== 'APPROVED' && (
+                          <p className="text-[11px] text-amber-700 font-medium">
+                            Food-safety review must be approved before scheduling.
                           </p>
                         )}
                       </div>

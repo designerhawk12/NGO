@@ -66,6 +66,16 @@ export const getPickupByIdHandler: RequestHandler = async (request, response, ne
   }
 };
 
+export const getEligibleVolunteersForPickupHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const idResult = uuidSchema.safeParse(request.params.id);
+    if (!idResult.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Pickup ID must be a UUID.');
+    sendSuccess(response, await pickupService.listEligibleVolunteersForPickup(idResult.data));
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const listPickupsHandler: RequestHandler = async (request, response, next) => {
   try {
     const parsed = pageQuerySchema.safeParse(request.query);

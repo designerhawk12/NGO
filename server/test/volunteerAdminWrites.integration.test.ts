@@ -82,7 +82,7 @@ describe.skipIf(!enabled)('ADMIN volunteer create/edit persistence', () => {
     }
   })
 
-  it('rolls back partial provisioning after a concurrent phone conflict', async () => {
+  it('rolls back partial provisioning and requests administrator recovery after a concurrent phone conflict', async () => {
     const adminAuthId = randomUUID()
     const newAuthId = randomUUID()
     const code = `VOL-${randomUUID()}`
@@ -102,8 +102,9 @@ describe.skipIf(!enabled)('ADMIN volunteer create/edit persistence', () => {
       })
       const result = await request(app).post('/api/v1/volunteers').set('Authorization', 'Bearer integration-token')
         .send({ email: 'race@example.test', name: 'Race Volunteer', phoneE164: phone, registrationCode: code })
-      expect(result.status).toBe(409)
-      expect(revoke).toHaveBeenCalledWith({ authUserId: newAuthId, inviteNonce: 'integration-nonce' })
+      expect(result.status).toBe(503)
+      expect(result.body.error.code).toBe('INVITE_RECOVERY_REQUIRED')
+      expect(revoke).not.toHaveBeenCalled()
       const userCount = await getPool().query<{ count: string }>(
         'SELECT count(*)::text AS count FROM app.app_users WHERE auth_user_id = $1', [newAuthId]
       )

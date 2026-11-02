@@ -9,6 +9,8 @@ import {
   fetchVehicles,
   fetchVolunteers,
 } from './api'
+import { apiFetchVessels } from '../vessels/api'
+import type { VesselItem } from '@aaharaconnect/shared'
 import type {
   AssignmentStatusLive,
   FoodRequestSummary,
@@ -76,6 +78,38 @@ export function saveDemoPickup(pickup: Pickup) {
     }
     const next = [pickup, ...list.filter(p => p.id !== pickup.id)]
     window.localStorage.setItem('aa:demo-pickups', JSON.stringify(next))
+
+    // Update donation in aa:donations to record the scheduled pickup
+    try {
+      const rawDonations = window.localStorage.getItem('aa:donations')
+      if (rawDonations) {
+        const donations: FoodRequestSummary[] = JSON.parse(rawDonations)
+        if (Array.isArray(donations)) {
+          const updated = donations.map(d =>
+            d.id === pickup.foodRequestId
+              ? {
+                  ...d,
+                  pickup: {
+                    id: pickup.id,
+                    status: pickup.status,
+                    windowStartsAt: pickup.windowStartsAt,
+                    windowEndsAt: pickup.windowEndsAt,
+                    deliveryAddress: pickup.deliveryAddress,
+                  },
+                }
+              : d
+          )
+          window.localStorage.setItem('aa:donations', JSON.stringify(updated))
+        }
+      }
+    } catch {}
+
+    // Broadcast change so all tabs update immediately
+    if (typeof BroadcastChannel !== 'undefined') {
+      const bc = new BroadcastChannel('aahara_donations')
+      bc.postMessage({ type: 'PICKUP_SCHEDULED', data: pickup })
+      setTimeout(() => bc.close(), 500)
+    }
   } catch {}
 }
 
@@ -147,51 +181,44 @@ export function syncPickupsWithDonations(basePickups: Pickup[]): Pickup[] {
     }
   } catch {}
 
-  const existingFoodRequestIds = new Set(basePickups.map(p => p.foodRequestId))
-  const newPickups: Pickup[] = []
-
-  for (const d of donations) {
-    if (!existingFoodRequestIds.has(d.id)) {
-      const ai = calculateAiLogistics(d.foods || [], d.donorName, d.location)
-      newPickups.push({
-        id: 'p' + d.id.slice(1),
-        foodRequestId: d.id,
-        status: 'PLANNED',
-        windowStartsAt: d.readyAt || new Date(Date.now() + 3600000).toISOString(),
-        windowEndsAt: d.pickupDeadline || new Date(Date.now() + 14400000).toISOString(),
-        deliveryAddress: 'AaharaConnect Distribution Center, Indiranagar',
-        version: 1,
-        createdAt: new Date().toISOString(),
-        donorName: d.donorName,
-        donorLocation: d.location,
-        foods: d.foods || [],
-        aiAssessment: ai,
-      })
-      existingFoodRequestIds.add(d.id)
-    }
+  const allRequests = [...donations, ...fallbackDemoFoodRequests]
+  const requestsById = new Map<string, FoodRequestSummary>()
+  for (const r of allRequests) {
+    if (r.id) requestsById.set(r.id, r)
   }
 
-  const combined = [...newPickups, ...basePickups]
+  // Preserve existing scheduled pickups, enriching them with donor details and AI assessment
+  // Do NOT automatically create pickups for newly submitted donations.
+  const enriched = basePickups.map(p => {
+    const matched = requestsById.get(p.foodRequestId)
+    const donorName = p.donorName || matched?.donorName || 'Food Donor'
+    const donorLocation = p.donorLocation || matched?.location || 'Bengaluru'
+    const foods = p.foods && p.foods.length > 0 ? p.foods : matched?.foods || []
+    const aiAssessment = p.aiAssessment || calculateAiLogistics(foods, donorName, donorLocation)
 
-  // Ensure all pickups have an AI assessment calculated
-  const withAi = combined.map(p => {
-    if (!p.aiAssessment) {
-      return {
-        ...p,
-        aiAssessment: calculateAiLogistics(p.foods || [], p.donorName, p.donorLocation),
-      }
+    return {
+      ...p,
+      donorName,
+      donorLocation,
+      foods,
+      aiAssessment,
     }
-    return p
   })
 
-  // Ensure base initial demo pickups are preserved
-  for (const init of initialDemoPickups) {
-    if (!withAi.some(p => p.id === init.id)) {
-      withAi.push(init)
+  // Ensure default demo pickups exist if no pickups exist at all
+  if (enriched.length === 0) {
+    for (const init of initialDemoPickups) {
+      enriched.push({
+        ...init,
+        donorName: init.donorName || 'Food Donor',
+        donorLocation: init.donorLocation || 'Bengaluru',
+        foods: init.foods || [],
+        aiAssessment: calculateAiLogistics(init.foods || [], init.donorName, init.donorLocation),
+      })
     }
   }
 
-  return withAi
+  return enriched
 }
 
 export function usePickups() {
@@ -226,9 +253,36 @@ export function usePickups() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchPickups(null)
-      setPickups(data.items)
-      setNextCursor(data.nextCursor)
+      const [pickupData, foodData] = await Promise.all([
+        fetchPickups(null),
+        fetchFoodRequests().catch(() => null),
+      ])
+
+      const foodMap = new Map<string, FoodRequestSummary>()
+      if (Array.isArray(foodData?.items)) {
+        for (const f of foodData.items) {
+          foodMap.set(f.id, f)
+        }
+      }
+
+      const enriched = pickupData.items.map(p => {
+        const fr = foodMap.get(p.foodRequestId)
+        const donorName = p.donorName || fr?.donorName || 'Food Donor'
+        const donorLocation = p.donorLocation || fr?.location || 'Bengaluru'
+        const foods = p.foods && p.foods.length > 0 ? p.foods : fr?.foods || []
+        const aiAssessment = p.aiAssessment || calculateAiLogistics(foods, donorName, donorLocation)
+
+        return {
+          ...p,
+          donorName,
+          donorLocation,
+          foods,
+          aiAssessment,
+        }
+      })
+
+      setPickups(enriched)
+      setNextCursor(pickupData.nextCursor)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unable to load pickups.')
     } finally {
@@ -345,6 +399,22 @@ export function useFoodRequests() {
     setLoading(true)
     setError(null)
 
+    const getScheduledMap = (): Map<string, Pickup> => {
+      const map = new Map<string, Pickup>()
+      try {
+        const stored = typeof window !== 'undefined' ? window.localStorage.getItem('aa:demo-pickups') : null
+        const list: Pickup[] = stored ? JSON.parse(stored) : initialDemoPickups
+        if (Array.isArray(list)) {
+          for (const p of list) {
+            if (p.foodRequestId && p.status !== 'CANCELLED' && p.status !== 'FAILED') {
+              map.set(p.foodRequestId, p)
+            }
+          }
+        }
+      } catch {}
+      return map
+    }
+
     if (!isLiveAdmin()) {
       let localDonations: FoodRequestSummary[] = []
       try {
@@ -355,9 +425,42 @@ export function useFoodRequests() {
             localDonations = parsed
           }
         }
+        const persistedRaw = typeof window !== 'undefined' ? window.localStorage.getItem('aa:last-persisted-food-request-data') : null
+        if (persistedRaw) {
+          const persisted = JSON.parse(persistedRaw)
+          if (persisted?.id && !localDonations.some(d => d.id === persisted.id)) {
+            localDonations.unshift({
+              id: persisted.id,
+              donorName: persisted.donorName || persisted.sourceName || 'Food Donor',
+              location: persisted.location || persisted.pickupAddress || 'Bengaluru',
+              readyAt: persisted.readyAt,
+              pickupDeadline: persisted.pickupDeadline,
+              status: persisted.status || 'SUBMITTED',
+              safetyReview: persisted.safetyReview || 'PENDING',
+              foods: persisted.foods || [],
+            })
+          }
+        }
       } catch {}
 
-      setFoodRequests([...localDonations, ...fallbackDemoFoodRequests])
+      const scheduledMap = getScheduledMap()
+      const combined = [...localDonations, ...fallbackDemoFoodRequests].map(fr => {
+        const scheduled = scheduledMap.get(fr.id)
+        return {
+          ...fr,
+          pickup: scheduled
+            ? {
+                id: scheduled.id,
+                status: scheduled.status,
+                windowStartsAt: scheduled.windowStartsAt,
+                windowEndsAt: scheduled.windowEndsAt,
+                deliveryAddress: scheduled.deliveryAddress,
+              }
+            : fr.pickup || null,
+        }
+      })
+
+      setFoodRequests(combined)
       setIsDemoFallback(true)
       setLoading(false)
       return
@@ -411,9 +514,11 @@ export function useAssignWizardResources() {
   const [volunteers, setVolunteers] = useState<unknown[]>([])
   const [drivers, setDrivers] = useState<unknown[]>([])
   const [vehicles, setVehicles] = useState<unknown[]>([])
+  const [vessels, setVessels] = useState<VesselItem[]>([])
   const [waitingTeam1, setWaitingTeam1] = useState<string | null>(null)
   const [waitingTeam5Drivers, setWaitingTeam5Drivers] = useState<string | null>(null)
   const [waitingTeam5Vehicles, setWaitingTeam5Vehicles] = useState<string | null>(null)
+  const [waitingVessels, setWaitingVessels] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -426,6 +531,7 @@ export function useAssignWizardResources() {
           setVolunteers([])
           setDrivers([])
           setVehicles([])
+          setVessels([])
           setLoading(false)
         }
         return
@@ -482,6 +588,23 @@ export function useAssignWizardResources() {
         }
       }
 
+      // Check Vessels (Vessel Inventory Module)
+      try {
+        const vslRes = await apiFetchVessels({ status: 'AVAILABLE', cleaningStatus: 'CLEAN' })
+        if (active) {
+          if (Array.isArray(vslRes?.items) && vslRes.items.length > 0) {
+            setVessels(vslRes.items)
+            setWaitingVessels(null)
+          } else {
+            setWaitingVessels('No clean, available vessels in inventory.')
+          }
+        }
+      } catch {
+        if (active) {
+          setWaitingVessels('Waiting for Vessels API (GET /vessels)')
+        }
+      }
+
       if (active) setLoading(false)
     }
 
@@ -495,11 +618,47 @@ export function useAssignWizardResources() {
     volunteers,
     drivers,
     vehicles,
+    vessels,
     waitingTeam1,
     waitingTeam5Drivers,
     waitingTeam5Vehicles,
+    waitingVessels,
     loading,
   }
+}
+
+export function usePickupVessels(pickupId?: string | null) {
+  const [issuedVessels, setIssuedVessels] = useState<VesselItem[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!pickupId) {
+      setIssuedVessels([])
+      return
+    }
+    let active = true
+    setLoading(true)
+    apiFetchVessels()
+      .then(res => {
+        if (active) {
+          const matched = (res?.items || []).filter(
+            v => v.activeIssuance?.pickupId === pickupId
+          )
+          setIssuedVessels(matched)
+        }
+      })
+      .catch(() => {
+        if (active) setIssuedVessels([])
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [pickupId])
+
+  return { issuedVessels, loading }
 }
 
 export function useVehicleAssignments(vehicleId?: string | null) {

@@ -14,6 +14,7 @@ import {
   createAssignmentHandler,
   createPickupHandler,
   getActiveAssignmentHandler,
+  getEligibleVolunteersForPickupHandler,
   getPickupByIdHandler,
   getVolunteerAssignmentsHandler,
   listPickupsHandler,
@@ -32,6 +33,7 @@ pickupSubRouter.post(
   createAssignmentHandler
 );
 pickupSubRouter.get('/', requireAuth, requireRole('ADMIN'), listPickupsHandler);
+pickupSubRouter.get('/:id/eligible-volunteers', requireAuth, requireRole('ADMIN'), getEligibleVolunteersForPickupHandler);
 pickupSubRouter.get('/:id/assignment', requireAuth, requireRole('ADMIN'), getActiveAssignmentHandler);
 pickupSubRouter.get('/:id', requireAuth, requireRole('ADMIN'), getPickupByIdHandler);
 

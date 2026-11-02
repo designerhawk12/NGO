@@ -50,6 +50,9 @@ describe.skipIf(!enabled)('Vehicle module boundaries', () => {
       await client.query("UPDATE app.assignments SET status = 'DELIVERED' WHERE id = $1", [assignment.rows[0].id]);
       expect((await listVehicleAssignments(vehicle.rows[0].id, client)).items).toEqual([]);
 
+      // Direct fixture updates must mirror the dispatch transition's reservation release.
+      await client.query("UPDATE app.resource_reservations SET state = 'RELEASED', released_at = now() WHERE assignment_id = $1", [assignment.rows[0].id]);
+
       // Test repository readiness evaluation against live DB
       const { findVehicleById, updateVehicle, createMaintenanceRecord, getFleetSummary, deleteVehicle } = await import('../src/modules/vehicles/repository');
       const vehAfterDelivered = await findVehicleById(vehicle.rows[0].id, client);
@@ -79,10 +82,15 @@ describe.skipIf(!enabled)('Vehicle module boundaries', () => {
       expect(summary.maintenance).toBeGreaterThanOrEqual(1);
 
       // Deleting a vehicle referenced by assignments/maintenance must fail with 409 RESOURCE_CONFLICT (preserving historical data)
+      await client.query('SAVEPOINT expected_delete_conflict');
       await expect(deleteVehicle(vehicle.rows[0].id, client)).rejects.toMatchObject({
         status: 409,
         code: 'RESOURCE_CONFLICT',
       });
+
+      // Recover the transaction after the expected foreign-key violation.
+      await client.query('ROLLBACK TO SAVEPOINT expected_delete_conflict');
+      await client.query('RELEASE SAVEPOINT expected_delete_conflict');
 
       // An unreferenced vehicle can be deleted cleanly
       const tempVeh = await client.query(

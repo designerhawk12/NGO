@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { getPool } from '../../db/pool';
+import { getPool, withTransaction } from '../../db/pool';
 import { HttpError } from '../../middleware/errorHandler';
 import type {
   CreateVessel,
@@ -36,6 +36,7 @@ export function handleVesselDbError(error: unknown): never {
 }
 
 interface VesselDbRow {
+  photo_data_url?: string | null;
   id: string;
   vessel_code: string;
   name: string;
@@ -72,6 +73,7 @@ function mapVesselRow(row: VesselDbRow): VesselItem {
   return {
     id: row.id,
     vesselCode: row.vessel_code,
+    photoDataUrl: row.photo_data_url ?? null,
     name: row.name,
     vesselType: row.vessel_type as any,
     material: row.material as any,
@@ -111,6 +113,7 @@ const VESSEL_SELECT_SQL = `
   SELECT
     v.id,
     v.vessel_code,
+    v.photo_data_url,
     v.name,
     v.vessel_type,
     v.material,
@@ -247,8 +250,9 @@ export async function createVessel(input: CreateVessel, client?: PoolClient) {
         inspection_result,
         maintenance_condition,
         storage_location,
-        notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        notes,
+        photo_data_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       RETURNING *`,
       [
         input.vesselCode,
@@ -270,6 +274,7 @@ export async function createVessel(input: CreateVessel, client?: PoolClient) {
         input.maintenanceCondition,
         input.storageLocation,
         input.notes ?? null,
+        input.photoDataUrl ?? null,
       ]
     );
     return mapVesselRow(res.rows[0]);
@@ -309,6 +314,7 @@ export async function updateVessel(id: string, patch: UpdateVessel, client?: Poo
   mapField('maintenanceCondition', 'maintenance_condition');
   mapField('storageLocation', 'storage_location');
   mapField('notes', 'notes');
+  mapField('photoDataUrl', 'photo_data_url');
 
   setClauses.push(`updated_at = now()`);
 
@@ -385,10 +391,11 @@ export async function getVesselsSummary(client?: PoolClient): Promise<VesselsSum
 
 // Issue Vessel to Vehicle / Pickup
 export async function issueVessel(
-  input: IssueVessel,
+  input: IssueVessel & { vehicleId?: string },
   actorUserId?: string,
   client?: PoolClient
-) {
+): Promise<{ success: boolean; issuanceId: string; issuedAt: Date; vehicleId: string | null; registrationNumber: string | null; pickupId: string | null }> {
+  if (!client) return withTransaction(transaction => issueVessel(input, actorUserId, transaction));
   const db = client ?? getPool();
   try {
     // 1. Fetch vessel with lock
@@ -422,8 +429,22 @@ export async function issueVessel(
     let resolvedRegistration: string | null = null;
     let resolvedPickupId: string | null = input.pickupId ?? null;
 
-    // 2. Validate Registration Number against Vehicle Details if specified
-    if (input.registrationNumber) {
+    // Assignment callers provide the canonical vehicle ID; standalone callers may provide a registration.
+    if (input.vehicleId) {
+      const vehicleResult = await db.query<{ id: string; registration_number: string; kind: string; status: string }>(
+        `SELECT id, registration_number, kind, status FROM app.vehicles WHERE id = $1`,
+        [input.vehicleId]
+      );
+      if (vehicleResult.rows.length === 0) {
+        throw new HttpError(404, 'NOT_FOUND', 'Vehicle not found.');
+      }
+      const vehicle = vehicleResult.rows[0];
+      if (vehicle.status === 'RETIRED') {
+        throw new HttpError(409, 'RESOURCE_CONFLICT', `Vehicle ${vehicle.registration_number} is retired and cannot receive vessel dispatches.`);
+      }
+      resolvedVehicleId = vehicle.id;
+      resolvedRegistration = vehicle.registration_number;
+    } else if (input.registrationNumber) {
       const trimmedReg = input.registrationNumber.trim();
       const vehRes = await db.query<{ id: string; registration_number: string; kind: string; status: string }>(
         `SELECT id, registration_number, kind, status FROM app.vehicles WHERE LOWER(TRIM(registration_number)) = LOWER($1)`,
@@ -444,28 +465,34 @@ export async function issueVessel(
       resolvedRegistration = vehicle.registration_number;
 
       // Check if vehicle has an active assignment and pickup
-      const asgRes = await db.query<{ pickup_id: string }>(
-        `SELECT a.pickup_id
-         FROM app.assignments a
-         JOIN app.pickups p ON p.id = a.pickup_id
-         WHERE a.vehicle_id = $1
-           AND a.status NOT IN ('REJECTED', 'CANCELLED', 'FAILED')
-           AND p.status NOT IN ('CANCELLED', 'FAILED', 'DELIVERED')
-         ORDER BY a.created_at DESC
-         LIMIT 1`,
-        [vehicle.id]
-      );
-      if (asgRes.rows.length > 0) {
-        resolvedPickupId = asgRes.rows[0].pickup_id;
+      if (!input.pickupId) {
+        const asgRes = await db.query<{ pickup_id: string }>(
+          `SELECT a.pickup_id
+           FROM app.assignments a
+           JOIN app.pickups p ON p.id = a.pickup_id
+           WHERE a.vehicle_id = $1
+             AND a.status NOT IN ('REJECTED', 'CANCELLED', 'FAILED')
+             AND p.status NOT IN ('CANCELLED', 'FAILED', 'DELIVERED')
+           ORDER BY a.created_at DESC
+           LIMIT 1`,
+          [vehicle.id]
+        );
+        if (asgRes.rows.length > 0) {
+          resolvedPickupId = asgRes.rows[0].pickup_id;
+        }
       }
-    } else if (resolvedPickupId) {
-      // Backwards-compatibility when only pickupId is given
-      const pRes = await db.query(`SELECT id, status FROM app.pickups WHERE id = $1`, [resolvedPickupId]);
-      if (pRes.rows.length === 0) {
+    } else if (!resolvedPickupId) {
+      throw new HttpError(400, 'BAD_REQUEST', 'Either a vehicle registration number or pickup ID must be specified.');
+    }
+
+    if (resolvedPickupId) {
+      const pickupRes = await db.query<{ id: string }>(
+        `SELECT id FROM app.pickups WHERE id = $1`,
+        [resolvedPickupId]
+      );
+      if (pickupRes.rows.length === 0) {
         throw new HttpError(404, 'NOT_FOUND', 'Pickup assignment not found.');
       }
-    } else {
-      throw new HttpError(400, 'BAD_REQUEST', 'Either a vehicle registration number or pickup ID must be specified.');
     }
 
     // 3. Create issuance

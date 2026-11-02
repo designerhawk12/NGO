@@ -4,6 +4,7 @@ import { Modal } from '../../components/common/UI'
 import { isLiveAdmin, map409ErrorMessage } from './adapters'
 import { calculateAiLogistics } from './aiLogistics'
 import { createPickup, reviewFoodSafety } from './api'
+import { localDateTimeInputToUtcIso, toLocalDateTimeInputValue } from './dateTime'
 import { saveDemoPickup, useFoodRequests } from './hooks'
 import type { Pickup } from './types'
 
@@ -14,22 +15,38 @@ interface Props {
 }
 
 export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
-  const { foodRequests, loading: loadingRequests, isDemoFallback } = useFoodRequests()
+  const { foodRequests, loading: loadingRequests, isDemoFallback, error: foodRequestsError } = useFoodRequests()
 
-  const [foodRequestId, setFoodRequestId] = useState(
-    foodRequests[0]?.id || ''
-  )
+  const firstEligibleId = useMemo(() => {
+    const eligible = foodRequests.find(r => !r.pickup && r.status === 'SUBMITTED')
+    return eligible?.id || foodRequests[0]?.id || ''
+  }, [foodRequests])
+
+  const [foodRequestId, setFoodRequestId] = useState(firstEligibleId)
+  const [hasUserSelected, setHasUserSelected] = useState(false)
 
   useEffect(() => {
-    if (foodRequests.length > 0 && !foodRequests.some(r => r.id === foodRequestId)) {
-      setFoodRequestId(foodRequests[0].id)
+    if (foodRequests.length > 0) {
+      const current = foodRequests.find(r => r.id === foodRequestId)
+      if (!foodRequestId || !current || (!hasUserSelected && Boolean(current.pickup))) {
+        setFoodRequestId(firstEligibleId)
+      }
     }
-  }, [foodRequests, foodRequestId])
+  }, [foodRequests, foodRequestId, firstEligibleId, hasUserSelected])
 
   const selectedRequest = useMemo(
     () => foodRequests.find(r => r.id === foodRequestId),
     [foodRequests, foodRequestId]
   )
+
+  useEffect(() => {
+    if (selectedRequest?.readyAt) {
+      setWindowStartsAt(toLocalDateTimeInputValue(selectedRequest.readyAt))
+    }
+    if (selectedRequest?.pickupDeadline) {
+      setWindowEndsAt(toLocalDateTimeInputValue(selectedRequest.pickupDeadline))
+    }
+  }, [selectedRequest?.id, selectedRequest?.readyAt, selectedRequest?.pickupDeadline])
 
   const aiAssessment = useMemo(
     () =>
@@ -45,12 +62,10 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
     'AaharaConnect Distribution Center, Indiranagar'
   )
   const [windowStartsAt, setWindowStartsAt] = useState(() => {
-    const d = new Date(Date.now() + 3600000)
-    return d.toISOString().slice(0, 16)
+    return toLocalDateTimeInputValue(new Date(Date.now() + 3600000))
   })
   const [windowEndsAt, setWindowEndsAt] = useState(() => {
-    const d = new Date(Date.now() + 14400000)
-    return d.toISOString().slice(0, 16)
+    return toLocalDateTimeInputValue(new Date(Date.now() + 14400000))
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,6 +81,17 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
     try {
       if (isLiveAdmin()) {
         await reviewFoodSafety(foodRequestId, 'APPROVED')
+      } else {
+        try {
+          const raw = window.localStorage.getItem('aa:donations')
+          if (raw) {
+            const list = JSON.parse(raw)
+            if (Array.isArray(list)) {
+              const updated = list.map((d: any) => d.id === foodRequestId ? { ...d, safetyReview: 'APPROVED' } : d)
+              window.localStorage.setItem('aa:donations', JSON.stringify(updated))
+            }
+          }
+        } catch {}
       }
       setSafetyReviews(prev => ({ ...prev, [foodRequestId]: 'APPROVED' }))
       notify('Food safety review approved.')
@@ -84,8 +110,16 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
       notify('Please fill in all required fields.', 'error')
       return
     }
-    if (isLiveAdmin() && currentSafetyReview !== 'APPROVED') {
+    if (currentSafetyReview !== 'APPROVED') {
       const msg = 'Food request safety review must be APPROVED before scheduling a pickup. Please click "Approve Safety".'
+      setError(msg)
+      notify(msg, 'error')
+      return
+    }
+    const startsAt = localDateTimeInputToUtcIso(windowStartsAt)
+    const endsAt = localDateTimeInputToUtcIso(windowEndsAt)
+    if (!startsAt || !endsAt || new Date(startsAt) >= new Date(endsAt)) {
+      const msg = 'Choose a valid pickup window with an end time after the start time.'
       setError(msg)
       notify(msg, 'error')
       return
@@ -97,8 +131,8 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
         const created = await createPickup({
           foodRequestId,
           deliveryAddress: deliveryAddress.trim(),
-          windowStartsAt: new Date(windowStartsAt).toISOString(),
-          windowEndsAt: new Date(windowEndsAt).toISOString(),
+          windowStartsAt: startsAt,
+          windowEndsAt: endsAt,
         })
         notify('Pickup scheduled successfully.')
         onSuccess(created)
@@ -107,8 +141,8 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
           id: 'p1000000-0000-4000-8000-' + String(Date.now()).slice(-12).padStart(12, '0'),
           foodRequestId,
           deliveryAddress: deliveryAddress.trim(),
-          windowStartsAt: new Date(windowStartsAt).toISOString(),
-          windowEndsAt: new Date(windowEndsAt).toISOString(),
+          windowStartsAt: startsAt,
+          windowEndsAt: endsAt,
           status: 'PLANNED',
           version: 1,
           createdAt: new Date().toISOString(),
@@ -147,6 +181,11 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
             {error}
           </div>
         )}
+        {foodRequestsError && (
+          <div style={{ color: '#dc2626', fontSize: '0.875rem' }}>
+            {foodRequestsError}
+          </div>
+        )}
 
         {isDemoFallback && (
           <div
@@ -166,16 +205,140 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
           <span>Food Request</span>
           <select
             value={foodRequestId}
-            onChange={e => setFoodRequestId(e.target.value)}
-            disabled={loadingRequests}
+            onChange={e => {
+              setFoodRequestId(e.target.value)
+              setHasUserSelected(true)
+            }}
+            disabled={loadingRequests || foodRequests.length === 0}
           >
-            {foodRequests.map(fr => (
-              <option key={fr.id} value={fr.id} disabled={!!fr.pickup}>
-                {`${fr.donorName} (${fr.location})${fr.pickup ? ' — Already Scheduled' : fr.safetyReview === 'PENDING' ? ' — Safety Review Pending' : ''}`}
-              </option>
-            ))}
+            {foodRequests.length === 0 && (
+              <option value="">No food requests available</option>
+            )}
+            {foodRequests.map(fr => {
+              const isScheduled = Boolean(fr.pickup)
+              const isNotSubmitted = fr.status !== 'SUBMITTED'
+              let suffix = ''
+              if (isScheduled) suffix = ' — Already Scheduled'
+              else if (isNotSubmitted) suffix = ` — ${fr.status}`
+              else if (fr.safetyReview === 'PENDING') suffix = ' — Safety Pending'
+
+              return (
+                <option key={fr.id} value={fr.id} disabled={isScheduled || isNotSubmitted}>
+                  {`${fr.donorName} (${fr.location})${suffix}`}
+                </option>
+              )
+            })}
           </select>
         </label>
+
+        {/* Selected Request & Donor Details Card */}
+        {selectedRequest && (
+          <div
+            style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '0.85rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1e293b' }}>
+                  {selectedRequest.donorName || 'Food Donor'}
+                </span>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                  {selectedRequest.location || 'Pickup location not specified'}
+                </p>
+              </div>
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  background: selectedRequest.status === 'SUBMITTED' ? '#e0f2fe' : '#f1f5f9',
+                  color: selectedRequest.status === 'SUBMITTED' ? '#0369a1' : '#475569',
+                }}
+              >
+                {`Status: ${selectedRequest.status}`}
+              </span>
+            </div>
+
+            {/* Live Food Items & Quantities */}
+            {selectedRequest.foods && selectedRequest.foods.length > 0 && (
+              <div style={{ marginTop: '4px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
+                  {'Food Items & Quantities:'}
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '3px' }}>
+                  {selectedRequest.foods.map((food, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '4px',
+                        padding: '2px 6px',
+                        fontSize: '0.75rem',
+                        color: '#334155',
+                      }}
+                    >
+                      <strong>{food.name || food.foodType}</strong>{`: ${food.quantity} ${food.unit}${food.peopleFed ? ` (~${food.peopleFed} meals)` : ''}`}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Ready Window */}
+            {(selectedRequest.readyAt || selectedRequest.pickupDeadline) && (
+              <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', gap: '1rem', marginTop: '2px' }}>
+                {selectedRequest.readyAt && (
+                  <span>{`Ready: ${new Date(selectedRequest.readyAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}</span>
+                )}
+                {selectedRequest.pickupDeadline && (
+                  <span>{`Deadline: ${new Date(selectedRequest.pickupDeadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Ineligibility Warning Banners */}
+        {selectedRequest?.pickup && (
+          <div
+            style={{
+              padding: '0.65rem 0.85rem',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              color: '#991b1b',
+              fontSize: '0.82rem',
+            }}
+          >
+            <strong>{'Already Scheduled:'}</strong>
+            <span>{` A pickup (${selectedRequest.pickup.status}) is already linked to this food request. Duplicate scheduling is prevented.`}</span>
+          </div>
+        )}
+
+        {selectedRequest && selectedRequest.status !== 'SUBMITTED' && (
+          <div
+            style={{
+              padding: '0.65rem 0.85rem',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              color: '#991b1b',
+              fontSize: '0.82rem',
+            }}
+          >
+            <strong>{'Cannot Schedule:'}</strong>
+            <span>{` Only food requests in SUBMITTED status can be scheduled. Current request status is ${selectedRequest.status}.`}</span>
+          </div>
+        )}
 
         {currentSafetyReview === 'PENDING' ? (
           <div
@@ -356,7 +519,18 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
           <button type="button" className="button button-secondary" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="button button-primary" disabled={submitting}>
+          <button
+            type="submit"
+            className="button button-primary"
+            disabled={
+              submitting ||
+              !foodRequestId ||
+              !selectedRequest ||
+              Boolean(selectedRequest?.pickup) ||
+              selectedRequest?.status !== 'SUBMITTED' ||
+              (isLiveAdmin() && currentSafetyReview !== 'APPROVED')
+            }
+          >
             {submitting ? 'Creating…' : 'Schedule Pickup'}
           </button>
         </div>

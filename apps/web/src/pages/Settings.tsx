@@ -46,7 +46,10 @@ function CoordinatorAuth({ onAdminSignIn }: { onAdminSignIn: () => void }) {
       if (active) setUser(next)
       if (!next) window.localStorage.removeItem(sessionMarker)
     }).catch(() => {
-      if (active) setMessage('Could not restore the administrator session.')
+      if (active) {
+        window.localStorage.removeItem(sessionMarker)
+        setMessage('Could not restore the administrator session.')
+      }
     })
     return () => { active = false }
   }, [configured])

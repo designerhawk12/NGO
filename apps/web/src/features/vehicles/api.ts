@@ -1,5 +1,5 @@
 import { apiRequest } from '../../api/client';
-import { getLiveAccessToken } from '../pickups/adapters';
+import { getAuthHeaders } from '../pickups/adapters';
 import type {
   CreateVehicle,
   CreateVehicleMaintenanceRecord,
@@ -9,16 +9,8 @@ import type {
   VehicleReadiness,
 } from '@aaharaconnect/shared';
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  try {
-    const token = await getLiveAccessToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  } catch {
-    return {};
-  }
-}
-
 export interface ApiVehicleItem {
+  photoDataUrl?: string | null;
   id: string;
   registrationNumber: string;
   kind: string;
@@ -28,6 +20,11 @@ export interface ApiVehicleItem {
   indicativeMaxVessels: number | null;
   createdAt: string;
   readiness: VehicleReadiness;
+  latestLocation?: {
+    latitude: number;
+    longitude: number;
+    recordedAt?: string;
+  } | null;
   currentDriver: {
     driverId: string;
     name: string;

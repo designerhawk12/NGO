@@ -1,5 +1,5 @@
 import { apiRequest } from '../../api/client';
-import { getLiveAccessToken } from '../pickups/adapters';
+import { getAuthHeaders } from '../pickups/adapters';
 import type {
   CreateVessel,
   CreateVesselLog,
@@ -11,15 +11,6 @@ import type {
   VesselLogItem,
   VesselsSummary,
 } from '@aaharaconnect/shared';
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  try {
-    const token = await getLiveAccessToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  } catch {
-    return {};
-  }
-}
 
 export async function apiFetchVessels(params: Partial<ListVesselsQuery> = {}): Promise<{ items: VesselItem[] }> {
   const query = new URLSearchParams();

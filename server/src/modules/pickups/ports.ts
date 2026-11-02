@@ -1,5 +1,11 @@
 import type { PoolClient } from 'pg';
 import { getPool } from '../../db/pool';
+import {
+  DefaultVolunteerReadPort,
+  type VolunteerReadPort,
+} from '../volunteers/port';
+import type { EligibleVolunteer } from '../volunteers/service';
+import { evaluateVehicleReadiness } from '../vehicles/readiness';
 
 export type FoodRequestSummary = {
   id: string;
@@ -50,6 +56,10 @@ export type VolunteerSummary = {
 };
 
 export interface VolunteerPort {
+  listEligibleVolunteers(
+    query: { startAt: Date; endAt: Date },
+    client?: PoolClient
+  ): Promise<EligibleVolunteer[]>;
   getVolunteerAvailability(
     volunteerId: string,
     windowStartsAt: Date,
@@ -58,47 +68,25 @@ export interface VolunteerPort {
   ): Promise<VolunteerSummary | null>;
 }
 
-// TODO(Team1): Replace temporary read-only query with Team 1 Volunteer service interface once implemented.
 export class DefaultVolunteerPort implements VolunteerPort {
+  constructor(private readonly volunteerReadPort: VolunteerReadPort = new DefaultVolunteerReadPort()) {}
+
+  async listEligibleVolunteers(query: { startAt: Date; endAt: Date }, client?: PoolClient): Promise<EligibleVolunteer[]> {
+    return this.volunteerReadPort.listEligibleVolunteers(query, client);
+  }
+
   async getVolunteerAvailability(
     volunteerId: string,
     windowStartsAt: Date,
     windowEndsAt: Date,
     client?: PoolClient
   ): Promise<VolunteerSummary | null> {
-    const db = client ?? getPool();
-    const volResult = await db.query<{
-      id: string;
-      person_id: string;
-      status: 'ACTIVE' | 'INACTIVE';
-    }>(
-      `SELECT id, person_id, status FROM app.volunteers WHERE id = $1`,
-      [volunteerId]
+    return this.volunteerReadPort.getVolunteerAvailability(
+      volunteerId,
+      windowStartsAt,
+      windowEndsAt,
+      client
     );
-    if (volResult.rows.length === 0) return null;
-    const vol = volResult.rows[0];
-
-    const availResult = await db.query<{ count: string }>(
-      `SELECT count(*)::text as count FROM app.volunteer_availability
-       WHERE volunteer_id = $1 AND state = 'AVAILABLE' AND starts_at <= $2 AND ends_at >= $3`,
-      [volunteerId, windowStartsAt, windowEndsAt]
-    );
-    const hasAvailableWindow = parseInt(availResult.rows[0]?.count ?? '0', 10) > 0;
-
-    const unavailResult = await db.query<{ count: string }>(
-      `SELECT count(*)::text as count FROM app.volunteer_availability
-       WHERE volunteer_id = $1 AND state = 'UNAVAILABLE'
-         AND tstzrange(starts_at, ends_at, '[)') && tstzrange($2, $3, '[)')`,
-      [volunteerId, windowStartsAt, windowEndsAt]
-    );
-    const hasUnavailableOverlap = parseInt(unavailResult.rows[0]?.count ?? '0', 10) > 0;
-
-    return {
-      id: vol.id,
-      personId: vol.person_id,
-      status: vol.status,
-      isAvailable: hasAvailableWindow && !hasUnavailableOverlap,
-    };
   }
 }
 
@@ -125,9 +113,12 @@ export class DefaultDriverPort implements DriverPort {
       licence_expires_on: Date | string;
       status: 'ACTIVE' | 'INACTIVE';
     }>(
-      `SELECT id, person_id, licence_number, licence_expires_on, status FROM app.drivers WHERE id = $1`,
+      `SELECT d.id, d.person_id, d.licence_number, d.licence_expires_on, d.status
+       FROM app.drivers d
+       WHERE d.id = $1`,
       [driverId]
     );
+
     if (result.rows.length === 0) return null;
     const row = result.rows[0];
     return {
@@ -146,13 +137,15 @@ export type VehicleSummary = {
   kind: string;
   capacityKg: number;
   status: 'ACTIVE' | 'MAINTENANCE' | 'RETIRED';
+  isReady?: boolean;
+  reasons?: Array<{ code: string; message: string; severity: 'BLOCKING' | 'WARNING' }>;
 };
 
 export interface VehiclePort {
   getVehicle(vehicleId: string, client?: PoolClient): Promise<VehicleSummary | null>;
 }
 
-// TODO(Team5): Replace temporary read-only query with Team 5 Vehicle service interface once implemented.
+// Integrates Vehicle module specifications, active downtime, and maintenance condition readiness
 export class DefaultVehiclePort implements VehiclePort {
   async getVehicle(vehicleId: string, client?: PoolClient): Promise<VehicleSummary | null> {
     const db = client ?? getPool();
@@ -162,18 +155,62 @@ export class DefaultVehiclePort implements VehiclePort {
       kind: string;
       capacity_kg: string | number;
       status: 'ACTIVE' | 'MAINTENANCE' | 'RETIRED';
+      has_active_downtime?: boolean;
+      latest_condition?: 'GOOD' | 'NEEDS_SERVICE' | 'UNSAFE' | null;
+      latest_next_service_due_on?: Date | string | null;
     }>(
-      `SELECT id, registration_number, kind, capacity_kg, status FROM app.vehicles WHERE id = $1`,
+      `SELECT
+         v.id,
+         v.registration_number,
+         v.kind,
+         v.capacity_kg,
+         v.status,
+         COALESCE(downtime.has_active_downtime, false) AS has_active_downtime,
+         latest_maint.condition AS latest_condition,
+         latest_maint.next_service_due_on AS latest_next_service_due_on
+       FROM app.vehicles v
+       LEFT JOIN LATERAL (
+         SELECT EXISTS (
+           SELECT 1 FROM app.vehicle_unavailability vu
+           WHERE vu.vehicle_id = v.id
+             AND vu.starts_at <= now()
+             AND vu.ends_at > now()
+         ) AS has_active_downtime
+       ) downtime ON true
+       LEFT JOIN LATERAL (
+         SELECT vmr.condition, vmr.next_service_due_on
+         FROM app.vehicle_maintenance_records vmr
+         WHERE vmr.vehicle_id = v.id
+         ORDER BY vmr.serviced_on DESC, vmr.created_at DESC
+         LIMIT 1
+       ) latest_maint ON true
+       WHERE v.id = $1`,
       [vehicleId]
     );
     if (result.rows.length === 0) return null;
     const row = result.rows[0];
+    const nextServiceDueOn = row.latest_next_service_due_on
+      ? typeof row.latest_next_service_due_on === 'string'
+        ? row.latest_next_service_due_on.slice(0, 10)
+        : row.latest_next_service_due_on.toISOString().slice(0, 10)
+      : null;
+
+    const readiness = evaluateVehicleReadiness({
+      status: row.status,
+      hasActiveDowntime: Boolean(row.has_active_downtime),
+      hasActiveAssignment: false,
+      latestCondition: row.latest_condition ?? null,
+      nextServiceDueOn,
+    });
+
     return {
       id: row.id,
       registrationNumber: row.registration_number,
       kind: row.kind,
       capacityKg: Number(row.capacity_kg),
       status: row.status,
+      isReady: readiness.isReady,
+      reasons: readiness.reasons,
     };
   }
 }
@@ -182,4 +219,3 @@ export const defaultFoodPort = new DefaultFoodPort();
 export const defaultVolunteerPort = new DefaultVolunteerPort();
 export const defaultDriverPort = new DefaultDriverPort();
 export const defaultVehiclePort = new DefaultVehiclePort();
-

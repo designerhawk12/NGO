@@ -1,5 +1,5 @@
 import { apiRequest } from '../../api/client'
-import { getLiveAccessToken } from './adapters'
+import { getAuthHeaders } from './adapters'
 import type {
   CreateAssignmentInput,
   CreatePickupInput,
@@ -9,14 +9,6 @@ import type {
   FoodRequestSummary,
 } from './types'
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  try {
-    const token = await getLiveAccessToken()
-    return token ? { Authorization: `Bearer ${token}` } : {}
-  } catch {
-    return {}
-  }
-}
 
 export async function fetchPickups(
   cursor?: string | null
@@ -29,6 +21,30 @@ export async function fetchPickups(
 
 export async function fetchPickupById(id: string): Promise<Pickup> {
   return apiRequest<Pickup>(`pickups/${id}`, {
+    headers: await getAuthHeaders(),
+  })
+}
+
+export async function fetchEligibleVolunteersForPickup(
+  pickupId: string
+): Promise<{
+  windowStartsAt: string
+  windowEndsAt: string
+  volunteerIds: string[]
+  reservationConflictVolunteerIds: string[]
+  blockingReason: string | null
+  foodPickupDeadline: string
+  requiresNewDonorRequest: boolean
+}> {
+  return apiRequest<{
+    windowStartsAt: string
+    windowEndsAt: string
+    volunteerIds: string[]
+    reservationConflictVolunteerIds: string[]
+    blockingReason: string | null
+    foodPickupDeadline: string
+    requiresNewDonorRequest: boolean
+  }>(`pickups/${pickupId}/eligible-volunteers`, {
     headers: await getAuthHeaders(),
   })
 }
@@ -59,7 +75,7 @@ export async function createAssignment(
 
 export async function transitionAssignment(
   assignmentId: string,
-  action: 'DELIVER' | 'CANCEL' | 'FAIL',
+  action: 'ACCEPT' | 'START' | 'ARRIVE' | 'COLLECT' | 'DELIVER' | 'CANCEL' | 'FAIL',
   expectedVersion: number,
   reason?: string
 ): Promise<LiveAssignment> {

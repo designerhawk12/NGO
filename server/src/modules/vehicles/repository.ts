@@ -62,6 +62,7 @@ export function handleVehicleDbError(error: unknown): never {
 }
 
 export interface VehicleDbRow {
+  photo_data_url?: string | null;
   id: string;
   registration_number: string;
   kind: string;
@@ -84,6 +85,9 @@ export interface VehicleDbRow {
   latest_condition?: 'GOOD' | 'NEEDS_SERVICE' | 'UNSAFE' | null;
   latest_summary?: string | null;
   latest_next_service_due_on?: Date | string | null;
+  latest_latitude?: number | string | null;
+  latest_longitude?: number | string | null;
+  latest_location_recorded_at?: Date | string | null;
 }
 
 export function encodeVehicleCursor(row: { created_at: Date; id: string }): string {
@@ -127,6 +131,7 @@ function mapVehicleRow(row: VehicleDbRow) {
   return {
     id: row.id,
     registrationNumber: row.registration_number,
+    photoDataUrl: row.photo_data_url ?? null,
     kind: row.kind,
     capacityKg: Number(row.capacity_kg),
     status: row.status,
@@ -159,6 +164,15 @@ function mapVehicleRow(row: VehicleDbRow) {
           nextServiceDueOn,
         }
       : null,
+    latestLocation: row.latest_latitude != null && row.latest_longitude != null
+      ? {
+          latitude: Number(row.latest_latitude),
+          longitude: Number(row.latest_longitude),
+          recordedAt: row.latest_location_recorded_at instanceof Date
+            ? row.latest_location_recorded_at.toISOString()
+            : row.latest_location_recorded_at ? String(row.latest_location_recorded_at) : undefined,
+        }
+      : null,
   };
 }
 
@@ -166,6 +180,7 @@ const VEHICLE_SELECT_FRAGMENT = `
   SELECT
     v.id,
     v.registration_number,
+    v.photo_data_url,
     v.kind,
     v.capacity_kg,
     v.status,
@@ -177,6 +192,7 @@ const VEHICLE_SELECT_FRAGMENT = `
     curr_assign.pickup_id AS curr_pickup_id,
     curr_assign.assignment_status AS curr_assignment_status,
     curr_assign.window_starts_at AS curr_window_starts_at,
+    curr_assign.window_ends_at AS curr_window_ends_at,
     COALESCE(curr_assign.driver_id, ad.id) AS curr_driver_id,
     COALESCE(curr_assign.driver_name, adp.name) AS curr_driver_name,
     COALESCE(curr_assign.driver_phone, adp.phone_e164) AS curr_driver_phone,
@@ -184,7 +200,10 @@ const VEHICLE_SELECT_FRAGMENT = `
     latest_maint.serviced_on AS latest_serviced_on,
     latest_maint.condition AS latest_condition,
     latest_maint.summary AS latest_summary,
-    latest_maint.next_service_due_on AS latest_next_service_due_on
+    latest_maint.next_service_due_on AS latest_next_service_due_on,
+    latest_loc.latitude AS latest_latitude,
+    latest_loc.longitude AS latest_longitude,
+    latest_loc.recorded_at AS latest_location_recorded_at
   FROM app.vehicles v
   LEFT JOIN app.drivers ad ON ad.id = v.assigned_driver_id
   LEFT JOIN app.people adp ON adp.id = ad.person_id
@@ -204,8 +223,9 @@ const VEHICLE_SELECT_FRAGMENT = `
     LEFT JOIN app.drivers d ON d.id = a.driver_id
     LEFT JOIN app.people pe ON pe.id = d.person_id
     WHERE a.vehicle_id = v.id
-      AND a.status NOT IN ('REJECTED', 'CANCELLED', 'FAILED', 'DELIVERED')
+      AND a.status IN ('EN_ROUTE', 'ARRIVED_AT_DONOR', 'FOOD_COLLECTED')
       AND p.status NOT IN ('CANCELLED', 'FAILED', 'DELIVERED')
+      AND p.window_ends_at >= now()
     ORDER BY p.window_starts_at ASC
     LIMIT 1
   ) curr_assign ON true
@@ -228,6 +248,16 @@ const VEHICLE_SELECT_FRAGMENT = `
     ORDER BY vmr.serviced_on DESC, vmr.created_at DESC
     LIMIT 1
   ) latest_maint ON true
+  LEFT JOIN LATERAL (
+    SELECT
+      vl.latitude,
+      vl.longitude,
+      vl.recorded_at
+    FROM app.vehicle_locations vl
+    WHERE vl.vehicle_id = v.id
+    ORDER BY vl.recorded_at DESC
+    LIMIT 1
+  ) latest_loc ON true
 `;
 
 export async function listVehicles(
@@ -325,8 +355,9 @@ export async function createVehicle(data: CreateVehicle, client?: PoolClient) {
         status,
         size_category,
         indicative_max_vessels,
-        assigned_driver_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        assigned_driver_id,
+        photo_data_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
       [
         data.registrationNumber,
@@ -336,6 +367,7 @@ export async function createVehicle(data: CreateVehicle, client?: PoolClient) {
         data.sizeCategory ?? null,
         data.indicativeMaxVessels ?? null,
         data.assignedDriverId ?? null,
+        data.photoDataUrl ?? null,
       ]
     );
 
@@ -354,6 +386,10 @@ export async function updateVehicle(
   const setClauses: string[] = [];
   const values: unknown[] = [id];
 
+  if (patch.photoDataUrl !== undefined) {
+    values.push(patch.photoDataUrl);
+    setClauses.push(`photo_data_url = $${values.length}`);
+  }
   if (patch.registrationNumber !== undefined) {
     values.push(patch.registrationNumber);
     setClauses.push(`registration_number = $${values.length}`);

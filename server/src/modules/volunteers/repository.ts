@@ -98,8 +98,6 @@ export type VolunteerWindowRow = {
   is_available: boolean;
 };
 
-// Read-only eligibility matches the current Pickup port: a covering AVAILABLE
-// slot and no overlapping UNAVAILABLE slot. This never creates a reservation.
 export async function findWindowAvailability(volunteerId: string, startsAt: Date, endsAt: Date, client?: PoolClient): Promise<VolunteerWindowRow | null> {
   const db = client ?? getPool();
   const result = await db.query<VolunteerWindowRow>(
@@ -146,13 +144,17 @@ export async function listEligibleVolunteerRows(
        AND NOT EXISTS (SELECT 1 FROM app.volunteer_applications va WHERE va.volunteer_id = v.id AND va.status <> 'APPROVED')
        AND EXISTS (
          SELECT 1 FROM app.volunteer_availability av
-         WHERE av.volunteer_id = v.id AND av.state = 'AVAILABLE'
-           AND av.starts_at <= $1 AND av.ends_at >= $2
+         WHERE av.volunteer_id = v.id
+           AND av.state = 'AVAILABLE'
+           AND av.starts_at <= $1
+           AND av.ends_at >= $2
        )
        AND NOT EXISTS (
          SELECT 1 FROM app.volunteer_availability uv
-         WHERE uv.volunteer_id = v.id AND uv.state = 'UNAVAILABLE'
-           AND tstzrange(uv.starts_at, uv.ends_at, '[)') && tstzrange($1, $2, '[)')
+         WHERE uv.volunteer_id = v.id
+           AND uv.state = 'UNAVAILABLE'
+           AND uv.starts_at < $2
+           AND uv.ends_at > $1
        )
        ${teamFilter}
      ORDER BY v.id`,
