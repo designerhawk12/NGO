@@ -208,6 +208,7 @@ try {
   const liveRequests = []
   let liveRoster = []
   let liveTeams = []
+  const liveDrivers = new Map()
   let failNextEdit = false
   let failNextTeamCreate = false
   const apiReply = (data, status = 200) => new Response(JSON.stringify({ success:true, data }), { status, headers:{ 'Content-Type':'application/json' } })
@@ -216,6 +217,7 @@ try {
     const method = options.method ?? 'GET'
     liveRequests.push({ path, method, headers: new Headers(options.headers), body: options.body ? JSON.parse(options.body) : null })
     if (method === 'GET' && path.endsWith('/volunteers')) return apiReply({ items:liveRoster, nextCursor:null })
+    if (method === 'GET' && path.endsWith('/driver-details')) return apiReply(liveDrivers.get(path.split('/').at(-2)) ?? null)
     if (method === 'GET' && path.endsWith('/teams')) return apiReply({ items:liveTeams, nextCursor:null })
     if (method === 'GET' && path.includes('/teams/')) return apiReply(liveTeams.find(team => team.id === path.split('/').at(-1)))
     if (method === 'POST' && path.endsWith('/teams')) {
@@ -235,8 +237,9 @@ try {
     }
     if (method === 'POST' && path.endsWith('/volunteers')) {
       const input = JSON.parse(options.body)
-      const created = { id:'7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5', personId:'f50a3e0e-9f8c-4293-bb2b-fc55e4b3d3d8', registrationCode:input.registrationCode, name:input.name, phoneE164:input.phoneE164, skills:input.skills, status:input.status }
+      const created = { id:input.registrationCode === 'VOL-DRIVER' ? 'e59ae4e8-b75e-4ec8-a4b9-28cde935b642' : '7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5', personId:'f50a3e0e-9f8c-4293-bb2b-fc55e4b3d3d8', registrationCode:input.registrationCode, name:input.name, phoneE164:input.phoneE164, skills:input.skills, status:input.status }
       liveRoster = [created, ...liveRoster]
+      if (input.driverDetails) liveDrivers.set(created.id, { driverId:'5a0bd904-9215-4eec-9186-1f6132549203', ...input.driverDetails, status:'ACTIVE', additionalVehicleCount:0 })
       return apiReply(created, 201)
     }
     if (method === 'PATCH' && path.includes('/volunteers/')) {
@@ -245,7 +248,12 @@ try {
         return new Response(JSON.stringify({ success:false, error:{ code:'REGISTRATION_CODE_ALREADY_EXISTS', message:'Registration code is already in use.' } }), { status:409, headers:{ 'Content-Type':'application/json' } })
       }
       const input = JSON.parse(options.body)
-      liveRoster = liveRoster.map(item => item.id === path.split('/').at(-1) ? { ...item, ...input } : item)
+      if (input.driverDetails || input.driverStatus) {
+        const current = liveDrivers.get(path.split('/').at(-1))
+        liveDrivers.set(path.split('/').at(-1), { ...current, ...input.driverDetails, status:input.driverStatus ?? current?.status ?? 'ACTIVE' })
+      }
+      const { driverDetails, driverStatus, ...volunteerFields } = input
+      liveRoster = liveRoster.map(item => item.id === path.split('/').at(-1) ? { ...item, ...volunteerFields } : item)
       return apiReply(liveRoster[0])
     }
     throw new Error(`Unexpected mocked API request: ${method} ${path}`)
@@ -269,7 +277,7 @@ try {
   assert.match(document.querySelector('.modal [role="alert"]').textContent, /valid email/)
   await setInput(document.querySelector('.modal input[type="email"]'), 'kavya@example.com')
   await setInput(document.querySelector('.modal input[type="tel"]'), '+919876543210')
-  await setInput(document.querySelector('.modal input[placeholder="Driving, Packing"]'), 'Driving, Packing')
+  await setInput(document.querySelector('.modal input[placeholder="Driver, Packing"]'), 'Driving, Packing')
   await click(document.querySelector('.modal button[type="submit"]'))
   await flush()
   const createRequest = liveRequests.find(item => item.method === 'POST')
@@ -279,6 +287,7 @@ try {
   assert.match(document.querySelector('.toast').textContent, /invitation sent/)
   assert.ok(liveRequests.filter(item => item.method === 'GET' && item.path.endsWith('/volunteers')).length >= 2, 'Create refreshes the roster')
   await click(button('Edit volunteer'))
+  await flush()
   assert.equal(document.querySelector('.modal input[type="email"]'), null, 'Email is immutable on edit')
   await setInput(document.querySelector('.modal input[placeholder="e.g. Kavya Iyer"]'), 'Kavya Nair')
   await click(document.querySelector('.modal button[type="submit"]'))
@@ -289,11 +298,58 @@ try {
   assert.equal('role' in editRequest.body, false)
   assert.match(document.querySelector('.volunteer-table').textContent, /Kavya Nair/)
   await click(button('Edit volunteer'))
+  await flush()
   failNextEdit = true
   await click(document.querySelector('.modal button[type="submit"]'))
   await flush()
   assert.match(document.querySelector('.modal [role="alert"]').textContent, /already in use/)
   await click(document.querySelector('.modal .dialog-footer .button-secondary'))
+
+  await click(button('Add Volunteer'))
+  await setInput(document.querySelector('.modal input[placeholder="e.g. Kavya Iyer"]'), 'Driver Person')
+  await setInput(document.querySelector('.modal input[placeholder="VOL-002"]'), 'VOL-DRIVER')
+  await setInput(document.querySelector('.modal input[type="email"]'), 'driver@example.test')
+  await click([...document.querySelectorAll('.modal label')].find(item => item.textContent.trim() === 'Driver').querySelector('input'))
+  assert.ok(document.querySelector('.modal input[maxlength="40"]'), 'Driver selection reveals a licence field')
+  await click(document.querySelector('.modal button[type="submit"]'))
+  assert.match(document.querySelector('.modal [role="alert"]').textContent, /licence number/)
+  await setInput(document.querySelector('.modal input[maxlength="40"]'), 'KA01202000123')
+  await setInput(document.querySelector('.modal input[maxlength="32"]'), 'KA01AB1234')
+  await setInput(document.querySelector('.modal input[type="date"]'), '2028-12-31')
+  await click(document.querySelector('.modal button[type="submit"]'))
+  await flush()
+  const driverCreate = liveRequests.filter(item => item.method === 'POST' && item.path.endsWith('/volunteers')).at(-1)
+  assert.deepEqual(driverCreate.body.driverDetails, { licenceNumber:'KA01202000123', licenceExpiresOn:'2028-12-31', vehicleRegistrationNumber:'KA01AB1234' })
+  assert.equal(driverCreate.headers.get('Authorization'), 'Bearer test-access-token')
+  assert.doesNotMatch(document.querySelector('.volunteer-table').textContent, /KA01202000123/, 'General roster must not reveal licence numbers')
+  await click(button('Edit volunteer'))
+  await flush()
+  assert.equal(document.querySelector('.modal input[maxlength="40"]').value, 'KA01202000123')
+  await setSelect([...document.querySelectorAll('.modal select')].find(item => item.parentElement.textContent.includes('Driver status')), 'INACTIVE')
+  await click(document.querySelector('.modal button[type="submit"]'))
+  await flush()
+  assert.equal(liveRequests.filter(item => item.method === 'PATCH' && item.path.includes('/volunteers/')).at(-1).body.driverStatus, 'INACTIVE')
+  await click(button('Edit volunteer'))
+  await flush()
+  await setSelect([...document.querySelectorAll('.modal select')].find(item => item.parentElement.textContent.includes('Driver status')), 'ACTIVE')
+  await click(document.querySelector('.modal button[type="submit"]'))
+  await flush()
+  await click(button('Edit volunteer'))
+  await flush()
+  await click(document.querySelector('.modal .driver-skill-toggle input'))
+  assert.equal(document.querySelector('.modal input[maxlength="40"]'), null, 'Driver fields hide when Driver is deselected')
+  const patchCount = liveRequests.filter(item => item.method === 'PATCH' && item.path.includes('/volunteers/')).length
+  window.confirm = () => false
+  await click(document.querySelector('.modal button[type="submit"]'))
+  assert.equal(liveRequests.filter(item => item.method === 'PATCH' && item.path.includes('/volunteers/')).length, patchCount, 'Declined confirmation must not write')
+  window.confirm = () => true
+  await click(document.querySelector('.modal button[type="submit"]'))
+  await flush()
+  const removedDriverSkill = liveRequests.filter(item => item.method === 'PATCH' && item.path.includes('/volunteers/')).at(-1)
+  assert.equal(removedDriverSkill.body.driverStatus, 'INACTIVE')
+  assert.equal('driverDetails' in removedDriverSkill.body, false)
+  assert.equal(liveDrivers.get('e59ae4e8-b75e-4ec8-a4b9-28cde935b642').licenceNumber, 'KA01202000123', 'Saved details must remain')
+  liveRoster = liveRoster.filter(item => item.registrationCode !== 'VOL-DRIVER')
   await act(async () => liveRoot.unmount())
 
   // The live Team editor uses the Admin token and roster; successful writes refresh the list.
