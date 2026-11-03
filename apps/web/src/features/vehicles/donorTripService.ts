@@ -248,7 +248,10 @@ const SEEDED_DONOR_REQUESTS: DonorPickupRequest[] = [
  * Fetch all available donor requests from the backend API,
  * merging with any donor requests submitted by the teammate's donor app.
  */
-export async function fetchAllDonorRequests(liveOnly = false): Promise<DonorPickupRequest[]> {
+export async function fetchAllDonorRequests(
+  liveOnly = false,
+  status?: 'CANCELLED',
+): Promise<DonorPickupRequest[]> {
   const result: DonorPickupRequest[] = []
   const seenIds = new Set<string>()
 
@@ -256,7 +259,8 @@ export async function fetchAllDonorRequests(liveOnly = false): Promise<DonorPick
   if (isLiveAdmin()) {
     try {
       const headers = await getAuthHeaders()
-      const data = await apiRequest<{ items: any[] }>('food-requests', { headers })
+      const endpoint = status ? `food-requests?status=${status}` : 'food-requests'
+      const data = await apiRequest<{ items: any[] }>(endpoint, { headers })
       if (data && Array.isArray(data.items)) {
         for (const item of data.items) {
           const foods: FoodItemDetail[] = (item.items || item.foods || []).map((f: any) => ({
@@ -378,7 +382,7 @@ export async function fetchAllDonorRequests(liveOnly = false): Promise<DonorPick
     }
   }
 
-  return result
+  return status ? result.filter(request => request.status === status) : result
 }
 
 /**

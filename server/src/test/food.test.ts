@@ -112,6 +112,7 @@ const sampleFoodRequestRow = {
   notes: validFoodPayload.notes,
   status: 'SUBMITTED',
   created_at: new Date('2026-10-10T10:05:00Z'),
+  cancelled_at: null,
 };
 
 const sampleFoodItemRows = [
@@ -455,6 +456,7 @@ describe('Food and Donor Management API (Module 2)', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.status).toBe('CANCELLED');
+      expect(query.mock.calls[4][0]).toContain('cancelled_at = now()');
     });
   });
 
@@ -478,6 +480,7 @@ describe('Food and Donor Management API (Module 2)', () => {
       expect(res.body.data.items[0].id).toBe(sampleFoodRequestId);
       expect(res.body.data.items[0].donorName).toBe(sampleFoodRequestRow.source_name);
       expect(res.body.data.items[0].pickup).toBeNull();
+      expect(query.mock.calls[0][0]).toContain("status = 'SUBMITTED' OR (status = 'CANCELLED' AND cancelled_at > now() - interval '24 hours')");
     });
 
     it('rejects VOLUNTEER from listing food requests with 403 FORBIDDEN', async () => {
@@ -489,6 +492,24 @@ describe('Food and Donor Management API (Module 2)', () => {
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('FORBIDDEN');
+    });
+
+    it('keeps all cancelled requests available in the explicit history list', async () => {
+      findUser.mockResolvedValue(admin);
+      query.mockImplementationOnce(async () => ({ rows: [{ ...sampleFoodRequestRow, status: 'CANCELLED', cancelled_at: null }] }));
+      query.mockImplementationOnce(async () => ({ rows: sampleFoodItemRows }));
+      query.mockImplementationOnce(async () => ({ rows: [] }));
+
+      const res = await request(app)
+        .get('/api/v1/food-requests?status=CANCELLED')
+        .set('Authorization', 'Bearer admin-token');
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items).toHaveLength(1);
+      expect(res.body.data.items[0].status).toBe('CANCELLED');
+      expect(query.mock.calls[0][0]).toContain('WHERE status = $1');
+      expect(query.mock.calls[0][0]).not.toContain("cancelled_at > now() - interval '24 hours'");
+      expect(query.mock.calls[0][1]).toEqual(['CANCELLED']);
     });
   });
 });

@@ -25,6 +25,7 @@ export type FoodRequestRow = {
   notes: string | null;
   status: 'SUBMITTED' | 'CANCELLED';
   created_at: Date;
+  cancelled_at: Date | null;
 };
 
 export type FoodItemRow = {

@@ -11,7 +11,7 @@ import {
   ThermometerSnowflake,
   Truck,
 } from 'lucide-react'
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { Drawer, StatusBadge, formatTime } from '../components/common/UI'
 import {
   assignDonorPickupToVehicle,
@@ -44,14 +44,15 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
   const [selectedVehicleMap, setSelectedVehicleMap] = useState<Record<string, string>>({})
   const [assigningId, setAssigningId] = useState<string | null>(null)
   const [selectedRequest, setSelectedRequest] = useState<DonorPickupRequest | null>(null)
+  const [showCancelledHistory, setShowCancelledHistory] = useState(false)
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async (cancelledHistory: boolean) => {
     setLoading(true)
     setError(null)
     setLoadError(false)
     try {
       const live = isLiveAdmin()
-      const data = await fetchAllDonorRequests(live)
+      const data = await fetchAllDonorRequests(live, cancelledHistory ? 'CANCELLED' : undefined)
       const activeTrips = live ? [] : getAllActiveTrips()
 
       // Merge assignment status from active trips
@@ -78,7 +79,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   // Load live vehicles directly from PostgreSQL in live admin mode
   useEffect(() => {
@@ -104,15 +105,15 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
   }, [])
 
   useEffect(() => {
-    void loadRequests()
-    const handleSync = () => void loadRequests()
+    void loadRequests(showCancelledHistory)
+    const handleSync = () => void loadRequests(showCancelledHistory)
     window.addEventListener('storage', handleSync)
     window.addEventListener('focus', handleSync)
     let bc: BroadcastChannel | null = null
     try {
       if ('BroadcastChannel' in window) {
         bc = new BroadcastChannel('aahara_donations')
-        bc.onmessage = () => void loadRequests()
+        bc.onmessage = () => void loadRequests(showCancelledHistory)
       }
     } catch {}
     return () => {
@@ -120,7 +121,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
       window.removeEventListener('focus', handleSync)
       if (bc) bc.close()
     }
-  }, [])
+  }, [loadRequests, showCancelledHistory])
 
   // Live mode must not make a mock vehicle dispatchable when the API has not
   // returned a canonical vehicle record.
@@ -165,7 +166,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
         })
         if (pickup.status !== 'PLANNED') {
           notify?.(`This pickup is already ${pickup.status.toLowerCase()}. Refresh the request before assigning it again.`, 'error')
-          await loadRequests()
+          await loadRequests(showCancelledHistory)
           return
         }
 
@@ -275,8 +276,20 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
         <div className="flex items-center gap-2">
           <button
             type="button"
+            className="button button-secondary"
+            aria-pressed={showCancelledHistory}
+            onClick={() => {
+              const next = !showCancelledHistory
+              setShowCancelledHistory(next)
+            }}
+            disabled={loading}
+          >
+            {showCancelledHistory ? 'Show active requests' : 'Cancelled history'}
+          </button>
+          <button
+            type="button"
             className="button button-secondary flex items-center gap-1.5"
-            onClick={() => void loadRequests()}
+            onClick={() => void loadRequests(showCancelledHistory)}
             title="Refresh donor requests"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
@@ -308,7 +321,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
             <Package size={18} className="text-emerald-700" />
-            Live Food Requests from Donors
+            {showCancelledHistory ? 'Cancelled Food Request History' : 'Live Food Requests from Donors'}
           </h2>
           <span className="text-xs text-slate-500 font-medium">
             {availableVehicles.length} vehicles currently available
@@ -326,7 +339,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
             <button
               type="button"
               className="button button-secondary mt-3"
-              onClick={() => void loadRequests()}
+              onClick={() => void loadRequests(showCancelledHistory)}
             >
               Retry
             </button>
@@ -336,7 +349,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
             <Package size={32} className="mx-auto text-slate-300 mb-2" />
             <h3 className="font-bold text-slate-700">No donor requests found</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-              No food requests received yet. Use the donor prototype to submit a donation, and it will appear here.
+              {isLiveAdmin() ? 'No food requests have been submitted yet.' : 'No demo donor requests are available.'}
             </p>
           </div>
         ) : (
