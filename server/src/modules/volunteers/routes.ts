@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { isPublicVolunteerRegistrationEnabled } from '../../config/env';
 import { requireAuth } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/authorize';
+import { HttpError } from '../../middleware/errorHandler';
 import { validateBody } from '../../middleware/validate';
 import {
   createAdminTeamHandler,
@@ -38,7 +40,13 @@ const selfProfileRoutes = Router();
 const teamRoutes = Router();
 
 selfProfileRoutes.get('/me', requireAuth, requireRole('VOLUNTEER'), getOwnProfileHandler);
-selfProfileRoutes.post('/register', validateBody(createSelfRegistrationSchema), registerVolunteerHandler);
+selfProfileRoutes.post('/register', (_request, _response, next) => {
+  if (!isPublicVolunteerRegistrationEnabled()) {
+    next(new HttpError(403, 'REGISTRATION_DISABLED', 'Public Volunteer registration is unavailable. Ask an administrator for an invitation.'));
+    return;
+  }
+  next();
+}, validateBody(createSelfRegistrationSchema), registerVolunteerHandler);
 selfProfileRoutes.get('/applications', requireAuth, requireRole('ADMIN'), listAdminVolunteerApplicationsHandler);
 selfProfileRoutes.patch('/:id/approval', requireAuth, requireRole('ADMIN'), validateBody(decideVolunteerApplicationSchema), decideAdminVolunteerApplicationHandler);
 selfProfileRoutes.patch('/me', requireAuth, requireRole('VOLUNTEER'), validateBody(updateOwnProfileSchema), updateOwnProfileHandler);

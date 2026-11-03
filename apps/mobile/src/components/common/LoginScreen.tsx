@@ -145,7 +145,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
           } catch { app.notify('Password recovery is not configured for this app.'); }
         }} disabled={busy} variant="quiet" style={{ marginTop: 8 }} />}
         {role === 'donor' && isLiveAuthConfigured() && <Button title="Sign in to shared API" onPress={() => { void submitLive(); }} loading={busy} disabled={busy} variant="outline" style={{ marginTop: 8 }} />}
-        {role === 'volunteer' && isLiveAuthConfigured() && <Button title="Register as a volunteer" onPress={() => { setRegistration(emptyRegistration); setRegistrationResult(null); setRegistrationError(null); setRegisterMode(true); }} disabled={busy} variant="outline" style={{ marginTop: 8 }} />}
+        {role === 'volunteer' && isLiveAuthConfigured() && <T size={13} color={C.muted} style={{ marginTop: 8 }}>Volunteer registration is currently by invitation only. Please contact the NGO administrator.</T>}
         <Button title="Use demo account" onPress={() => submit(true)} disabled={busy} variant="quiet" style={{ marginTop: 8 }} />
       </Card>
     </>}

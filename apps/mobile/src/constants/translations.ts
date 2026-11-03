@@ -1,4 +1,5 @@
 export const kn: Record<string, string> = {
+  'Volunteer registration is currently by invitation only. Please contact the NGO administrator.': 'ಸ್ವಯಂಸೇವಕರ ನೋಂದಣಿ ಪ್ರಸ್ತುತ ಆಹ್ವಾನದ ಮೂಲಕ ಮಾತ್ರ ಲಭ್ಯವಿದೆ. ದಯವಿಟ್ಟು NGO ನಿರ್ವಾಹಕರನ್ನು ಸಂಪರ್ಕಿಸಿ.',
   'Forgot password?': 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?',
   'Password recovery is not configured for this app.': 'ಈ ಆ್ಯಪ್‌ಗೆ ಪಾಸ್‌ವರ್ಡ್ ಮರುಪಡೆಯುವಿಕೆ ಹೊಂದಿಸಲಾಗಿಲ್ಲ.',
   'Could not open password recovery. Try again later.': 'ಪಾಸ್‌ವರ್ಡ್ ಮರುಪಡೆಯುವ ಪುಟವನ್ನು ತೆರೆಯಲಾಗಲಿಲ್ಲ. ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',

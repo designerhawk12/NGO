@@ -57,6 +57,12 @@ export function validateVolunteerInviteRedirectUrl(rawUrl: string | undefined, e
   }
 }
 
+// Public registration sends email. Keep it off for the Admin-invited pilot
+// unless an operator explicitly enables it after reviewing abuse controls.
+export function isPublicVolunteerRegistrationEnabled(): boolean {
+  return process.env.PUBLIC_VOLUNTEER_REGISTRATION_ENABLED === 'true';
+}
+
 export const env = {
   port,
   nodeEnv,

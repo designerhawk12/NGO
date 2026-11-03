@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 
 const { verify, findUser, invite, getEmail, withTransaction, repo } = vi.hoisted(() => ({
@@ -9,6 +9,7 @@ const { verify, findUser, invite, getEmail, withTransaction, repo } = vi.hoisted
   withTransaction: vi.fn(),
   repo: {
     findAdminVolunteerConflict: vi.fn(),
+    insertInvitedVolunteer: vi.fn(),
     insertSelfRegisteredVolunteer: vi.fn(),
     listPendingVolunteerApplications: vi.fn(),
     findVolunteerApplicationForUpdate: vi.fn(),
@@ -67,6 +68,7 @@ const applicationRow = {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.stubEnv('PUBLIC_VOLUNTEER_REGISTRATION_ENABLED', 'true');
   verify.mockResolvedValue({ authUserId: admin.authUserId, email: 'admin@example.test' });
   findUser.mockResolvedValue(admin);
   invite.mockResolvedValue({ authUserId: volunteerActor.authUserId, inviteNonce: 'safe-test-nonce' });
@@ -76,13 +78,49 @@ beforeEach(() => {
     id: volunteerId, person_id: volunteerActor.id, registration_code: 'VOL-020',
     name: 'Applicant Person', phone_e164: '+919876543210', skills: ['Food Handling'], status: 'INACTIVE',
   });
+  repo.insertInvitedVolunteer.mockResolvedValue({
+    id: volunteerId, person_id: volunteerActor.id, registration_code: 'VOL-020',
+    name: 'Applicant Person', phone_e164: null, skills: [], status: 'ACTIVE',
+  });
   repo.listPendingVolunteerApplications.mockResolvedValue({ rows: [applicationRow], nextCursor: null });
   repo.findVolunteerApplicationForUpdate.mockResolvedValue({ id: applicationId, volunteer_id: volunteerId, status: 'PENDING', app_user_role: 'VOLUNTEER' });
   repo.setVolunteerApplicationDecision.mockImplementation(async (_id: string, status: string) => ({ id: applicationId, volunteer_id: volunteerId, status }));
   withTransaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => callback({}));
 });
 
+afterEach(() => vi.unstubAllEnvs());
+
 describe('Volunteer self-registration', () => {
+  it('is disabled by default before validation, database access, or email invitation', async () => {
+    vi.stubEnv('PUBLIC_VOLUNTEER_REGISTRATION_ENABLED', undefined);
+    const result = await request(app).post('/api/v1/volunteers/register').send({ email: 'invalid' });
+    expect(result.status).toBe(403);
+    expect(result.body.error.code).toBe('REGISTRATION_DISABLED');
+    expect(invite).not.toHaveBeenCalled();
+    expect(repo.findAdminVolunteerConflict).not.toHaveBeenCalled();
+    expect(repo.insertSelfRegisteredVolunteer).not.toHaveBeenCalled();
+  });
+
+  it('does not enable registration for values other than the exact word true', async () => {
+    for (const value of ['false', 'TRUE', '1']) {
+      vi.stubEnv('PUBLIC_VOLUNTEER_REGISTRATION_ENABLED', value);
+      const result = await request(app).post('/api/v1/volunteers/register').send(registration);
+      expect(result.status).toBe(403);
+    }
+    expect(invite).not.toHaveBeenCalled();
+  });
+
+  it('keeps authenticated Admin invitations working when public registration is disabled', async () => {
+    vi.stubEnv('PUBLIC_VOLUNTEER_REGISTRATION_ENABLED', 'false');
+    const result = await request(app).post('/api/v1/volunteers').set(auth).send({
+      email: 'applicant@example.test', name: 'Applicant Person', registrationCode: 'VOL-020',
+    });
+    expect(result.status).toBe(201);
+    expect(invite).toHaveBeenCalledWith('applicant@example.test', 'Applicant Person');
+    expect(repo.insertInvitedVolunteer).toHaveBeenCalledTimes(1);
+    expect(repo.insertSelfRegisteredVolunteer).not.toHaveBeenCalled();
+  });
+
   it('sends the existing invite and creates a pending application with server-owned account role', async () => {
     const result = await request(app).post('/api/v1/volunteers/register').send(registration);
     expect(result.status).toBe(201);
