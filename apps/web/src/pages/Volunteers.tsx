@@ -11,15 +11,15 @@ type Form = { name: string; phone: string; email: string; skills: string[]; stat
 const blankForm: Form = { name:'', phone:'', email:'', skills:[], status:'AVAILABLE', teamId:'' }
 const statuses: VolunteerStatus[] = ['AVAILABLE','ASSIGNED','ON_DUTY','OFF_DUTY','UNAVAILABLE']
 
-export default function Volunteers(props: Props) {
+export default function Volunteers(_props: Props) {
   const { mode, token, retry } = useAdminMode()
   if (mode === 'checking') return <><div className="page-heading"><div><h1>Volunteers</h1></div></div><section className="panel" style={{ padding: 20 }}>Checking administrator session…</section></>
   if (mode === 'error') return <><div className="page-heading"><div><h1>Volunteers</h1></div></div><section className="panel"><EmptyState title="Could not verify administrator access" description="Check your connection and try again." action={<button className="button button-secondary" onClick={() => void retry()}>Retry</button>}/></section></>
   if (mode === 'live' && token) return <LiveVolunteers token={token}/>
-  return <DemoVolunteers {...props}/>
+  return <section className="panel" role="alert"><EmptyState title="Administrator sign-in required" description="Volunteer records are not shown from sample data. Sign in under Settings and retry." action={<button className="button button-secondary" onClick={() => void retry()}>Retry</button>}/></section>
 }
 
-function DemoVolunteers({ volunteers, teams, assignments, setVolunteers, onAssignTeam, onCreateAssignment, notify }: Props) {
+export function DemoVolunteers({ volunteers, teams, assignments, setVolunteers, onAssignTeam, onCreateAssignment, notify }: Props) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [availabilityFilter, setAvailabilityFilter] = useState('all')

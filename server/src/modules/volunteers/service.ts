@@ -453,3 +453,21 @@ export async function updateAdminTeam(actor: AppUser, id: string, input: UpdateT
     });
   } catch (error) { handleTeamWriteError(error); }
 }
+
+export async function deleteAdminTeam(actor: AppUser, id: string): Promise<{ id: string; deleted: true }> {
+  requireAdmin(actor);
+  return withTransaction(async client => {
+    const locked = await volunteerRepository.findTeamForUpdate(id, client);
+    if (!locked) throw new HttpError(404, 'NOT_FOUND', 'Team not found.');
+    const assignmentCount = await volunteerRepository.countAssignmentsForTeam(id, client);
+    if (assignmentCount > 0) {
+      throw new HttpError(409, 'RESOURCE_CONFLICT', 'This team is linked to pickup assignments. Reassign or close those assignments before deleting the team.');
+    }
+    // Remove only membership links. Operational assignments are checked above
+    // and are never cascaded or deleted.
+    await volunteerRepository.deleteTeamMemberships(id, client);
+    const deleted = await volunteerRepository.deleteTeam(id, client);
+    if (!deleted) throw new HttpError(409, 'RESOURCE_CONFLICT', 'The team changed while it was being deleted. Refresh and try again.');
+    return { id, deleted: true };
+  });
+}

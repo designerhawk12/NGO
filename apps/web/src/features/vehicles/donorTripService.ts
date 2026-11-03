@@ -31,6 +31,7 @@ export interface DonorPickupRequest {
   totalVessels: number
   foods: FoodItemDetail[]
   handlingRequirements: string
+  notes?: string | null
   equipment: EquipmentRequirement
   safetyReview?: 'PENDING' | 'APPROVED' | 'REJECTED'
   status: 'SUBMITTED' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'COMPLETED' | 'CANCELLED'
@@ -304,6 +305,7 @@ export async function fetchAllDonorRequests(liveOnly = false): Promise<DonorPick
             totalVessels,
             foods,
             handlingRequirements: item.handlingRequirements || '',
+            notes: item.notes ?? null,
             equipment: eq,
             safetyReview: item.safetyReview,
             status,

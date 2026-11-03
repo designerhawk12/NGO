@@ -6,7 +6,7 @@ import { Button, Card, Field, Header, Icon, LanguageSwitcher, Screen, T } from '
 import { C } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { Role } from '../../types';
-import { isLiveAuthConfigured, signInWithEmail, signOut } from '../../api/auth';
+import { isLiveAuthConfigured, registerDonorWithEmailConfirmation, signInWithEmail, signOut, validateDonorRegistrationInput } from '../../api/auth';
 import { registerVolunteer } from '../../api/volunteers';
 import { ApiClientError } from '../../api/client';
 
@@ -21,17 +21,16 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [registrationResult, setRegistrationResult] = useState<{ message: string } | null>(null);
   const [registrationBusy, setRegistrationBusy] = useState(false);
+  const [donorName, setDonorName] = useState('');
+  const [donorEmail, setDonorEmail] = useState('');
+  const [donorPassword, setDonorPassword] = useState('');
+  const [donorConfirmPassword, setDonorConfirmPassword] = useState('');
+  const [donorRegistrationResult, setDonorRegistrationResult] = useState(false);
   const registrationSubmitting = useRef(false);
-  const submit = (demo = false) => {
-    const emailOrPhone = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier) || /^\d{10}$/.test(identifier);
-    if (!demo && !emailOrPhone) { app.notify('Enter a valid email or 10-digit phone number.'); return; }
-    if (!demo && password.length < 4) { app.notify('Password must have at least 4 characters.'); return; }
-    app.login(role);
-  };
   const submitLive = async () => {
-    if (!isLiveAuthConfigured()) { app.notify('Live sign-in is not configured. Use demo account.'); return; }
+    if (!isLiveAuthConfigured()) { app.notify('Live sign-in is not configured.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) { app.notify('Use your email address to sign in.'); return; }
-    if (password.length < 4) { app.notify('Password must have at least 4 characters.'); return; }
+    if (!password) { app.notify('Enter your password.'); return; }
     setBusy(true);
     try {
       const user = await signInWithEmail(identifier.trim(), password);
@@ -48,7 +47,6 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
       }
       app.loginAuthenticated(role);
     } catch (error) {
-  console.error('Live sign-in failed:', error);
 
   const message =
     error instanceof Error
@@ -100,9 +98,40 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
       registrationSubmitting.current = false; setRegistrationBusy(false);
     }
   };
+  const submitDonorRegistration = async () => {
+    if (registrationSubmitting.current) return;
+    setRegistrationError(null);
+    if (!isLiveAuthConfigured()) { setRegistrationError('Donor registration is not configured.'); return; }
+    const validationError = validateDonorRegistrationInput(donorEmail, donorPassword, donorName, donorConfirmPassword);
+    if (validationError) { setRegistrationError(validationError); return; }
+    registrationSubmitting.current = true; setRegistrationBusy(true);
+    try {
+      await registerDonorWithEmailConfirmation(donorEmail, donorPassword, donorName);
+      setDonorRegistrationResult(true);
+      setDonorPassword(''); setDonorConfirmPassword('');
+    } catch (error) {
+      setRegistrationError(error instanceof Error ? error.message : 'Could not register. Check your details and try again.');
+    } finally { registrationSubmitting.current = false; setRegistrationBusy(false); }
+  };
   if (app.role === role) return <Redirect href={role === 'volunteer' ? '/volunteer/(tabs)/home' : '/donor/(tabs)/home'} />;
   return <Screen style={{ justifyContent: 'center' }}><View style={{ alignItems: 'flex-end', marginBottom: 24 }}><LanguageSwitcher /></View>
-    {registerMode && role === 'volunteer' ? <>
+    {registerMode && role === 'donor' ? <>
+      <Header title="Register as Donor" subtitle="Create your donor account" back />
+      <Card style={{ padding: 22 }}>
+        {donorRegistrationResult ? <>
+          <T size={18} weight="700" color={C.ink} style={{ marginBottom: 8 }}>Check your email</T>
+          <T color={C.muted} style={{ marginBottom: 18 }}>Follow the confirmation link to verify your email, then return here and sign in.</T>
+          <Button title="Back to sign in" onPress={() => { setRegisterMode(false); setDonorRegistrationResult(false); setRegistrationError(null); }} variant="green" />
+        </> : <>
+          <Field label="Name" value={donorName} onChangeText={setDonorName} autoCapitalize="words" autoComplete="name" required maxLength={200} />
+          <Field label="Email address" value={donorEmail} onChangeText={setDonorEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" required maxLength={254} />
+          <Field label="Password (at least 8 characters)" value={donorPassword} onChangeText={setDonorPassword} secureTextEntry required />
+          <Field label="Confirm password" value={donorConfirmPassword} onChangeText={setDonorConfirmPassword} secureTextEntry required />
+          {registrationError && <T color={C.red} style={{ marginBottom: 12 }}>{registrationError}</T>}
+          <Button title="Create Donor account" onPress={() => { void submitDonorRegistration(); }} loading={registrationBusy} disabled={registrationBusy} />
+        </>}
+      </Card>
+    </> : registerMode && role === 'volunteer' ? <>
       <Header title="Volunteer registration" subtitle="Apply to join AaharaConnect" back />
       <Card style={{ padding: 22 }}>
         {registrationResult ? <>
@@ -132,9 +161,10 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         </T>
       </Card>}
       <Card style={{ padding: 22 }}><View style={{ width: 54, height: 54, borderRadius: 15, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}><Icon name={role === 'volunteer' ? 'team' : 'food'} size={28} /></View>
-        <Field label="Email or phone number" value={identifier} onChangeText={setIdentifier} autoCapitalize="none" keyboardType="email-address" />
+        <Field label="Email address" value={identifier} onChangeText={setIdentifier} autoCapitalize="none" keyboardType="email-address" />
         <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry />
-        <Button title="Sign in" onPress={() => { if (role === 'volunteer') void submitLive(); else submit(); }} loading={role === 'volunteer' && busy} disabled={busy} style={{ marginTop: 6 }} />
+        <Button title="Sign in" onPress={() => { void submitLive(); }} loading={busy} disabled={busy} style={{ marginTop: 6 }} />
+        {role === 'donor' && <Button title="Register as Donor" onPress={() => { setRegisterMode(true); setRegistrationError(null); }} variant="outline" style={{ marginTop: 8 }} />}
         {role === 'volunteer' && isLiveAuthConfigured() && <Button title="Forgot password?" onPress={() => {
           const origin = process.env.EXPO_PUBLIC_WEB_BASE_URL;
           if (!origin) { app.notify('Password recovery is not configured for this app.'); return; }
@@ -144,9 +174,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
             void Linking.openURL(`${url.origin}/forgot-password`).catch(() => app.notify('Could not open password recovery. Try again later.'));
           } catch { app.notify('Password recovery is not configured for this app.'); }
         }} disabled={busy} variant="quiet" style={{ marginTop: 8 }} />}
-        {role === 'donor' && isLiveAuthConfigured() && <Button title="Sign in to shared API" onPress={() => { void submitLive(); }} loading={busy} disabled={busy} variant="outline" style={{ marginTop: 8 }} />}
         {role === 'volunteer' && isLiveAuthConfigured() && <T size={13} color={C.muted} style={{ marginTop: 8 }}>Volunteer registration is currently by invitation only. Please contact the NGO administrator.</T>}
-        <Button title="Use demo account" onPress={() => submit(true)} disabled={busy} variant="quiet" style={{ marginTop: 8 }} />
       </Card>
     </>}
     <T size={13} color={C.muted} style={{ textAlign: 'center', marginTop: 22 }}>Together, less food waste.</T>

@@ -1,9 +1,10 @@
-import { Plus, Search, Sparkles } from 'lucide-react'
-import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { Plus, RefreshCw, Search, Sparkles } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { EmptyState, formatDate, formatTime, StatusBadge } from '../components/common/UI'
 import { AssignWizard } from '../features/pickups/AssignWizard'
 import { CreatePickupDialog } from '../features/pickups/CreatePickupDialog'
 import { usePickups } from '../features/pickups/hooks'
+import { fetchActiveAssignment } from '../features/pickups/api'
 import { PickupDrawer } from '../features/pickups/PickupDrawer'
 import type { LiveAssignment, Pickup } from '../features/pickups/types'
 import type { Assignment, Volunteer, VolunteerTeam } from '../types'
@@ -46,6 +47,10 @@ export default function PickupsLogistics({
   const [selectedPickup, setSelectedPickup] = useState<Pickup | null>(null)
   const [assignPickup, setAssignPickup] = useState<Pickup | null>(null)
   const [liveAssignmentsMap, setLiveAssignmentsMap] = useState<Record<string, LiveAssignment>>({})
+  const [liveAssignments, setLiveAssignments] = useState<Array<{ pickup: Pickup; assignment: LiveAssignment }>>([])
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false)
+  const [assignmentsError, setAssignmentsError] = useState(false)
+  const assignmentLoadId = useRef(0)
 
   const {
     pickups,
@@ -56,6 +61,28 @@ export default function PickupsLogistics({
     loadMore,
     reload,
   } = usePickups()
+
+  const loadLiveAssignments = useCallback(async () => {
+    if (!isLiveAdmin()) return
+    const loadId = ++assignmentLoadId.current
+    setAssignmentsLoading(true)
+    setAssignmentsError(false)
+    try {
+      const rows = await Promise.all(pickups.map(async pickup => ({ pickup, assignment: await fetchActiveAssignment(pickup.id) })))
+      if (loadId !== assignmentLoadId.current) return
+      setLiveAssignments(rows.filter((row): row is { pickup: Pickup; assignment: LiveAssignment } => row.assignment !== null))
+    } catch {
+      if (loadId !== assignmentLoadId.current) return
+      setLiveAssignments([])
+      setAssignmentsError(true)
+    } finally {
+      if (loadId === assignmentLoadId.current) setAssignmentsLoading(false)
+    }
+  }, [pickups])
+
+  useEffect(() => {
+    if (activeTab === 'Assignments' && isLiveAdmin()) void loadLiveAssignments()
+  }, [activeTab, loadLiveAssignments])
 
   const filteredPickups = useMemo(() => {
     if (!searchQuery.trim()) return pickups
@@ -126,7 +153,12 @@ export default function PickupsLogistics({
       </div>
 
       {activeTab === 'Assignments' ? (
-        isLiveAdmin() ? <section className="panel" style={{ marginTop: '1.25rem', padding: '1.5rem' }}><h2>Live assignments</h2><p>Open a pickup in the Pickups tab to inspect its current assignment and update permitted statuses.</p><button type="button" className="button button-primary" onClick={() => setActiveTab('Pickups')}>View pickups</button></section> : <Assignments
+        isLiveAdmin() ? <section className="panel" style={{ marginTop: '1.25rem', padding: '1.5rem' }}>
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><h2>Current assignments</h2><p>Active assignment data from the authorized Pickup API. Open a pickup to update permitted statuses.</p></div><button type="button" className="button button-secondary" onClick={() => void loadLiveAssignments()} disabled={assignmentsLoading}><RefreshCw size={15} className={assignmentsLoading ? 'animate-spin' : ''}/> Refresh assignments</button></div>
+          {assignmentsLoading ? <p role="status" className="quiet-text">Loading assignments…</p>
+            : assignmentsError ? <p role="alert" className="quiet-text">Could not refresh assignments. <button className="text-link" onClick={() => void loadLiveAssignments()}>Retry</button></p>
+              : liveAssignments.length ? <div className="table-scroll"><table className="data-table"><thead><tr><th>Pickup</th><th>Route</th><th>Window</th><th>Assignment status</th><th>Crew</th><th>Actions</th></tr></thead><tbody>{liveAssignments.map(({ pickup, assignment }) => <tr key={assignment.id}><td>{pickup.id.slice(0, 8)}…<small>{pickup.donorName || 'Food pickup'}</small></td><td>{pickup.donorLocation || '—'} → {pickup.deliveryAddress}</td><td>{formatDate(pickup.windowStartsAt)} {formatTime(pickup.windowStartsAt)} – {formatDate(pickup.windowEndsAt)} {formatTime(pickup.windowEndsAt)}</td><td><StatusBadge status={assignment.status}/></td><td>{assignment.volunteerIds.length} volunteer(s)</td><td><button type="button" className="text-link" onClick={() => setSelectedPickup(pickup)}>View pickup</button></td></tr>)}</tbody></table></div>
+                : <EmptyState title="No active assignments" description="Assignments will appear here when crews are assigned to pickups." action={<button type="button" className="button button-secondary" onClick={() => setActiveTab('Pickups')}>View pickups</button>}/>}</section> : <Assignments
           assignments={assignments}
           setAssignments={setAssignments}
           volunteers={volunteers}
@@ -182,8 +214,9 @@ export default function PickupsLogistics({
                   type="button"
                   className="button button-secondary"
                   onClick={() => void reload()}
+                  disabled={loading}
                 >
-                  Sync Donor Requests
+                  <RefreshCw size={15} className={loading ? 'animate-spin' : ''}/> Refresh pickups
                 </button>
               </div>
 
@@ -193,7 +226,8 @@ export default function PickupsLogistics({
                     <tr>
                       <th>Pickup ID</th>
                       <th>Pickup & Delivery Route</th>
-                      <th>Window Time</th>
+                      <th>Window Start Time</th>
+                      <th>Window End Time</th>
                       <th>Status</th>
                       <th>AI Logistics</th>
                       <th>Actions</th>
@@ -201,6 +235,8 @@ export default function PickupsLogistics({
                   </thead>
                   <tbody>
                     {filteredPickups.map(p => {
+                      const windowEnd = Date.parse(p.windowEndsAt)
+                      const expired = !Number.isFinite(windowEnd) || windowEnd <= Date.now()
                       const vCount = p.aiAssessment?.vessels.reduce((a, v) => a + v.count, 0) || 2
                       const vCat =
                         p.aiAssessment?.vehicle.category === 'two_wheeler'
@@ -246,7 +282,13 @@ export default function PickupsLogistics({
                             </div>
                           </td>
                           <td>
-                            <StatusBadge status={friendlyNames[p.status] || p.status} />
+                            <div className="time-cell">
+                              <strong>{formatTime(p.windowEndsAt)}</strong>
+                              <small>{formatDate(p.windowEndsAt)}</small>
+                            </div>
+                          </td>
+                          <td>
+                            <StatusBadge status={expired && p.status === 'PLANNED' ? 'REQUEST EXPIRED' : friendlyNames[p.status] || p.status} />
                           </td>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -279,7 +321,7 @@ export default function PickupsLogistics({
                             </div>
                           </td>
                           <td className="actions-cell">
-                            {p.status === 'PLANNED' && (
+                            {p.status === 'PLANNED' && !expired && (
                               <button
                                 type="button"
                                 className="button button-primary"

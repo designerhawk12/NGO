@@ -260,7 +260,7 @@ export async function listFoodRequests(
               notes, status, created_at
        FROM app.food_requests
        ${whereClause}
-       ORDER BY created_at DESC, id DESC
+       ORDER BY (status = 'CANCELLED') ASC, created_at DESC, id DESC
        ${limitClause}`,
       values
     );

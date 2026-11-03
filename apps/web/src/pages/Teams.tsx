@@ -7,15 +7,15 @@ import { useAdminMode } from '../features/volunteers/useAdminMode'
 
 type Props = { volunteers: Volunteer[]; teams: VolunteerTeam[]; setTeams: Dispatch<SetStateAction<VolunteerTeam[]>>; onAssignTeam: (volunteerId: string, teamId: string) => void; notify: (message: string, kind?: 'success' | 'error') => void }
 
-export default function Teams(props: Props) {
+export default function Teams(_props: Props) {
   const { mode, token, retry } = useAdminMode()
   if (mode === 'checking') return <><div className="page-heading"><div><h1>Volunteer Teams</h1></div></div><section className="panel" style={{ padding: 20 }}>Checking administrator session…</section></>
   if (mode === 'error') return <><div className="page-heading"><div><h1>Volunteer Teams</h1></div></div><section className="panel"><EmptyState title="Could not verify administrator access" description="Check your connection and try again." action={<button className="button button-secondary" onClick={() => void retry()}>Retry</button>}/></section></>
   if (mode === 'live' && token) return <LiveTeams token={token}/>
-  return <><p className="quiet-text" role="status">Demo data · Changes stay in this browser session.</p><DemoTeams {...props}/></>
+  return <section className="panel" role="alert"><EmptyState title="Administrator sign-in required" description="Team records are not shown from sample data. Sign in under Settings and retry." action={<button className="button button-secondary" onClick={() => void retry()}>Retry</button>}/></section>
 }
 
-function DemoTeams({ volunteers, teams, setTeams, onAssignTeam, notify }: Props) {
+export function DemoTeams({ volunteers, teams, setTeams, onAssignTeam, notify }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [teamName, setTeamName] = useState('')

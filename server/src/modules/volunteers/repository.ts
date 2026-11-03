@@ -500,6 +500,22 @@ export async function updateTeam(id: string, name: string, leaderVolunteerId: st
   await client.query('UPDATE app.teams SET name = $2, leader_volunteer_id = $3 WHERE id = $1', [id, name, leaderVolunteerId]);
 }
 
+export async function countAssignmentsForTeam(teamId: string, client: PoolClient): Promise<number> {
+  const result = await client.query<{ count: string }>(
+    'SELECT COUNT(*)::text AS count FROM app.assignments WHERE team_id = $1', [teamId]
+  );
+  return Number(result.rows[0]?.count ?? 0);
+}
+
+export async function deleteTeamMemberships(teamId: string, client: PoolClient): Promise<void> {
+  await client.query('DELETE FROM app.team_members WHERE team_id = $1', [teamId]);
+}
+
+export async function deleteTeam(id: string, client: PoolClient): Promise<boolean> {
+  const result = await client.query('DELETE FROM app.teams WHERE id = $1', [id]);
+  return (result.rowCount ?? 0) === 1;
+}
+
 export async function replaceTeamMembers(teamId: string, memberIds: string[], client: PoolClient): Promise<void> {
   await client.query('DELETE FROM app.team_members WHERE team_id = $1', [teamId]);
   if (memberIds.length) {

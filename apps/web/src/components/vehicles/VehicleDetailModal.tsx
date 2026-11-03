@@ -20,6 +20,9 @@ import { useEffect, useState } from 'react'
 import type { Driver, Vehicle, VehicleMaintenanceRecord } from '../../types'
 import { Drawer, StatusBadge, formatDate, formatTime, initials } from '../common/UI'
 import { fetchVehicleMaintenance, type ApiMaintenanceItem } from '../../features/vehicles/api'
+import { fetchVehicleAssignments } from '../../features/pickups/api'
+import type { VehicleAssignmentSummary } from '../../features/pickups/types'
+import { isLiveAdmin } from '../../features/pickups/adapters'
 import {
   assignDonorPickupToVehicle,
   completeDeliveryTrip,
@@ -53,6 +56,9 @@ export default function VehicleDetailModal({
   notify,
 }: Props) {
   const [liveMaintenance, setLiveMaintenance] = useState<ApiMaintenanceItem[] | null>(null)
+  const [liveAssignments, setLiveAssignments] = useState<VehicleAssignmentSummary[]>([])
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false)
+  const [assignmentsError, setAssignmentsError] = useState(false)
   const [activeTrips, setActiveTrips] = useState<VehicleActiveTrip[]>([])
   const [availableDonors, setAvailableDonors] = useState<DonorPickupRequest[]>([])
   const [showAssignPanel, setShowAssignPanel] = useState(false)
@@ -60,12 +66,13 @@ export default function VehicleDetailModal({
   // 1. Fetch live maintenance from backend
   useEffect(() => {
     let active = true
+    if (isLiveAdmin()) setLiveMaintenance([])
     if (vehicle.vehicleId) {
       fetchVehicleMaintenance(vehicle.vehicleId)
         .then(res => {
           if (active) setLiveMaintenance(res.items)
         })
-        .catch(() => {})
+        .catch(() => { if (active && isLiveAdmin()) setLiveMaintenance([]) })
     }
     return () => {
       active = false
@@ -74,6 +81,18 @@ export default function VehicleDetailModal({
 
   // 2. Load active trips and available donor requests
   useEffect(() => {
+    let active = true
+    if (isLiveAdmin()) {
+      setActiveTrips([])
+      setAvailableDonors([])
+      setAssignmentsLoading(true)
+      setAssignmentsError(false)
+      void fetchVehicleAssignments(vehicle.vehicleId)
+        .then(items => { if (active) setLiveAssignments(items) })
+        .catch(() => { if (active) { setLiveAssignments([]); setAssignmentsError(true) } })
+        .finally(() => { if (active) setAssignmentsLoading(false) })
+      return () => { active = false }
+    }
     let trips = getActiveTripsForVehicle(vehicle.vehicleId)
 
     // If vehicle is ON TRIP but has no trip saved in storage yet, seed an active donor assignment
@@ -163,7 +182,7 @@ export default function VehicleDetailModal({
   const activeDriverPhone = vehicle.driverPhone || driver?.phone
   const activeDriverLicence = vehicle.driverLicence || driver?.licenseNumber || driver?.licenceNumber
 
-  const fallbackMaintenance = maintenanceRecords.filter(m => m.vehicleId === vehicle.vehicleId)
+  const fallbackMaintenance = isLiveAdmin() ? [] : maintenanceRecords.filter(m => m.vehicleId === vehicle.vehicleId)
   const displayedMaintenance = liveMaintenance ?? fallbackMaintenance
 
   return (
@@ -216,20 +235,22 @@ export default function VehicleDetailModal({
         {/* Reliable Readiness Evaluation Card */}
         {(() => {
           const isMaintenance = vehicle.status === 'MAINTENANCE' || vehicle.status === 'Maintenance'
+            || vehicle.readiness?.dispatchStatus === 'MAINTENANCE_RESTRICTED'
           const isRetired = vehicle.status === 'RETIRED' || vehicle.status === 'Retired'
-          const isOnTrip = vehicle.status === 'ON TRIP' || vehicle.status === 'On Trip' || activeTrips.length > 0
-          const hasUnsafe = (liveMaintenance ?? maintenanceRecords).some(
+          const isOnTrip = vehicle.status === 'ON TRIP' || vehicle.status === 'On Trip'
+            || (isLiveAdmin() ? liveAssignments.some(item => !['REJECTED', 'CANCELLED', 'FAILED', 'DELIVERED'].includes(item.status)) : activeTrips.length > 0)
+          const hasUnsafe = (liveMaintenance ?? (isLiveAdmin() ? [] : maintenanceRecords)).some(
             m => m.vehicleId === vehicle.vehicleId && m.condition === 'UNSAFE'
           )
 
-          const isReady = !isMaintenance && !isRetired && !hasUnsafe && !isOnTrip
-          const dispatchStatus = isRetired
+          const isReady = vehicle.readiness?.isReady ?? (!isMaintenance && !isRetired && !hasUnsafe && !isOnTrip)
+          const dispatchStatus = vehicle.readiness?.dispatchStatus ?? (isRetired
             ? 'RETIRED'
             : isMaintenance || hasUnsafe
             ? 'MAINTENANCE'
             : isOnTrip
             ? 'ON TRIP'
-            : 'READY'
+            : 'READY')
 
           return (
             <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-3">
@@ -322,8 +343,17 @@ export default function VehicleDetailModal({
           )}
         </div>
 
-        {/* Active Trips & Food Donor Assignments (Real Backend Data) */}
-        <div>
+        {/* Live Admin assignment data comes from the canonical Pickup projection. */}
+        {isLiveAdmin() ? (
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2"><Clock size={16} className="text-emerald-600"/> Current pickup assignments</h4>
+            <p className="text-[11px] text-slate-500">Read-only assignments from Pickup & Logistics. Create and update assignments in that workflow.</p>
+            {assignmentsLoading ? <p role="status" className="text-xs text-slate-500">Loading assignments…</p>
+              : assignmentsError ? <p role="alert" className="text-xs text-rose-700">Could not load current assignments. Retry from Vehicle Details.</p>
+                : liveAssignments.length ? <div className="space-y-2">{liveAssignments.map(item => <article key={item.assignmentId} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs"><div className="flex flex-wrap items-center justify-between gap-2"><strong>Assignment {item.assignmentId.slice(0, 8)}…</strong><StatusBadge status={item.status}/></div><p className="mt-1 text-slate-600">Pickup {item.pickupId.slice(0, 8)}… · {item.volunteerIds.length} volunteer(s)</p><p className="mt-1 text-slate-600">Window: {item.windowStartsAt ? `${formatDate(item.windowStartsAt)} ${formatTime(item.windowStartsAt)}` : '—'} – {item.windowEndsAt ? `${formatDate(item.windowEndsAt)} ${formatTime(item.windowEndsAt)}` : '—'}</p></article>)}</div>
+                  : <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-500">No current assignments returned for this vehicle.</p>}
+          </section>
+        ) : <div>
           <div className="flex items-center justify-between mb-1">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2">
               <Clock size={16} className="text-emerald-600" /> Active Trips & Assignments
@@ -534,7 +564,7 @@ export default function VehicleDetailModal({
               )}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Maintenance History */}
         <div>

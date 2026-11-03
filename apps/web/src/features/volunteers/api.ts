@@ -65,3 +65,5 @@ export const createAdminTeam = (accessToken: string, input: TeamWriteInput) =>
   apiRequest<Team>('teams', { method: 'POST', headers: bearer(accessToken), body: input })
 export const updateAdminTeam = (accessToken: string, id: string, input: TeamWriteInput) =>
   apiRequest<Team>(`teams/${encodeURIComponent(id)}`, { method: 'PATCH', headers: bearer(accessToken), body: input })
+export const deleteAdminTeam = (accessToken: string, id: string) =>
+  apiRequest<{ id: string; deleted: true }>(`teams/${encodeURIComponent(id)}`, { method: 'DELETE', headers: bearer(accessToken) })

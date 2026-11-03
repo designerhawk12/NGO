@@ -7,6 +7,7 @@ import {
   listAdminVolunteers, updateAdminVolunteer,
   type AdminDriverDetails, type CreateAdminVolunteerInput, type UpdateAdminVolunteerInput,
 } from '../../features/volunteers/api'
+import { fetchVehicles } from '../../features/vehicles/api'
 import { Avatar, Drawer, EmptyState, Modal, StatusBadge, Toast } from '../common/UI'
 
 type VolunteerForm = {
@@ -91,6 +92,9 @@ function parseForm(form: VolunteerForm, isCreate: boolean):
 export default function LiveVolunteers({ token }: { token: string }) {
   const [volunteers, setVolunteers] = useState<Volunteer[]>([])
   const [teams, setTeams] = useState<Team[]>([])
+  const [registeredVehicleNumbers, setRegisteredVehicleNumbers] = useState<string[]>([])
+  const [vehicleOptionsLoading, setVehicleOptionsLoading] = useState(true)
+  const [vehicleOptionsError, setVehicleOptionsError] = useState(false)
   const [applications, setApplications] = useState<VolunteerApplication[]>([])
   const [applicationsLoading, setApplicationsLoading] = useState(true)
   const [applicationsError, setApplicationsError] = useState(false)
@@ -130,7 +134,30 @@ export default function LiveVolunteers({ token }: { token: string }) {
     catch { setApplicationsError(true) }
     finally { setApplicationsLoading(false) }
   }, [token])
-  useEffect(() => { void load(); void loadApplications() }, [load, loadApplications])
+  const loadRegisteredVehicles = useCallback(async () => {
+    setVehicleOptionsLoading(true)
+    setVehicleOptionsError(false)
+    try {
+      const items: string[] = []
+      let cursor: string | null = null
+      const seenCursors = new Set<string>()
+      do {
+        const page = await fetchVehicles({ limit: 100, ...(cursor ? { cursor } : {}) }, token)
+        items.push(...page.items.map(vehicle => vehicle.registrationNumber.trim().toUpperCase()).filter(Boolean))
+        cursor = page.nextCursor
+        if (cursor && seenCursors.has(cursor)) throw new Error('Vehicle registry pagination did not advance.')
+        if (cursor) seenCursors.add(cursor)
+      } while (cursor)
+      setRegisteredVehicleNumbers([...new Set(items)])
+    } catch {
+      setRegisteredVehicleNumbers([])
+      setVehicleOptionsError(true)
+    } finally { setVehicleOptionsLoading(false) }
+  }, [token])
+  useEffect(() => { void load(); void loadApplications(); void loadRegisteredVehicles() }, [load, loadApplications, loadRegisteredVehicles])
+  const refreshRosterAndVehicles = useCallback(async () => {
+    await Promise.all([load(), loadRegisteredVehicles()])
+  }, [load, loadRegisteredVehicles])
   const loadDetail = useCallback(async (id: string) => {
     setSelectedId(id); setDetail(null); setDetailDriver(null); setDetailLoading(true); setDetailError(false)
     try {
@@ -165,6 +192,13 @@ export default function LiveVolunteers({ token }: { token: string }) {
     if (submitting.current) return
     const parsed = parseForm(form, formMode === 'create')
     if (parsed.error) { setFormError(parsed.error); return }
+    if (hasDriverSkill(form.skills)
+      && !registeredVehicleNumbers.includes(form.vehicleRegistrationNumber.trim().toUpperCase())) {
+      setFormError(vehicleOptionsError
+        ? 'Could not verify the registered vehicle list. Refresh and try again.'
+        : 'Select a vehicle already registered in Vehicle Details.')
+      return
+    }
     if (formMode === 'edit' && editingDriver && !hasDriverSkill(form.skills) && editingDriver.status === 'ACTIVE') {
       if (!window.confirm('Remove the Driver skill and deactivate this driver? Saved licence and vehicle details will be retained.')) return
       const update = parsed.value as UpdateAdminVolunteerInput
@@ -225,7 +259,7 @@ export default function LiveVolunteers({ token }: { token: string }) {
     <div className="info-strip"><div className="info-strip-icon"><Users size={21}/></div><div><strong>Live administrator roster</strong><span>Volunteer profiles and invitations are managed through the shared API.</span></div><span className="info-strip-count">{volunteers.length} profiles</span></div>
     <section className="panel volunteer-panel" aria-live="polite" aria-labelledby="volunteer-approval-heading">
       <div className="table-toolbar">
-        <div><strong id="volunteer-approval-heading">Volunteer Approval</strong><p className="quiet-text">Review new applications before granting access to Volunteer features.</p></div>
+        <div><strong id="volunteer-approval-heading">Volunteer Approval · Future Scope</strong><p className="quiet-text">Public volunteer registration is unavailable during the pilot. Administrator invitations remain available.</p></div>
         <button className="text-link" onClick={() => void loadApplications()} disabled={applicationsLoading}>Refresh applications</button>
       </div>
       {applicationsLoading && applications.length === 0 ? <p className="quiet-text" style={{ padding: 20 }}>Loading volunteer applications…</p>
@@ -256,7 +290,7 @@ export default function LiveVolunteers({ token }: { token: string }) {
         {error && <p className="quiet-text" role="alert">Could not refresh volunteers. Showing the last loaded roster. <button className="text-link" onClick={() => void load()}>Retry</button></p>}
         {filtered.length ? <div className="table-scroll"><table className="data-table volunteer-table"><thead><tr><th>Volunteer</th><th>Phone</th><th>Skills</th><th>Team</th><th>Status</th><th>Actions</th></tr></thead><tbody>{filtered.map(volunteer => <tr key={volunteer.id}><td><button className="person-cell" onClick={() => void loadDetail(volunteer.id)}><Avatar name={volunteer.name}/><span><strong>{volunteer.name}</strong><small>{volunteer.registrationCode}</small></span></button></td><td>{volunteer.phoneE164 ?? '—'}</td><td><div className="skill-list">{volunteer.skills.map(value => <span className="skill-badge" key={value}>{value}</span>)}</div></td><td><span className="team-cell">{teamNames(volunteer.id)}</span></td><td><StatusBadge status={volunteer.status}/></td><td><button className="text-link" onClick={() => void loadDetail(volunteer.id)}>View profile</button><button className="text-link" disabled={editingLoadingId === volunteer.id} onClick={() => void openEdit(volunteer)}>{editingLoadingId === volunteer.id ? 'Loading…' : 'Edit volunteer'}</button></td></tr>)}</tbody></table></div> : <EmptyState title="No volunteers found" description="Try a different search or clear the filters to see more people." action={<button className="button button-secondary" onClick={() => { setSearch(''); setStatus('all'); setTeamId('all'); setSkill('all') }}>Clear search and filters</button>}/>}
       </>}
-      <div className="table-footer"><span>Live volunteer roster</span><button className="text-link" onClick={() => void load()} disabled={loading}>Refresh</button></div>
+      <div className="table-footer"><span>Live volunteer roster</span><button className="text-link" onClick={() => void refreshRosterAndVehicles()} disabled={loading || vehicleOptionsLoading}>Refresh</button></div>
     </section>
     {selectedId && <Drawer title="Volunteer profile" onClose={() => { setSelectedId(null); setDetail(null); setDetailDriver(null) }}><div className="drawer-body">{detailLoading ? <p className="quiet-text">Loading volunteer profile…</p> : detailError ? <EmptyState title="Could not load volunteer profile" description="Try again to read this record." action={<button className="button button-secondary" onClick={() => void loadDetail(selectedId)}>Retry</button>}/> : detail ? <><div className="profile-hero"><Avatar name={detail.name} size="lg"/><h2>{detail.name}</h2><span className="muted-id">{detail.registrationCode}</span><StatusBadge status={detail.status}/><button className="button button-secondary" disabled={editingLoadingId === detail.id} onClick={() => { setSelectedId(null); setDetail(null); void openEdit(detail) }}>Edit Volunteer</button></div><div className="detail-section"><h3>Volunteer details</h3><div className="detail-grid"><div><span>Phone</span><strong><Phone size={15}/>{detail.phoneE164 ?? '—'}</strong></div><div><span>Team</span><strong><Users size={15}/>{teamNames(detail.id)}</strong></div></div><div className="detail-skills"><span>Skills</span><div className="skill-list">{detail.skills.map(value => <span className="skill-badge" key={value}>{value}</span>)}</div></div></div>{detailDriver && <div className="detail-section"><h3>Driver details</h3><div className="detail-grid"><div><span>Driver status</span><strong><StatusBadge status={detailDriver.status}/></strong></div><div><span>Vehicle registration</span><strong>{detailDriver.vehicleRegistrationNumber || 'Unlinked'}</strong></div><div><span>Driving licence</span><strong>{detailDriver.licenceNumber}</strong></div><div><span>Licence expires</span><strong>{detailDriver.licenceExpiresOn}</strong></div></div>{detailDriver.additionalVehicleCount > 0 && <p className="quiet-text">Also linked to {detailDriver.additionalVehicleCount} other vehicles. Manage links in Vehicle Details.</p>}<p className="quiet-text">Driver status is separate from Volunteer approval and availability.</p></div>}<p className="quiet-text">Availability and assignment history are not included in this administrator read API.</p></> : null}</div></Drawer>}
     {formMode && <Modal title={formMode === 'create' ? 'Add a volunteer' : 'Edit volunteer'} subtitle={formMode === 'create' ? 'Create a volunteer profile and send an invitation.' : 'Update this volunteer’s administrative profile.'} onClose={() => { if (!saving) setFormMode(null) }}>
@@ -273,7 +307,7 @@ export default function LiveVolunteers({ token }: { token: string }) {
           }}/> Driver</label>
           {hasDriverSkill(form.skills) && <>
             <label className="field">Driving License Number <span aria-hidden="true">*</span><input value={form.licenceNumber} onChange={event => setForm({ ...form, licenceNumber: event.target.value })} required maxLength={40} autoComplete="off"/></label>
-            <label className="field">Vehicle Registration Number <span aria-hidden="true">*</span><input value={form.vehicleRegistrationNumber} onChange={event => setForm({ ...form, vehicleRegistrationNumber: event.target.value })} required readOnly={Boolean(editingDriver?.additionalVehicleCount)} maxLength={32} autoComplete="off"/><small>{editingDriver?.additionalVehicleCount ? 'Manage multiple vehicle links in Vehicle Details.' : 'Use a vehicle already registered in Vehicle Details.'}</small></label>
+            <label className="field">Vehicle Registration Number <span aria-hidden="true">*</span><select value={form.vehicleRegistrationNumber} onChange={event => setForm({ ...form, vehicleRegistrationNumber: event.target.value })} required disabled={vehicleOptionsLoading || Boolean(editingDriver?.additionalVehicleCount)}><option value="">{vehicleOptionsLoading ? 'Loading registered vehicles…' : 'Select a registered vehicle'}</option>{registeredVehicleNumbers.map(registration => <option key={registration} value={registration}>{registration}</option>)}</select><small>{vehicleOptionsError ? 'Vehicle registry could not be loaded. Retry before saving a driver.' : editingDriver?.additionalVehicleCount ? 'Manage multiple vehicle links in Vehicle Details.' : 'Only vehicles registered in Vehicle Details can be linked.'}</small></label>
             <label className="field">License Expiry Date <span aria-hidden="true">*</span><input type="date" value={form.licenceExpiresOn} onChange={event => setForm({ ...form, licenceExpiresOn: event.target.value })} required/></label>
             {formMode === 'edit' && <label className="field">Driver status<select value={form.driverStatus} onChange={event => setForm({ ...form, driverStatus: event.target.value as VolunteerForm['driverStatus'] })}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select><small>Separate from Volunteer status and approval.</small></label>}
           </>}

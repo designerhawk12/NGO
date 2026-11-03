@@ -172,3 +172,11 @@ export const updateAdminTeamHandler: RequestHandler = async (request, response, 
     ));
   } catch (error) { next(error); }
 };
+
+export const deleteAdminTeamHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const id = uuidSchema.safeParse(request.params.id);
+    if (!id.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Team ID must be a UUID.');
+    sendSuccess(response, await volunteerService.deleteAdminTeam(response.locals.appUser as AppUser, id.data));
+  } catch (error) { next(error); }
+};

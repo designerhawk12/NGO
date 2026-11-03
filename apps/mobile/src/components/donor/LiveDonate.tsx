@@ -115,7 +115,7 @@ export default function LiveDonate() {
     </Card>
     <T size={20} weight="700" color={C.ink} style={{ marginBottom: 12 }}>Pickup details</T>
     <Card style={{ marginBottom: 18 }}>
-      <Field label="Pickup address" value={pickupAddress} onChangeText={setPickupAddress} required multiline />
+      <Field label="Hall address (pickup address)" value={pickupAddress} onChangeText={setPickupAddress} required multiline />
       <T color={C.muted} style={{ marginBottom: 12 }}>Use local dates (YYYY-MM-DD) and 24-hour times (HH:mm).</T>
       <Field label="Prepared date" value={preparedDate} onChangeText={setPreparedDate} placeholder="YYYY-MM-DD" required />
       <Field label="Prepared time" value={preparedTime} onChangeText={setPreparedTime} placeholder="HH:mm" required />

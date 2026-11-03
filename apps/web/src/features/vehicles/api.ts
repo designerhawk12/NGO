@@ -68,7 +68,8 @@ export interface ApiMaintenanceItem {
 }
 
 export async function fetchVehicles(
-  query?: ListVehiclesQuery
+  query?: ListVehiclesQuery,
+  accessToken?: string,
 ): Promise<{ items: ApiVehicleItem[]; nextCursor: string | null }> {
   const searchParams = new URLSearchParams();
   if (query?.cursor) searchParams.set('cursor', query.cursor);
@@ -81,7 +82,7 @@ export async function fetchVehicles(
   const endpoint = qs ? `vehicles?${qs}` : 'vehicles';
 
   return apiRequest<{ items: ApiVehicleItem[]; nextCursor: string | null }>(endpoint, {
-    headers: await getAuthHeaders(),
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : await getAuthHeaders(),
   });
 }
 

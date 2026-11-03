@@ -5,6 +5,7 @@ import { requireRole } from '../../middleware/authorize';
 import { HttpError } from '../../middleware/errorHandler';
 import { validateBody } from '../../middleware/validate';
 import {
+  deleteAdminTeamHandler,
   createAdminTeamHandler,
   createAdminVolunteerHandler,
   decideAdminVolunteerApplicationHandler,
@@ -64,6 +65,7 @@ teamRoutes.get('/', requireAuth, requireRole('ADMIN'), listAdminTeamsHandler);
 teamRoutes.get('/:id', requireAuth, requireRole('ADMIN'), getAdminTeamHandler);
 teamRoutes.post('/', requireAuth, requireRole('ADMIN'), validateBody(createTeamSchema), createAdminTeamHandler);
 teamRoutes.patch('/:id', requireAuth, requireRole('ADMIN'), validateBody(updateTeamSchema), updateAdminTeamHandler);
+teamRoutes.delete('/:id', requireAuth, requireRole('ADMIN'), deleteAdminTeamHandler);
 
 // The central router mounts this module at both /volunteers and /teams.
 volunteerRoutes.use((request, response, next) => {

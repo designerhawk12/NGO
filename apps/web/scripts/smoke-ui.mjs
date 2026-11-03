@@ -100,21 +100,28 @@ try {
   for (const label of ['Volunteers', 'Food & Donors', 'Pickup & Logistics', 'Vehicle Tracking', 'Vehicle Details', 'Vessels']) {
     assert.ok([...document.querySelectorAll('.side-nav button')].some(item => item.textContent.trim() === label), `${label} module should be visible`)
   }
+  const assertAdminGate = () => {
+    assert.match(document.querySelector('main').textContent, /Administrator sign-in required|Verifying administrator access/)
+    assert.doesNotMatch(document.querySelector('main').textContent, /Sharma Wedding|Ramesh Kumar|Team Alpha|Royal Orchid/)
+  }
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Volunteers')))
-  assert.match(document.querySelector('main h1').textContent, /Volunteers/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Food & Donors')))
-  assert.match(document.querySelector('main').textContent, /Live Food Requests from Donors|Food & Donors/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Pickup & Logistics')))
-  assert.match(document.querySelector('main h1').textContent, /Pickup & Logistics/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vehicle Tracking')))
-  assert.match(document.querySelector('main').textContent, /This device location/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vehicle Details')))
-  assert.match(document.querySelector('main').textContent, /Fleet Registry/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vessels')))
-  assert.match(document.querySelector('main h1').textContent, /Vessels/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Dashboard')))
   const openDemo = button('Open demo dashboard')
-  if (openDemo) await click(openDemo)
+  assert.ok(!openDemo, 'Production dashboard must not offer demo data')
+  assert.ok(button('Refresh'), 'Live dashboard must offer an explicit refresh action')
+  if (openDemo) {
+    await click(openDemo)
 
   await click(button('ಕನ್ನಡ'))
   assert.match(document.body.textContent, /ಸ್ವಯಂಸೇವಕರ ನಿರ್ವಹಣೆ/)
@@ -201,6 +208,7 @@ try {
   await click(document.querySelector('.drawer-header .icon-button'))
   await click([...document.querySelectorAll('.sidebar-bottom button')].find(item => item.textContent.includes('ಸೆಟ್ಟಿಂಗ್‌ಗಳು')))
   assert.match(document.body.textContent, /ಘಟಕದ ಮಾಹಿತಿ/)
+  }
 
   await act(async () => root.unmount())
 
@@ -217,6 +225,7 @@ try {
     const method = options.method ?? 'GET'
     liveRequests.push({ path, method, headers: new Headers(options.headers), body: options.body ? JSON.parse(options.body) : null })
     if (method === 'GET' && path.endsWith('/volunteers')) return apiReply({ items:liveRoster, nextCursor:null })
+    if (method === 'GET' && path.endsWith('/vehicles')) return apiReply({ items:[{ registrationNumber:'KA01AB1234' }], nextCursor:null })
     if (method === 'GET' && path.endsWith('/driver-details')) return apiReply(liveDrivers.get(path.split('/').at(-2)) ?? null)
     if (method === 'GET' && path.endsWith('/teams')) return apiReply({ items:liveTeams, nextCursor:null })
     if (method === 'GET' && path.includes('/teams/')) return apiReply(liveTeams.find(team => team.id === path.split('/').at(-1)))
@@ -314,7 +323,8 @@ try {
   await click(document.querySelector('.modal button[type="submit"]'))
   assert.match(document.querySelector('.modal [role="alert"]').textContent, /licence number/)
   await setInput(document.querySelector('.modal input[maxlength="40"]'), 'KA01202000123')
-  await setInput(document.querySelector('.modal input[maxlength="32"]'), 'KA01AB1234')
+  const registeredVehicle = [...document.querySelectorAll('.modal label.field')].find(item => item.textContent.includes('Vehicle Registration Number')).querySelector('select')
+  await setSelect(registeredVehicle, 'KA01AB1234')
   await setInput(document.querySelector('.modal input[type="date"]'), '2028-12-31')
   await click(document.querySelector('.modal button[type="submit"]'))
   await flush()
@@ -558,7 +568,7 @@ try {
     assert.equal(fnError.code, 'UNAUTHENTICATED', `${name} must return UNAUTHENTICATED code`)
   }
 
-  console.log('Smoke check passed: bilingual demo UI, live Volunteer create/edit/error flows, donor isolation, logistics recommendations, auth propagation and team flows.')
+  console.log('Smoke check passed: production dashboard has no demo entry, live Volunteer flows, donor isolation, logistics recommendations, auth propagation and team flows.')
 } finally {
   dom.window.close()
   await server.close()

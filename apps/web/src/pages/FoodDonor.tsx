@@ -1,7 +1,6 @@
 import {
   CheckCircle2,
   Clock,
-  ExternalLink,
   Flame,
   MapPin,
   Package,
@@ -13,7 +12,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
-import { StatusBadge, formatTime } from '../components/common/UI'
+import { Drawer, StatusBadge, formatTime } from '../components/common/UI'
 import {
   assignDonorPickupToVehicle,
   fetchAllDonorRequests,
@@ -44,6 +43,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
   const [liveVehicles, setLiveVehicles] = useState<Vehicle[]>([])
   const [selectedVehicleMap, setSelectedVehicleMap] = useState<Record<string, string>>({})
   const [assigningId, setAssigningId] = useState<string | null>(null)
+  const [selectedRequest, setSelectedRequest] = useState<DonorPickupRequest | null>(null)
 
   const loadRequests = async () => {
     setLoading(true)
@@ -68,6 +68,9 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
         return req
       })
 
+      // Keep cancelled requests visible for history while never mixing them into
+      // the active scheduling section above submitted/assigned work.
+      enriched.sort((a, b) => Number(a.status === 'CANCELLED') - Number(b.status === 'CANCELLED'))
       setRequests(enriched)
     } catch (err: unknown) {
       setLoadError(true)
@@ -278,14 +281,6 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
-          <a
-            className="button button-primary flex items-center gap-1.5"
-            href={`${import.meta.env.BASE_URL}donor/index.html`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open donor prototype <ExternalLink size={15} />
-          </a>
         </div>
       </div>
 
@@ -429,7 +424,8 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
 
                   {/* Assignment Action Footer */}
                   <div className="pt-3 border-t border-slate-100">
-                    {isLiveAdmin() ? <p className="text-sm text-slate-600">Use Pickup & Logistics to plan and reserve a vehicle for this request.</p> :
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2"><button type="button" className="text-link" onClick={() => setSelectedRequest(req)}>View Details</button>{req.status === 'CANCELLED' && <span className="text-xs text-slate-500">Cancelled · excluded from active scheduling</span>}</div>
+                    {req.status === 'CANCELLED' ? <p className="text-sm text-slate-600">This request is cancelled and cannot be scheduled.</p> : isLiveAdmin() ? <p className="text-sm text-slate-600">Use Pickup & Logistics to plan and reserve a vehicle for this request.</p> :
                     req.status === 'ASSIGNED' ? (
                       <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/80 flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 text-emerald-800">
@@ -495,6 +491,23 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
           </div>
         )}
       </section>
+      {selectedRequest && <Drawer title={`Food request ${selectedRequest.id.slice(0, 8)}`} onClose={() => setSelectedRequest(null)}>
+        <div className="drawer-body space-y-4">
+          <div className="detail-section"><h3>Donor and pickup</h3><div className="detail-grid">
+            <div><span>Donor</span><strong>{selectedRequest.donorName}</strong></div>
+            <div><span>Request status</span><strong><StatusBadge status={selectedRequest.status}/></strong></div>
+            <div><span>Pickup address</span><strong>{selectedRequest.pickupAddress}</strong></div>
+            <div><span>Contact</span><strong>{selectedRequest.contactName || '—'}{selectedRequest.contactPhone ? ` · ${selectedRequest.contactPhone}` : ''}</strong></div>
+            <div><span>Ready at</span><strong>{new Date(selectedRequest.readyAt).toLocaleString()}</strong></div>
+            <div><span>Pickup deadline</span><strong>{new Date(selectedRequest.pickupDeadline).toLocaleString()}</strong></div>
+            <div><span>Estimated weight</span><strong>{selectedRequest.weightProvided === false ? 'Not provided' : `${selectedRequest.estimatedWeightKg} kg`}</strong></div>
+            <div><span>Food-safety review</span><strong>{selectedRequest.safetyReview ?? 'Not reviewed'}</strong></div>
+          </div></div>
+          <div className="detail-section"><h3>Food items</h3>{selectedRequest.foods.length ? <ul>{selectedRequest.foods.map((food, index) => <li key={`${food.name}-${index}`}>{food.name} · {food.quantity} {food.unit}{food.foodType ? ` · ${food.foodType}` : ''}</li>)}</ul> : <p>No item details provided.</p>}</div>
+          <div className="detail-section"><h3>Handling and notes</h3><p>{selectedRequest.handlingRequirements || 'No special handling requirements.'}</p><p>{selectedRequest.notes || 'No additional notes.'}</p></div>
+          {selectedRequest.pickup && <div className="detail-section"><h3>Scheduled pickup</h3><div className="detail-grid"><div><span>Pickup status</span><strong>{selectedRequest.pickup.status}</strong></div><div><span>Assignment status</span><strong>{selectedRequest.pickup.assignmentStatus || 'No active assignment'}</strong></div><div><span>Window starts</span><strong>{new Date(selectedRequest.pickup.windowStartsAt).toLocaleString()}</strong></div><div><span>Window ends</span><strong>{new Date(selectedRequest.pickup.windowEndsAt).toLocaleString()}</strong></div><div><span>Delivery address</span><strong>{selectedRequest.pickup.deliveryAddress}</strong></div></div></div>}
+        </div>
+      </Drawer>}
     </>
   )
 }

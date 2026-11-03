@@ -17,6 +17,7 @@ type Props = {
   existingVehicles?: Vehicle[]
   drivers: Driver[]
   maintenanceRecords?: VehicleMaintenanceRecord[]
+  registeredDriversOnly?: boolean
   onClose: () => void
   onSave: (vehicle: Vehicle) => boolean | Promise<boolean>
   notify: (message: string, kind?: 'success' | 'error') => void
@@ -25,7 +26,7 @@ type Props = {
 const VEHICLE_TYPES = ['Van', 'Mini Truck', 'Tempo', 'Truck', 'Auto Rickshaw', 'Pickup', 'Other']
 const SIZES: ('SMALL' | 'MEDIUM' | 'LARGE')[] = ['SMALL', 'MEDIUM', 'LARGE']
 
-export default function VehicleModal({ vehicle, existingVehicles, drivers, onClose, onSave, notify }: Props) {
+export default function VehicleModal({ vehicle, existingVehicles, drivers, registeredDriversOnly = false, onClose, onSave, notify }: Props) {
   const isEdit = !!vehicle
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(vehicle?.photoDataUrl ?? null)
   const [photoBusy, setPhotoBusy] = useState(false)
@@ -127,7 +128,7 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
   )
   const [driverSelection, setDriverSelection] = useState<string>(() => {
     if (matchedDriver) return matchedDriver.driverId
-    if (vehicle?.driverName || vehicle?.driverId) return '__other__'
+    if (vehicle?.driverName || vehicle?.driverId) return registeredDriversOnly ? '' : '__other__'
     return ''
   })
   const [customDriverName, setCustomDriverName] = useState<string>(() => {
@@ -177,6 +178,10 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
     let finalDriverId: string | undefined = undefined
     let finalDriverName: string | undefined = undefined
     if (driverSelection === '__other__') {
+      if (registeredDriversOnly) {
+        notify('Select an eligible registered driver.', 'error')
+        return
+      }
       const manualName = customDriverName.trim()
       if (!manualName) {
         notify('Please enter the driver name.', 'error')
@@ -184,6 +189,10 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
       }
       finalDriverName = manualName
     } else if (driverSelection) {
+      if (registeredDriversOnly && !drivers.some(driver => driver.driverId === driverSelection)) {
+        notify('Select an eligible registered driver.', 'error')
+        return
+      }
       finalDriverId = driverSelection
       finalDriverName = drivers.find(d => d.driverId === driverSelection)?.name
     }
@@ -608,7 +617,7 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
                     {d.name} {d.phone ? `(${d.phone})` : ''} ({d.status})
                   </option>
                 ))}
-                <option value="__other__">Other (Enter name manually)</option>
+                {!registeredDriversOnly && <option value="__other__">Other (Enter name manually)</option>}
               </select>
               {driverSelection === '__other__' && (
                 <input
@@ -622,7 +631,7 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
                 />
               )}
               <p className="text-[11px] text-slate-500 mt-1">
-                No permanent driver is required. Driver will be assigned per pickup.
+                {registeredDriversOnly ? 'Choose a registered active driver with a valid licence.' : 'Driver will be assigned per pickup.'}
               </p>
             </div>
 
