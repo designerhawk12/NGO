@@ -41,6 +41,10 @@ export type AssignmentRow = {
   status: AssignmentStatus;
   version: number;
   created_at: Date;
+  pickup_address?: string | null;
+  window_starts_at?: Date | null;
+  window_ends_at?: Date | null;
+  terminal_at?: Date | null;
 };
 
 export type IdempotencyKeyRow = {

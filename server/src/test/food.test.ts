@@ -279,6 +279,26 @@ describe('Food and Donor Management API (Module 2)', () => {
     });
   });
 
+  it('persists meals and weight for each submitted vegetarian item', async () => {
+    query.mockImplementationOnce(async () => ({ rows: [] }));
+    query.mockImplementationOnce(async () => ({ rows: [mockDonorRow] }));
+    query.mockImplementationOnce(async () => ({ rows: [sampleFoodRequestRow] }));
+    query.mockImplementationOnce(async () => ({ rows: [{ ...sampleFoodItemRows[0], estimated_meals: '80', estimated_weight_kg: '12.5' }] }));
+    query.mockImplementationOnce(async () => ({ rows: [{ ...sampleFoodItemRows[1], estimated_meals: '40', estimated_weight_kg: '7.5' }] }));
+    const payload = { ...validFoodPayload, estimatedWeightKg: 20, items: [
+      { foodType: 'Rice', quantity: 80, unit: 'MEALS', handlingRequirements: 'Keep warm', estimatedMeals: 80, estimatedWeightKg: 12.5 },
+      { foodType: 'Dal', quantity: 40, unit: 'MEALS', handlingRequirements: 'Keep hot', estimatedMeals: 40, estimatedWeightKg: 7.5 },
+    ] };
+    const res = await request(app).post('/api/v1/food-requests').set('Authorization', 'Bearer donor-token').send(payload);
+    expect(res.status).toBe(201);
+    const inserts = query.mock.calls.filter(([sql]) => String(sql).includes('INSERT INTO app.food_items'));
+    expect(inserts).toHaveLength(2);
+    expect(inserts[0][1].slice(-2)).toEqual([80, 12.5]);
+    expect(inserts[1][1].slice(-2)).toEqual([40, 7.5]);
+    expect(res.body.data.items[0]).toMatchObject({ estimatedMeals: 80, estimatedWeightKg: 12.5 });
+    expect(res.body.data.items[1]).toMatchObject({ estimatedMeals: 40, estimatedWeightKg: 7.5 });
+  });
+
   describe('Retrieval & Ownership Protection', () => {
     it('allows a donor to retrieve their own food request by ID', async () => {
       // 1. findFoodRequestById -> food request

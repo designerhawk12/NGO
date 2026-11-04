@@ -52,6 +52,11 @@ export function toAssignmentDto(row: AssignmentRow, volunteerIds: string[]): Ass
     teamId: row.team_id,
     driverId: row.driver_id,
     vehicleId: row.vehicle_id,
+    ...(row.pickup_address ? { pickupAddress: row.pickup_address } : {}),
+    ...(row.window_starts_at ? { windowStartsAt: row.window_starts_at.toISOString() } : {}),
+    ...(row.window_ends_at ? { windowEndsAt: row.window_ends_at.toISOString() } : {}),
+    ...(row.pickup_address !== undefined && row.created_at ? { createdAt: row.created_at.toISOString() } : {}),
+    ...(row.terminal_at ? { completedAt: row.terminal_at.toISOString() } : {}),
   };
 }
 
@@ -487,17 +492,19 @@ export async function transitionAssignmentStatus(
   const { assignmentId, input, actor } = params;
 
   // Authorization checks based on action
-  if (['DELIVER', 'CANCEL', 'FAIL'].includes(input.action)) {
+  if (['CANCEL', 'FAIL'].includes(input.action)) {
     if (actor.role !== 'ADMIN') {
       throw new HttpError(403, 'FORBIDDEN', `Action ${input.action} is restricted to administrators.`);
     }
-    if (['CANCEL', 'FAIL'].includes(input.action) && (!input.reason || !input.reason.trim())) {
+    if (!input.reason?.trim()) {
       throw new HttpError(400, 'VALIDATION_ERROR', `A reason is required when action is ${input.action}.`);
     }
-  } else if (['ACCEPT', 'REJECT', 'START', 'ARRIVE', 'COLLECT'].includes(input.action)) {
-    if (actor.role !== 'VOLUNTEER') {
-      throw new HttpError(403, 'FORBIDDEN', `Action ${input.action} is restricted to assigned volunteers.`);
+  } else if (input.action === 'DELIVER') {
+    if (actor.role !== 'ADMIN' && actor.role !== 'VOLUNTEER') {
+      throw new HttpError(403, 'FORBIDDEN', 'Delivery is restricted to administrators and assigned volunteers.');
     }
+  } else if (actor.role !== 'VOLUNTEER') {
+    throw new HttpError(403, 'FORBIDDEN', `Action ${input.action} is restricted to assigned volunteers.`);
   }
 
   const run = async (txClient: PoolClient): Promise<Assignment> => {
@@ -506,7 +513,7 @@ export async function transitionAssignmentStatus(
       throw new HttpError(404, 'NOT_FOUND', 'Assignment not found.');
     }
 
-    if (['ACCEPT', 'REJECT', 'START', 'ARRIVE', 'COLLECT'].includes(input.action) && actor.role !== 'ADMIN') {
+    if (actor.role === 'VOLUNTEER' && ['ACCEPT', 'REJECT', 'START', 'ARRIVE', 'COLLECT', 'DELIVER'].includes(input.action)) {
       const isAssigned = await pickupRepository.isVolunteerAssignedToAssignment(assignmentId, actor.id, txClient);
       if (!isAssigned) {
         throw new HttpError(403, 'FORBIDDEN', 'Volunteer is not assigned to this assignment.');

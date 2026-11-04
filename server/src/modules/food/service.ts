@@ -25,6 +25,8 @@ export function toFoodRequestDto(
     quantity: Number(i.quantity),
     unit: i.unit,
     handlingRequirements: i.handling_requirements,
+    ...(i.estimated_meals != null ? { estimatedMeals: Number(i.estimated_meals) } : {}),
+    ...(i.estimated_weight_kg != null ? { estimatedWeightKg: Number(i.estimated_weight_kg) } : {}),
   }));
 
   const foods = row.items.map(i => ({

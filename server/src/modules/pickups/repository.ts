@@ -488,16 +488,21 @@ export async function listAssignmentsForVolunteer(
   const db = client ?? getPool();
   try {
     const result = await db.query<AssignmentRow & { volunteer_ids: string[] }>(
-      `SELECT a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at,
+      `SELECT a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at, fr.pickup_address, pu.window_starts_at, pu.window_ends_at, terminal_event.occurred_at AS terminal_at,
               COALESCE(array_agg(DISTINCT am_all.volunteer_id ORDER BY am_all.volunteer_id) FILTER (WHERE am_all.volunteer_id IS NOT NULL), '{}'::uuid[]) AS volunteer_ids
        FROM app.assignments a
        JOIN app.assignment_members am ON am.assignment_id = a.id
        JOIN app.volunteers v ON v.id = am.volunteer_id
        JOIN app.people p ON p.id = v.person_id
+       JOIN app.pickups pu ON pu.id = a.pickup_id
+       JOIN app.food_requests fr ON fr.id = pu.food_request_id
+       LEFT JOIN LATERAL (SELECT occurred_at FROM app.assignment_status_events e
+         WHERE e.assignment_id = a.id AND e.to_status IN ('DELIVERED', 'REJECTED', 'CANCELLED', 'FAILED')
+         ORDER BY occurred_at DESC LIMIT 1) terminal_event ON TRUE
        LEFT JOIN app.assignment_members am_all ON am_all.assignment_id = a.id
        WHERE p.app_user_id = $1
-       GROUP BY a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at
-       ORDER BY a.created_at DESC, a.id DESC`,
+       GROUP BY a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at, fr.pickup_address, pu.window_starts_at, pu.window_ends_at, terminal_event.occurred_at
+       ORDER BY COALESCE(terminal_event.occurred_at, a.created_at) DESC, a.id DESC`,
       [actorUserId]
     );
     return result.rows.map(r => ({
@@ -511,6 +516,10 @@ export async function listAssignmentsForVolunteer(
         status: r.status,
         version: r.version,
         created_at: r.created_at,
+        pickup_address: r.pickup_address,
+        window_starts_at: r.window_starts_at,
+        window_ends_at: r.window_ends_at,
+        terminal_at: r.terminal_at,
       },
       volunteerIds: r.volunteer_ids,
     }));

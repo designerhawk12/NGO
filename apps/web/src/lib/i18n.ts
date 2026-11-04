@@ -13,6 +13,8 @@ const kannada: Record<string, string> = {
   'Current status from the authorized food and pickup APIs. This is not a separate event-history feed.':'ಅಧಿಕೃತ ಆಹಾರ ಮತ್ತು ಪಿಕಪ್ APIಗಳಿಂದ ಪ್ರಸ್ತುತ ಸ್ಥಿತಿ. ಇದು ಪ್ರತ್ಯೇಕ ಘಟನೆ-ಇತಿಹಾಸ ಪಟ್ಟಿ ಅಲ್ಲ.',
   'Live pickup updates':'ಲೈವ್ ಪಿಕಪ್ ನವೀಕರಣಗಳು',
   'No current pickup records.':'ಪ್ರಸ್ತುತ ಪಿಕಪ್ ದಾಖಲೆಗಳಿಲ್ಲ.',
+  'No current food or pickup updates.':'ಪ್ರಸ್ತುತ ಆಹಾರ ಅಥವಾ ಪಿಕಪ್ ನವೀಕರಣಗಳಿಲ್ಲ.',
+  'Request':'ವಿನಂತಿ',
   'Refresh updates':'ನವೀಕರಣಗಳನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಿ',
   'Refreshing live updates…':'ಲೈವ್ ನವೀಕರಣಗಳನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಲಾಗುತ್ತಿದೆ…',
   'Could not load current assignments. Retry from Vehicle Details.':'ಪ್ರಸ್ತುತ ನಿಯೋಜನೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ವಾಹನ ವಿವರಗಳಿಂದ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',

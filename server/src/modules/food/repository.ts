@@ -140,10 +140,10 @@ export async function createFoodRequest(
 
     for (const item of data.items) {
       const itemResult = await client.query<FoodItemRow>(
-        `INSERT INTO app.food_items (food_request_id, food_type, quantity, unit, handling_requirements)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, food_request_id, food_type, quantity, unit, handling_requirements`,
-        [foodRequest.id, item.foodType, item.quantity, item.unit, item.handlingRequirements]
+        `INSERT INTO app.food_items (food_request_id, food_type, quantity, unit, handling_requirements, estimated_meals, estimated_weight_kg)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id, food_request_id, food_type, quantity, unit, handling_requirements, estimated_meals, estimated_weight_kg`,
+        [foodRequest.id, item.foodType, item.quantity, item.unit, item.handlingRequirements, item.estimatedMeals ?? null, item.estimatedWeightKg ?? null]
       );
       items.push(itemResult.rows[0]);
     }
@@ -174,7 +174,7 @@ export async function findFoodRequestById(
     const foodRequest = reqResult.rows[0];
 
     const itemsResult = await db.query<FoodItemRow>(
-      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements
+      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements, estimated_meals, estimated_weight_kg
        FROM app.food_items
        WHERE food_request_id = $1
        ORDER BY id ASC`,
@@ -208,7 +208,7 @@ export async function findFoodRequestsByDonorId(
 
     const requestIds = reqResult.rows.map(r => r.id);
     const itemsResult = await db.query<FoodItemRow>(
-      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements
+      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements, estimated_meals, estimated_weight_kg
        FROM app.food_items
        WHERE food_request_id = ANY($1::uuid[])
        ORDER BY id ASC`,
@@ -273,7 +273,7 @@ export async function listFoodRequests(
 
     const requestIds = reqResult.rows.map(r => r.id);
     const itemsResult = await db.query<FoodItemRow>(
-      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements
+      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements, estimated_meals, estimated_weight_kg
        FROM app.food_items
        WHERE food_request_id = ANY($1::uuid[])
        ORDER BY id ASC`,

@@ -11,7 +11,7 @@ export const createAssignmentSchema = z.object({ teamId: uuidSchema.nullable(), 
   if (value.vesselIds && new Set(value.vesselIds).size !== value.vesselIds.length) context.addIssue({ code: 'custom', path: ['vesselIds'], message: 'Vessel IDs must be unique.' });
 });
 export const assignmentTransitionSchema = z.object({ action: z.enum(['ACCEPT', 'REJECT', 'START', 'ARRIVE', 'COLLECT', 'DELIVER', 'CANCEL', 'FAIL']), expectedVersion: z.number().int().nonnegative(), reason: z.string().max(1000).optional() });
-export const assignmentSchema = z.object({ id: uuidSchema, pickupId: uuidSchema, status: assignmentStatusSchema, version: z.number().int().nonnegative(), volunteerIds: z.array(uuidSchema), teamId: uuidSchema.nullable(), driverId: uuidSchema, vehicleId: uuidSchema });
+export const assignmentSchema = z.object({ id: uuidSchema, pickupId: uuidSchema, status: assignmentStatusSchema, version: z.number().int().nonnegative(), volunteerIds: z.array(uuidSchema), teamId: uuidSchema.nullable(), driverId: uuidSchema, vehicleId: uuidSchema, pickupAddress: z.string().optional(), windowStartsAt: utcDateTimeSchema.optional(), windowEndsAt: utcDateTimeSchema.optional(), createdAt: utcDateTimeSchema.optional(), completedAt: utcDateTimeSchema.optional() });
 export const pickupSchema = z.object({ id: uuidSchema, foodRequestId: uuidSchema, status: pickupStatusSchema, windowStartsAt: utcDateTimeSchema, windowEndsAt: utcDateTimeSchema, version: z.number().int().nonnegative() });
 // Module 3 projects this from canonical assignments for Module 5's admin view.
 export const vehicleAssignmentSummarySchema = z.object({

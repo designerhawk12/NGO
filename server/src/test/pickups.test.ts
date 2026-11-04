@@ -1581,14 +1581,25 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
         expect(res.body.error.code).toBe('FORBIDDEN');
       });
 
-      it('rejects VOLUNTEER attempting ADMIN-only action DELIVER with 403 FORBIDDEN', async () => {
+      it('rejects an unassigned VOLUNTEER attempting DELIVER', async () => {
         findUser.mockResolvedValue(volunteer);
+        mockDbForTransition({ assignmentStatus: 'FOOD_COLLECTED', assignmentVersion: 4, isAssigned: false });
         const res = await request(app)
           .patch(`/api/v1/assignments/${pr3AssignmentId}/status`)
           .set('Authorization', 'Bearer token')
-          .send({ action: 'DELIVER', expectedVersion: 0 });
+          .send({ action: 'DELIVER', expectedVersion: 4 });
         expect(res.status).toBe(403);
         expect(res.body.error.code).toBe('FORBIDDEN');
+        expect(query.mock.calls.some(([sql]) => sql.includes('UPDATE app.assignments'))).toBe(false);
+      });
+
+      it('rejects a DONOR attempting DELIVER', async () => {
+        findUser.mockResolvedValue(donor);
+        const res = await request(app)
+          .patch(`/api/v1/assignments/${pr3AssignmentId}/status`)
+          .set('Authorization', 'Bearer token')
+          .send({ action: 'DELIVER', expectedVersion: 4 });
+        expect(res.status).toBe(403);
       });
 
       it('rejects VOLUNTEER attempting ADMIN-only action CANCEL with 403 FORBIDDEN', async () => {
@@ -1773,6 +1784,19 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
 
         const pickupUpdate = query.mock.calls.find(([sql, params]) => sql.includes('UPDATE app.pickups') && params?.[0] === 'FOOD_COLLECTED');
         expect(pickupUpdate).toBeDefined();
+      });
+
+      it('assigned VOLUNTEER can DELIVER and releases reservations', async () => {
+        findUser.mockResolvedValue(volunteer);
+        mockDbForTransition({ assignmentStatus: 'FOOD_COLLECTED', assignmentVersion: 4, pickupStatus: 'FOOD_COLLECTED', isAssigned: true });
+        const res = await request(app)
+          .patch(`/api/v1/assignments/${pr3AssignmentId}/status`)
+          .set('Authorization', 'Bearer token')
+          .send({ action: 'DELIVER', expectedVersion: 4 });
+        expect(res.status).toBe(200);
+        expect(res.body.data.status).toBe('DELIVERED');
+        expect(query.mock.calls.some(([sql, params]) => sql.includes('UPDATE app.pickups') && params?.[0] === 'DELIVERED')).toBe(true);
+        expect(query.mock.calls.some(([sql]) => sql.includes('UPDATE app.resource_reservations'))).toBe(true);
       });
 
       it('ADMIN can DELIVER: FOOD_COLLECTED -> DELIVERED, mirrors pickup, releases reservations', async () => {
@@ -2014,6 +2038,9 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
                 status: 'ACCEPTED',
                 version: 1,
                 created_at: new Date('2026-10-01T12:00:00Z'),
+                pickup_address: 'Volunteer assigned pickup hall',
+                window_starts_at: new Date('2026-10-02T12:00:00Z'),
+                window_ends_at: new Date('2026-10-02T13:00:00Z'),
                 volunteer_ids: [pr3VolunteerId],
               }],
             };
@@ -2033,8 +2060,32 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
           pickupId: pr3PickupId,
           status: 'ACCEPTED',
           volunteerIds: [pr3VolunteerId],
+          pickupAddress: 'Volunteer assigned pickup hall',
+          windowStartsAt: '2026-10-02T12:00:00.000Z',
         });
+        const listingSql = query.mock.calls.find(([sql]) => sql.includes('FROM app.assignments a'))?.[0] as string;
+        expect(listingSql).toContain('WHERE p.app_user_id = $1');
+        expect(listingSql).toContain('JOIN app.food_requests fr');
         expect(res.body.data.nextCursor).toBeNull();
+      });
+
+      it('returns delivered history with its real terminal event time for the assigned volunteer', async () => {
+        findUser.mockResolvedValue(volunteer);
+        query.mockImplementation(async (sql: string) => {
+          if (sql.includes('FROM app.assignments a') && sql.includes('WHERE p.app_user_id = $1')) return { rows: [{
+            id: pr3AssignmentId, pickup_id: pr3PickupId, team_id: null, driver_id: pr3DriverId,
+            vehicle_id: pr3VehicleId, role: 'Pickup Crew', status: 'DELIVERED', version: 5,
+            created_at: new Date('2026-10-01T10:00:00Z'), terminal_at: new Date('2026-10-01T15:00:00Z'),
+            pickup_address: 'Assigned Hall', window_starts_at: new Date('2026-10-01T12:00:00Z'),
+            window_ends_at: new Date('2026-10-01T13:00:00Z'), volunteer_ids: [pr3VolunteerId],
+          }] };
+          return { rows: [] };
+        });
+        const res = await request(app).get('/api/v1/assignments/me').set('Authorization', 'Bearer token');
+        expect(res.status).toBe(200);
+        expect(res.body.data.items[0]).toMatchObject({ status: 'DELIVERED', pickupAddress: 'Assigned Hall', completedAt: '2026-10-01T15:00:00.000Z' });
+        const sql = query.mock.calls.find(([text]) => text.includes('FROM app.assignments a'))?.[0] as string;
+        expect(sql).toContain("e.to_status IN ('DELIVERED', 'REJECTED', 'CANCELLED', 'FAILED')");
       });
 
       it('returns empty items array when volunteer has no assignments', async () => {
