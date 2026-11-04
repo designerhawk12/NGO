@@ -8,8 +8,10 @@ const volunteerSkillsSchema = z.array(z.string().trim().min(1).max(100)).max(32)
 export const volunteerRegistrationInputSchema = z.strictObject({
   email: z.string().trim().toLowerCase().email().max(254),
   name: z.string().trim().min(1).max(200),
-  phoneE164: z.string().regex(/^\+[1-9][0-9]{7,14}$/, 'Use an E.164 phone number.').nullable().optional().default(null),
-  registrationCode: z.string().trim().min(1).max(64),
+  phoneE164: z.string().regex(/^\+[1-9][0-9]{7,14}$/, 'Use an E.164 phone number.'),
+  // Older mobile builds may still send this field. The server ignores it and
+  // assigns a unique registration code for every public application.
+  registrationCode: z.string().trim().min(1).max(64).optional(),
   skills: volunteerSkillsSchema.default([]),
 });
 export const volunteerRegistrationResultSchema = z.object({

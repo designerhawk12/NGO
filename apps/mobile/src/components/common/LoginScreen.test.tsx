@@ -40,4 +40,12 @@ describe('pilot sign-in screen', () => {
     expect(html).not.toContain('Phone verification');
     expect(html).not.toContain('Demo account');
   });
+
+  it('offers the live Volunteer self-registration entry without the old invitation-only notice', () => {
+    const html = renderToStaticMarkup(<LoginScreen role="volunteer" />);
+    expect(html.match(/<button>Sign in<\/button>/g)).toHaveLength(1);
+    expect(html).toContain('Register as Volunteer');
+    expect(html).not.toContain('currently by invitation only');
+    expect(html).not.toContain('Use demo account');
+  });
 });

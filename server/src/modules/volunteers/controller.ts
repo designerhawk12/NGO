@@ -17,10 +17,11 @@ import {
   type UpdateTeamInput,
 } from './schemas';
 
-export const registerVolunteerHandler: RequestHandler = async (_request, response, next) => {
+export const registerVolunteerHandler: RequestHandler = async (request, response, next) => {
   try {
     sendSuccess(response, await volunteerService.registerVolunteer(
-      response.locals.validatedBody as CreateSelfRegistrationInput
+      response.locals.validatedBody as CreateSelfRegistrationInput,
+      request.ip ?? ''
     ), 201);
   } catch (error) { next(error); }
 };

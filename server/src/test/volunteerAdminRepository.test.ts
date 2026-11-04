@@ -146,24 +146,27 @@ describe('Volunteer application repository', () => {
     const client = { query: vi.fn() };
     client.query.mockResolvedValueOnce({ rows: [{ id: ids[0] }] })
       .mockResolvedValueOnce({ rows: [{ id: personId }] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: volunteerId }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{
         id: volunteerId, person_id: personId, name: 'Ada', phone_e164: null,
-        registration_code: 'VOL-004', skills: ['Packing'], status: 'INACTIVE',
+        registration_code: 'VOL-01234567-89AB-CDEF-0123-456789ABCDEF', skills: ['Packing'], status: 'INACTIVE',
       }] });
     const row = await insertSelfRegisteredVolunteer(ids[2], {
-      email: 'ada@example.test', name: 'Ada', phoneE164: null,
-      registrationCode: 'VOL-004', skills: ['Packing'],
+      email: 'ada@example.test', name: 'Ada', phoneE164: '+919876543210',
+      skills: ['Packing'],
     }, client as unknown as PoolClient);
     expect(row.id).toBe(volunteerId);
     expect(client.query.mock.calls[0][0]).toContain("VALUES ($1, 'VOLUNTEER', $2)");
-    expect(client.query.mock.calls[1][1]).toEqual([ids[0], 'Ada', null]);
-    expect(client.query.mock.calls[2][0]).not.toContain('approval_status');
+    expect(client.query.mock.calls[1][1]).toEqual([ids[0], 'Ada', '+919876543210']);
+    expect(client.query.mock.calls[2][0]).toContain('ON CONFLICT (registration_code) DO NOTHING');
     expect(client.query.mock.calls[2][0]).toContain("'INACTIVE'");
-    expect(client.query.mock.calls[2][1]).toEqual([personId, 'VOL-004', ['Packing']]);
-    expect(client.query.mock.calls[3][0]).toContain('INSERT INTO app.volunteer_applications(volunteer_id, status)');
-    expect(client.query.mock.calls[3][1]).toEqual([volunteerId]);
+    expect(client.query.mock.calls[2][1][1]).toMatch(/^VOL-[A-F0-9-]{36}$/);
+    expect(client.query.mock.calls[2][1][1]).not.toBe('VOL-004');
+    expect(client.query.mock.calls[3][1][1]).toMatch(/^VOL-[A-F0-9-]{36}$/);
+    expect(client.query.mock.calls[4][0]).toContain('INSERT INTO app.volunteer_applications(volunteer_id, status)');
+    expect(client.query.mock.calls[4][1]).toEqual([volunteerId]);
     expect(client.query.mock.calls.map(call => call[0]).join(' ')).not.toMatch(/app\.(assignments|resource_reservations|vehicles|vehicle_locations|food_requests)/);
   });
 

@@ -8,16 +8,20 @@ import { useApp } from '../../context/AppContext';
 import { Role } from '../../types';
 import { isLiveAuthConfigured, registerDonorWithEmailConfirmation, signInWithEmail, signOut, validateDonorRegistrationInput } from '../../api/auth';
 import { registerVolunteer } from '../../api/volunteers';
+import { normalizeIndianPhone } from '../../api/volunteerRegistrationInput';
 import { ApiClientError } from '../../api/client';
 
-type RegistrationForm = { email: string; name: string; phone: string; registrationCode: string; skills: string };
-const emptyRegistration: RegistrationForm = { email: '', name: '', phone: '', registrationCode: '', skills: '' };
+type RegistrationForm = { email: string; name: string; phone: string };
+const emptyRegistration: RegistrationForm = { email: '', name: '', phone: '' };
+const volunteerSkillOptions = ['Food collection', 'Packing', 'Transportation', 'Distribution', 'Driver', 'Coordination', 'Other'];
 
 export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
   const app = useApp(); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [registerMode, setRegisterMode] = useState(false);
   const [registration, setRegistration] = useState<RegistrationForm>(emptyRegistration);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [otherSkill, setOtherSkill] = useState('');
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [registrationResult, setRegistrationResult] = useState<{ message: string } | null>(null);
   const [registrationBusy, setRegistrationBusy] = useState(false);
@@ -42,7 +46,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
       if (role === 'volunteer' && (user.volunteerApplicationStatus === 'PENDING' || user.volunteerApplicationStatus === 'DENIED')) {
         const status = user.volunteerApplicationStatus === 'DENIED' ? 'DENIED' : 'PENDING';
         app.setVolunteerApplicationStatus(status);
-        app.notify(status === 'DENIED' ? 'Your volunteer application was not approved.' : 'Your volunteer application is awaiting administrator approval.');
+        app.notify(status === 'DENIED' ? 'Application not approved. Volunteer features are unavailable.' : 'Your application is under review. You can access Volunteer features after an administrator approves your application.');
         return;
       }
       app.loginAuthenticated(role);
@@ -59,12 +63,18 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
   const submitRegistration = async () => {
     if (registrationSubmitting.current) return;
     if (!isLiveAuthConfigured()) { setRegistrationError('Volunteer registration is not configured.'); return; }
+    const normalizedPhone = normalizeIndianPhone(registration.phone);
+    if (!normalizedPhone.ok) { setRegistrationError('Enter a valid 10-digit Indian mobile number. The +91 country code is added automatically.'); return; }
+    const other = otherSkill.trim();
+    if (selectedSkills.includes('Other') && (!other || other.length > 100)) {
+      setRegistrationError('Enter one relevant skill (up to 100 characters).'); return;
+    }
+    const skills = [...selectedSkills.filter(skill => skill !== 'Other'), ...(other ? [other] : [])];
     const parsed = volunteerRegistrationInputSchema.safeParse({
       email: registration.email,
       name: registration.name,
-      phoneE164: registration.phone.trim() || null,
-      registrationCode: registration.registrationCode,
-      skills: registration.skills.split(',').map(skill => skill.trim()).filter(Boolean),
+      phoneE164: normalizedPhone.phoneE164,
+      skills,
     });
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
@@ -72,15 +82,14 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
       setRegistrationError(field === 'email' ? 'Enter a valid email address.'
         : field === 'name' ? 'Enter your full name.'
           : field === 'phoneE164' ? 'Use E.164 phone format, for example +919876543210.'
-            : field === 'registrationCode' ? 'Enter a registration code (up to 64 characters).'
-              : field === 'skills' ? 'Enter up to 32 unique skills, separated by commas.'
+            : field === 'skills' ? 'Choose up to 32 unique skills.'
                 : 'Check the registration details and try again.');
       return;
     }
     registrationSubmitting.current = true; setRegistrationBusy(true); setRegistrationError(null);
     try {
       const result = await registerVolunteer(parsed.data);
-      setRegistrationResult(result); setRegistration(emptyRegistration);
+      setRegistrationResult(result); setRegistration(emptyRegistration); setSelectedSkills([]); setOtherSkill('');
     } catch (cause) {
       const messages: Record<string, string> = {
         VOLUNTEER_REGISTRATION_CONFLICT: 'An account or volunteer record already uses these details.',
@@ -132,19 +141,29 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         </>}
       </Card>
     </> : registerMode && role === 'volunteer' ? <>
-      <Header title="Volunteer registration" subtitle="Apply to join AaharaConnect" back />
+      <Header title="Register as Volunteer" subtitle="Apply to join AahaaraConnect" back />
       <Card style={{ padding: 22 }}>
         {registrationResult ? <>
           <View style={{ width: 54, height: 54, borderRadius: 15, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}><Icon name="check" size={28} /></View>
           <T size={18} weight="700" color={C.ink} style={{ marginBottom: 8 }}>{registrationResult.message}</T>
-          <T color={C.muted} style={{ marginBottom: 18 }}>Your application is pending approval. You can sign in after setting your password, but Volunteer features remain unavailable until an Admin approves you.</T>
+          <T color={C.muted} style={{ marginBottom: 18 }}>Check your email for the password setup link. Email confirmation and administrator approval are separate; Volunteer features remain unavailable until an Admin approves your application.</T>
           <Button title="Back to sign in" onPress={() => { setRegisterMode(false); setRegistrationResult(null); setRegistrationError(null); }} variant="green" />
         </> : <>
           <Field label="Email address" value={registration.email} onChangeText={email => setRegistration({ ...registration, email })} autoCapitalize="none" keyboardType="email-address" autoComplete="email" required maxLength={254} />
           <Field label="Full name" value={registration.name} onChangeText={name => setRegistration({ ...registration, name })} autoCapitalize="words" autoComplete="name" required maxLength={200} />
-          <Field label="Phone number" value={registration.phone} onChangeText={phone => setRegistration({ ...registration, phone })} keyboardType="phone-pad" placeholder="+919876543210" autoComplete="tel" />
-          <Field label="Registration code" value={registration.registrationCode} onChangeText={registrationCode => setRegistration({ ...registration, registrationCode })} autoCapitalize="characters" placeholder="VOL-002" required maxLength={64} />
-          <Field label="Skills" value={registration.skills} onChangeText={skills => setRegistration({ ...registration, skills })} placeholder="Driving, Packing" autoCapitalize="words" />
+          <T size={13} color={C.muted} style={{ marginBottom: 6 }}>Enter a 10-digit Indian mobile number; +91 is added automatically.</T>
+          <Field label="Indian phone number (+91)" value={registration.phone} onChangeText={phone => setRegistration({ ...registration, phone })} keyboardType="phone-pad" placeholder="9876543210" autoComplete="tel" required />
+          <T weight="600" color={C.ink} style={{ marginBottom: 8 }}>Skills and interests</T>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
+            {volunteerSkillOptions.map(skill => {
+              const selected = selectedSkills.includes(skill);
+              return <Button key={skill} title={selected ? `✓ ${skill}` : skill} onPress={() => {
+                setSelectedSkills(current => selected ? current.filter(value => value !== skill) : [...current, skill]);
+              }} variant={selected ? 'green' : 'outline'} style={{ marginRight: 8, marginBottom: 8, minHeight: 42, paddingHorizontal: 12 }} />;
+            })}
+          </View>
+          {selectedSkills.includes('Other') && <Field label="Other skill or interest" value={otherSkill} onChangeText={setOtherSkill} autoCapitalize="sentences" maxLength={100} required />}
+          <T size={13} color={C.muted} style={{ marginBottom: 14 }}>After submission, Supabase will email a password setup link. Confirming your email does not approve the application; an Admin reviews it separately.</T>
           {registrationError && <T color={C.red} style={{ marginBottom: 12 }}>{registrationError}</T>}
           <Button title="Submit application" onPress={() => { void submitRegistration(); }} loading={registrationBusy} disabled={registrationBusy} style={{ marginTop: 4 }} />
           <Button title="Already have an account? Sign in" onPress={() => { setRegisterMode(false); setRegistrationError(null); }} variant="quiet" disabled={registrationBusy} style={{ marginTop: 8 }} />
@@ -165,6 +184,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry />
         <Button title="Sign in" onPress={() => { void submitLive(); }} loading={busy} disabled={busy} style={{ marginTop: 6 }} />
         {role === 'donor' && <Button title="Register as Donor" onPress={() => { setRegisterMode(true); setRegistrationError(null); }} variant="outline" style={{ marginTop: 8 }} />}
+        {role === 'volunteer' && isLiveAuthConfigured() && <Button title="Register as Volunteer" onPress={() => { setRegisterMode(true); setRegistrationError(null); }} variant="outline" style={{ marginTop: 8 }} />}
         {role === 'volunteer' && isLiveAuthConfigured() && <Button title="Forgot password?" onPress={() => {
           const origin = process.env.EXPO_PUBLIC_WEB_BASE_URL;
           if (!origin) { app.notify('Password recovery is not configured for this app.'); return; }
@@ -174,7 +194,6 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
             void Linking.openURL(`${url.origin}/forgot-password`).catch(() => app.notify('Could not open password recovery. Try again later.'));
           } catch { app.notify('Password recovery is not configured for this app.'); }
         }} disabled={busy} variant="quiet" style={{ marginTop: 8 }} />}
-        {role === 'volunteer' && isLiveAuthConfigured() && <T size={13} color={C.muted} style={{ marginTop: 8 }}>Volunteer registration is currently by invitation only. Please contact the NGO administrator.</T>}
       </Card>
     </>}
     <T size={13} color={C.muted} style={{ textAlign: 'center', marginTop: 22 }}>Together, less food waste.</T>

@@ -8,6 +8,9 @@ import { apiRouter } from './routes';
 
 export const app = express();
 app.disable('x-powered-by');
+// Vercel and the supported API hosts forward the client address through one
+// trusted proxy hop. This is used only to key the durable registration limit.
+app.set('trust proxy', 1);
 app.use(cors({ origin: env.corsOrigins }));
 app.use(express.json({ limit: '1mb' }));
 app.use((request, response, next) => {

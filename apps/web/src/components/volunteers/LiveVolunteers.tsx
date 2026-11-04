@@ -231,6 +231,8 @@ export default function LiveVolunteers({ token }: { token: string }) {
 
   const reviewApplication = async (application: VolunteerApplication, status: 'APPROVED' | 'DENIED') => {
     if (reviewingId) return
+    const action = status === 'APPROVED' ? 'approve' : 'deny'
+    if (!window.confirm(`Are you sure you want to ${action} ${application.name}’s volunteer application?`)) return
     setReviewingId(application.volunteerId)
     try {
       await decideAdminVolunteerApplication(token, application.volunteerId, status)
@@ -259,7 +261,7 @@ export default function LiveVolunteers({ token }: { token: string }) {
     <div className="info-strip"><div className="info-strip-icon"><Users size={21}/></div><div><strong>Live administrator roster</strong><span>Volunteer profiles and invitations are managed through the shared API.</span></div><span className="info-strip-count">{volunteers.length} profiles</span></div>
     <section className="panel volunteer-panel" aria-live="polite" aria-labelledby="volunteer-approval-heading">
       <div className="table-toolbar">
-        <div><strong id="volunteer-approval-heading">Volunteer Approval · Future Scope</strong><p className="quiet-text">Public volunteer registration is unavailable during the pilot. Administrator invitations remain available.</p></div>
+        <div><strong id="volunteer-approval-heading">Volunteer Applications</strong><p className="quiet-text">{applications.length} <span>{applications.length === 1 ? 'pending application' : 'pending applications'}</span></p></div>
         <button className="text-link" onClick={() => void loadApplications()} disabled={applicationsLoading}>Refresh applications</button>
       </div>
       {applicationsLoading && applications.length === 0 ? <p className="quiet-text" style={{ padding: 20 }}>Loading volunteer applications…</p>

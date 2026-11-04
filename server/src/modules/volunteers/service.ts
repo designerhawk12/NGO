@@ -24,6 +24,7 @@ import {
 import * as volunteerRepository from './repository';
 import type { VolunteerProfileRow } from './repository';
 import type { AvailabilityRow } from './repository';
+import { consumeVolunteerRegistrationRateLimit } from './registrationRateLimit';
 import type {
   CreateAdminVolunteerInput,
   CreateSelfRegistrationInput,
@@ -256,8 +257,11 @@ function registrationConflict(): HttpError {
   return new HttpError(409, 'VOLUNTEER_REGISTRATION_CONFLICT', 'An account or volunteer record already uses these details.');
 }
 
-export async function registerVolunteer(input: CreateSelfRegistrationInput): Promise<VolunteerRegistrationResult> {
-  const conflict = await volunteerRepository.findAdminVolunteerConflict(input.registrationCode, input.phoneE164);
+export async function registerVolunteer(input: CreateSelfRegistrationInput, clientIp: string): Promise<VolunteerRegistrationResult> {
+  if (!await consumeVolunteerRegistrationRateLimit(clientIp, input.email)) {
+    throw new HttpError(429, 'INVITE_RATE_LIMITED', 'Volunteer registration limit reached. Please wait before trying again.');
+  }
+  const conflict = await volunteerRepository.findAdminVolunteerConflict(null, input.phoneE164);
   if (conflict) throw registrationConflict();
 
   let invited: Awaited<ReturnType<typeof inviteSupabaseUserByEmail>>;
@@ -269,7 +273,13 @@ export async function registerVolunteer(input: CreateSelfRegistrationInput): Pro
   }
 
   try {
-    await withTransaction(client => volunteerRepository.insertSelfRegisteredVolunteer(invited.authUserId, input, client));
+    const applicationInput = {
+      email: input.email,
+      name: input.name,
+      phoneE164: input.phoneE164,
+      skills: input.skills,
+    };
+    await withTransaction(client => volunteerRepository.insertSelfRegisteredVolunteer(invited.authUserId, applicationInput, client));
   } catch {
     // The Auth invitation is an external side effect and cannot be rolled back
     // with the PostgreSQL transaction. Keep the identity and require review.
@@ -279,7 +289,7 @@ export async function registerVolunteer(input: CreateSelfRegistrationInput): Pro
 
   return {
     status: 'PENDING',
-    message: 'Application submitted. Check your email to set your password. Volunteer access begins after administrator approval.',
+    message: 'Application submitted successfully. Your Volunteer account is awaiting administrator approval.',
   };
 }
 
