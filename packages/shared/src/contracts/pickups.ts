@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { utcDateTimeSchema, uuidSchema } from './common';
 
 export const assignmentStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'EN_ROUTE', 'ARRIVED_AT_DONOR', 'FOOD_COLLECTED', 'DELIVERED', 'REJECTED', 'CANCELLED', 'FAILED']);
+export const driverAcceptanceSchema = z.enum(['NOT_REQUIRED', 'PENDING', 'ACCEPTED', 'DECLINED']);
 export const pickupStatusSchema = z.enum(['PLANNED', 'ASSIGNED', 'EN_ROUTE', 'ARRIVED_AT_DONOR', 'FOOD_COLLECTED', 'DELIVERED', 'CANCELLED', 'FAILED']);
 export const containerPlanInputSchema = z.object({ containerType: z.string().min(1).max(100), count: z.number().int().positive(), estimatedLoadKg: z.number().nonnegative().nullable() });
 export const createPickupSchema = z.object({ foodRequestId: uuidSchema, windowStartsAt: utcDateTimeSchema, windowEndsAt: utcDateTimeSchema, deliveryAddress: z.string().min(1).max(500) }).refine(value => new Date(value.windowStartsAt) < new Date(value.windowEndsAt), { path: ['windowEndsAt'], message: 'End must follow start.' });
@@ -11,7 +12,31 @@ export const createAssignmentSchema = z.object({ teamId: uuidSchema.nullable(), 
   if (value.vesselIds && new Set(value.vesselIds).size !== value.vesselIds.length) context.addIssue({ code: 'custom', path: ['vesselIds'], message: 'Vessel IDs must be unique.' });
 });
 export const assignmentTransitionSchema = z.object({ action: z.enum(['ACCEPT', 'REJECT', 'START', 'ARRIVE', 'COLLECT', 'DELIVER', 'CANCEL', 'FAIL']), expectedVersion: z.number().int().nonnegative(), reason: z.string().max(1000).optional() });
-export const assignmentSchema = z.object({ id: uuidSchema, pickupId: uuidSchema, status: assignmentStatusSchema, version: z.number().int().nonnegative(), volunteerIds: z.array(uuidSchema), teamId: uuidSchema.nullable(), driverId: uuidSchema, vehicleId: uuidSchema, pickupAddress: z.string().optional(), windowStartsAt: utcDateTimeSchema.optional(), windowEndsAt: utcDateTimeSchema.optional(), createdAt: utcDateTimeSchema.optional(), completedAt: utcDateTimeSchema.optional() });
+export const assignmentSchema = z.object({ id: uuidSchema, pickupId: uuidSchema, status: assignmentStatusSchema, version: z.number().int().nonnegative(), volunteerIds: z.array(uuidSchema), teamId: uuidSchema.nullable(), driverId: uuidSchema, vehicleId: uuidSchema, pickupAddress: z.string().optional(), windowStartsAt: utcDateTimeSchema.optional(), windowEndsAt: utcDateTimeSchema.optional(), createdAt: utcDateTimeSchema.optional(), completedAt: utcDateTimeSchema.optional(), driverAcceptance: driverAcceptanceSchema.optional(), deliveryAddress: z.string().optional() });
+// The NGO employee driver's own response, separate from the shared crew status.
+export type DriverAcceptance = z.infer<typeof driverAcceptanceSchema>;
+// One job as shown to the assigned NGO employee driver on Android (from GET /assignments/driver).
+export type DriverJob = {
+  assignmentId: string;
+  pickupId: string;
+  status: AssignmentStatus;
+  driverAcceptance: DriverAcceptance;
+  version: number;
+  donorName: string;
+  pickupAddress: string;
+  deliveryAddress: string;
+  windowStartsAt: string;
+  windowEndsAt: string;
+  contactName: string | null;
+  contactPhone: string | null;
+  handlingRequirements: string | null;
+  operationalNotes: string | null;
+  foodItems: Array<{ foodType: string; quantity: number; unit: string; estimatedWeightKg: number | null }>;
+  vehicle: { id: string; registrationNumber: string; kind: string; capacityKg: number };
+  crew: Array<{ name: string }>;
+  createdAt: string;
+  completedAt: string | null;
+};
 export const pickupSchema = z.object({ id: uuidSchema, foodRequestId: uuidSchema, status: pickupStatusSchema, windowStartsAt: utcDateTimeSchema, windowEndsAt: utcDateTimeSchema, version: z.number().int().nonnegative(), operationalNotes: z.string().nullable().optional() });
 // Admin schedule edits. Window and delivery address can change only while the pickup is PLANNED;
 // operational notes can also change while an assignment is pending or accepted.

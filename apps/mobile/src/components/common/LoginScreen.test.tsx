@@ -49,3 +49,22 @@ describe('pilot sign-in screen', () => {
     expect(html).not.toContain('Use demo account');
   });
 });
+
+describe('shared Volunteer / Driver sign-in', () => {
+  it('labels the sign-in for both Volunteers and NGO drivers, with no public driver registration', () => {
+    const html = renderToStaticMarkup(<LoginScreen role="volunteer" />);
+    expect(html).toContain('Login as Volunteer / Driver');
+    expect(html).not.toContain('Volunteer sign in');
+    expect(html).not.toContain('Register as Driver');
+  });
+});
+
+describe('Volunteer self-registration skills', () => {
+  it('offers crew skills only, never a Driver skill', async () => {
+    const { readFileSync } = await import('node:fs');
+    const source = readFileSync(new URL('./LoginScreen.tsx', import.meta.url), 'utf8');
+    const options = source.match(/const volunteerSkillOptions = \[([^\]]+)\]/)?.[1] ?? '';
+    expect(options).toContain("'Packing'");
+    expect(options).not.toMatch(/'Driv/);
+  });
+});

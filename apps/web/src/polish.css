@@ -327,3 +327,6 @@ h1,h2,h3 { letter-spacing:-.025em; }
 .field textarea.notes-input { width: 100%; min-height: 76px; border: 1px solid #dfe9e0; border-radius: 7px; padding: 10px 12px; color: #2f4d39; font-size: 14px; font-family: inherit; resize: vertical; outline: 0; }
 .field textarea.notes-input:focus { border-color: #72add5; box-shadow: 0 0 0 3px #72add526; }
 .field input:disabled { background: #f6f8f6; color: #8a9a8d; }
+
+/* Admin assignments: driver acknowledgement under the crew status */
+.driver-acceptance { display: block; margin-top: 4px; color: #475569; font-size: 12px; }

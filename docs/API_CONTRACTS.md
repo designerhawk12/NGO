@@ -71,3 +71,17 @@ Drivers are NGO employees, not Volunteers. Vehicles are registered first, with n
 `POST /pickups/:id/assignments`: `vehicleId` is now optional. The server derives it from the driver's fixed link and returns `409 DRIVER_VEHICLE_MISMATCH` if a different vehicle is sent and `409 DRIVER_NOT_ELIGIBLE` for non-employee drivers. It recalculates the food load from stored items (`409 VEHICLE_CAPACITY_INSUFFICIENT`), rejects overlapping vehicle bookings, and requires at least one clean, available, food-grade container whose capacity covers the known load, fits the vehicle's container limit and holds liquids in sealed containers (`409 CONTAINER_PLAN_INVALID`). All of this runs in the existing assignment transaction.
 
 `POST /volunteers` (Admin "Add Volunteer") is retired and answers `410 ADMIN_VOLUNTEER_CREATION_RETIRED` without contacting Supabase or writing records. Volunteers join through mobile registration and Admin approval. `PATCH /volunteers/:id` no longer accepts `driverDetails` or `driverStatus`; skills never create driver records. `GET /volunteers/:id/driver-details` remains as a read-only view of historical records.
+
+## NGO employee driver sign-in and jobs (migration 013)
+
+`DRIVER` is an application role for NGO employee drivers. Only Admin driver provisioning creates it; registration, client metadata and `PATCH /admin/users/:id/role` cannot (`assignableAppRoleSchema` excludes it, and changing a DRIVER user returns `409 DRIVER_ROLE_MANAGED_BY_ASSIGN_DRIVER`).
+
+| Method/path | Authentication | Behaviour |
+| --- | --- | --- |
+| `POST /drivers` | ADMIN | Now also requires `email`. After every database check passes, the server sends the Supabase invitation (the same `/accept-invite` password setup used for Volunteers) and, in the same transaction, creates a `DRIVER` app user linked to the driver's person. A failed invitation saves nothing. `409 DRIVER_EMAIL_IN_USE` for an address already used by a driver or any Auth account. If the invitation succeeds but saving fails: `503 DRIVER_INVITE_RECOVERY_REQUIRED` (never reported as success). Invitation provider errors keep their existing `INVITE_*` codes. |
+| `POST /drivers/:id/invite` | ADMIN | `{ email }`. Invites an employee driver who has no app sign-in yet; `409 DRIVER_ALREADY_INVITED` otherwise. |
+| `GET /drivers/me` | DRIVER | The driver's own profile and fixed vehicle. |
+| `GET /assignments/driver` | DRIVER | `{ items: DriverJob[] }`: only this driver's assignments, with donor, pickup address, delivery destination, window, food items, fixed vehicle, crew names, `status`, `driverAcceptance`, `version` and `completedAt`. |
+| `PATCH /assignments/:id/status` | VOLUNTEER, DRIVER, ADMIN | The driver must be the assignment's driver (`403` otherwise). Driver `ACCEPT` records `driverAcceptance = ACCEPTED` without changing the crew status. Driver `REJECT` (reason required, before `EN_ROUTE`) sets `driverAcceptance = DECLINED`, rejects the assignment, returns the pickup to `PLANNED` and releases reservations and containers. Drivers may also `START`, `ARRIVE`, `COLLECT` and `DELIVER`. `START` by anyone requires the driver to have accepted (`409 DRIVER_NOT_ACCEPTED`); a driver cannot start before a crew volunteer has accepted (`409 CREW_NOT_ACCEPTED`). `expectedVersion` concurrency applies to every action. |
+
+Assignment DTOs now include `driverAcceptance` (`NOT_REQUIRED` for assignments created before 013, otherwise `PENDING`, `ACCEPTED` or `DECLINED`) and, where known, `deliveryAddress`.

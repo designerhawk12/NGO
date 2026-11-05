@@ -175,6 +175,16 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
         client
       );
       expect(accepted.status).toBe('ACCEPTED');
+      expect(accepted.driverAcceptance).toBe('PENDING');
+
+      // The trip cannot start until the NGO driver has accepted (migration 013). This fixture driver
+      // has no app sign-in, so record their acceptance directly (no version change).
+      await expect(transitionAssignmentStatus({
+        assignmentId: assignment.id,
+        input: { action: 'START', expectedVersion: 1 },
+        actor: { id: volUser.id, authUserId: randomUUID(), role: 'VOLUNTEER' },
+      }, client)).rejects.toMatchObject({ code: 'DRIVER_NOT_ACCEPTED' });
+      await client.query("UPDATE app.assignments SET driver_acceptance = 'ACCEPTED', driver_responded_at = now() WHERE id = $1", [assignment.id]);
 
       // 2. Volunteer START
       const started = await transitionAssignmentStatus(

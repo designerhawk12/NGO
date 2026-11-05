@@ -4,6 +4,7 @@ import {
   uuidSchema,
   type AppUser,
   type CreateEmployeeDriver,
+  type InviteEmployeeDriver,
   type UpdateEmployeeDriver,
   type CreateVehicle,
   type CreateVehicleMaintenanceRecord,
@@ -146,6 +147,27 @@ export const updateEmployeeDriverHandler: RequestHandler = async (request, respo
     if (!idResult.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Driver ID must be a UUID.');
     const input = response.locals.validatedBody as UpdateEmployeeDriver;
     sendSuccess(response, await vehicleService.editEmployeeDriver(idResult.data, input));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const inviteDriverHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const idResult = uuidSchema.safeParse(request.params.id);
+    if (!idResult.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Driver ID must be a UUID.');
+    const input = response.locals.validatedBody as InviteEmployeeDriver;
+    sendSuccess(response, await vehicleService.inviteDriverToApp(idResult.data, input.email));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getOwnDriverProfileHandler: RequestHandler = async (_request, response, next) => {
+  try {
+    const actor = response.locals.appUser as AppUser | undefined;
+    if (!actor?.id) throw new HttpError(401, 'UNAUTHENTICATED', 'Authentication required.');
+    sendSuccess(response, await vehicleService.getOwnDriverProfile(actor.id));
   } catch (error) {
     next(error);
   }

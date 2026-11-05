@@ -32,10 +32,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setVolunteerApplicationStatus(user.volunteerApplicationStatus === 'DENIED' ? 'DENIED' : 'PENDING');
         return;
       }
-      if (user?.role === 'DONOR' || user?.role === 'VOLUNTEER') {
+      // The role always comes from the server; an NGO employee driver restores to the Driver screens.
+      if (user?.role === 'DONOR' || user?.role === 'VOLUNTEER' || user?.role === 'DRIVER') {
         setVolunteerApplicationStatus(null);
         setMode('live');
-        setRole(user.role === 'DONOR' ? 'donor' : 'volunteer');
+        setRole(user.role === 'DONOR' ? 'donor' : user.role === 'DRIVER' ? 'driver' : 'volunteer');
       }
     }).catch(() => {});
     return () => { active = false; };

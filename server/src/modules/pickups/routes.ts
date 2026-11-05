@@ -23,6 +23,7 @@ import {
   getEligibleVolunteersForPickupHandler,
   getPickupByIdHandler,
   getVolunteerAssignmentsHandler,
+  getDriverJobsHandler,
   listPickupsHandler,
   updateAssignmentStatusHandler,
 } from './controller';
@@ -50,6 +51,8 @@ pickupSubRouter.get('/:id', requireAuth, requireRole('ADMIN'), getPickupByIdHand
 
 const assignmentSubRouter = Router();
 assignmentSubRouter.get('/me', requireAuth, requireRole('VOLUNTEER'), getVolunteerAssignmentsHandler);
+// The signed-in NGO employee driver's own jobs (pickup, delivery, food, vehicle, crew names).
+assignmentSubRouter.get('/driver', requireAuth, requireRole('DRIVER'), getDriverJobsHandler);
 assignmentSubRouter.patch(
   '/:id/status',
   requireAuth,

@@ -9,6 +9,7 @@ import {
   type CancelPickup,
   type ContainerAssignmentOptions,
   type DriverAssignmentOptions,
+  type DriverJob,
   type UpdatePickup,
 } from '@aaharaconnect/shared';
 import {
@@ -72,6 +73,8 @@ export function toAssignmentDto(row: AssignmentRow, volunteerIds: string[]): Ass
     ...(row.window_ends_at ? { windowEndsAt: row.window_ends_at.toISOString() } : {}),
     ...(row.pickup_address !== undefined && row.created_at ? { createdAt: row.created_at.toISOString() } : {}),
     ...(row.terminal_at ? { completedAt: row.terminal_at.toISOString() } : {}),
+    ...(row.driver_acceptance ? { driverAcceptance: row.driver_acceptance } : {}),
+    ...(row.delivery_address ? { deliveryAddress: row.delivery_address } : {}),
   };
 }
 
@@ -548,11 +551,14 @@ export async function transitionAssignmentStatus(
       throw new HttpError(400, 'VALIDATION_ERROR', `A reason is required when action is ${input.action}.`);
     }
   } else if (input.action === 'DELIVER') {
-    if (actor.role !== 'ADMIN' && actor.role !== 'VOLUNTEER') {
-      throw new HttpError(403, 'FORBIDDEN', 'Delivery is restricted to administrators and assigned volunteers.');
+    if (actor.role !== 'ADMIN' && actor.role !== 'VOLUNTEER' && actor.role !== 'DRIVER') {
+      throw new HttpError(403, 'FORBIDDEN', 'Delivery is restricted to administrators and the assigned crew and driver.');
     }
-  } else if (actor.role !== 'VOLUNTEER') {
-    throw new HttpError(403, 'FORBIDDEN', `Action ${input.action} is restricted to assigned volunteers.`);
+  } else if (actor.role !== 'VOLUNTEER' && actor.role !== 'DRIVER') {
+    throw new HttpError(403, 'FORBIDDEN', `Action ${input.action} is restricted to the assigned crew and driver.`);
+  }
+  if (actor.role === 'DRIVER' && input.action === 'REJECT' && !input.reason?.trim()) {
+    throw new HttpError(400, 'VALIDATION_ERROR', 'Give a reason when declining a job so the Admin can reassign it.');
   }
 
   const run = async (txClient: PoolClient): Promise<Assignment> => {
@@ -567,6 +573,13 @@ export async function transitionAssignmentStatus(
         throw new HttpError(403, 'FORBIDDEN', 'Volunteer is not assigned to this assignment.');
       }
     }
+    // An NGO employee driver may act only on jobs where they are the assigned driver.
+    if (actor.role === 'DRIVER') {
+      const isDriver = await pickupRepository.isDriverOfAssignment(assignmentId, actor.id, txClient);
+      if (!isDriver) {
+        throw new HttpError(403, 'FORBIDDEN', 'You are not the driver of this assignment.');
+      }
+    }
 
     if (assignment.version !== input.expectedVersion) {
       throw new HttpError(
@@ -574,6 +587,48 @@ export async function transitionAssignmentStatus(
         'VERSION_CONFLICT',
         `Assignment version conflict. Expected version ${input.expectedVersion} but found ${assignment.version}.`
       );
+    }
+
+    const driverAcceptance = assignment.driver_acceptance ?? 'NOT_REQUIRED';
+    // Driver acknowledgement is recorded separately so it never stands in for the Volunteers' acceptance.
+    if (actor.role === 'DRIVER' && input.action === 'ACCEPT') {
+      if (!['PENDING', 'ACCEPTED'].includes(assignment.status) || driverAcceptance !== 'PENDING') {
+        throw new HttpError(409, 'INVALID_TRANSITION',
+          driverAcceptance === 'ACCEPTED' ? 'You have already accepted this job.' : `This job can no longer be accepted (status ${assignment.status}).`);
+      }
+      const accepted = await pickupRepository.setDriverAcceptance({
+        assignmentId, acceptance: 'ACCEPTED', status: assignment.status, actorUserId: actor.id, reason: 'Driver accepted the job',
+      }, txClient);
+      return toAssignmentDto(accepted, await pickupRepository.getAssignmentVolunteerIds(assignmentId, txClient));
+    }
+    // A driver declining before the trip starts returns the pickup to planning for reassignment.
+    if (actor.role === 'DRIVER' && input.action === 'REJECT') {
+      if (!['PENDING', 'ACCEPTED'].includes(assignment.status)) {
+        throw new HttpError(409, 'INVALID_TRANSITION', `A job cannot be declined after the trip has started (status ${assignment.status}).`);
+      }
+      const reason = `Driver declined: ${input.reason!.trim()}`;
+      await pickupRepository.setDriverAcceptance({
+        assignmentId, acceptance: 'DECLINED', status: assignment.status, actorUserId: actor.id, reason,
+      }, txClient);
+      const rejected = await pickupRepository.updateAssignmentStatus({
+        assignmentId, fromStatus: assignment.status, toStatus: 'REJECTED', actorUserId: actor.id, reason,
+      }, txClient);
+      const pickup = await pickupRepository.findPickupForUpdate(assignment.pickup_id, txClient);
+      if (pickup && pickup.status !== 'PLANNED') {
+        await pickupRepository.updatePickupStatus({
+          pickupId: pickup.id, fromStatus: pickup.status, toStatus: 'PLANNED', actorUserId: actor.id, reason,
+        }, txClient);
+      }
+      await pickupRepository.releaseReservations(assignmentId, txClient);
+      await pickupRepository.releaseVesselIssuancesForPickup(assignment.pickup_id, txClient, reason);
+      return toAssignmentDto(rejected, await pickupRepository.getAssignmentVolunteerIds(assignmentId, txClient));
+    }
+    // Nobody starts the trip until the NGO driver has accepted the job.
+    if (input.action === 'START' && (driverAcceptance === 'PENDING' || driverAcceptance === 'DECLINED')) {
+      throw new HttpError(409, 'DRIVER_NOT_ACCEPTED', 'Waiting for the NGO driver to accept this job before the trip can start.');
+    }
+    if (actor.role === 'DRIVER' && input.action === 'START' && assignment.status === 'PENDING') {
+      throw new HttpError(409, 'CREW_NOT_ACCEPTED', 'Waiting for a crew volunteer to accept this job before the trip can start.');
     }
 
     const rule = TRANSITIONS[input.action];
@@ -728,6 +783,40 @@ export async function getPickupByFoodRequestId(
 ): Promise<PickupDetail | null> {
   const row = await pickupRepository.findByFoodRequestId(foodRequestId, client);
   return row ? toPickupDto(row) : null;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The signed-in NGO employee driver's jobs (only their own).
+
+export async function getDriverJobs(appUserId: string, client?: PoolClient): Promise<Page<DriverJob>> {
+  const rows = await pickupRepository.listJobsForDriverAppUser(appUserId, client);
+  return {
+    items: rows.map(row => ({
+      assignmentId: row.assignment_id,
+      pickupId: row.pickup_id,
+      status: row.status,
+      driverAcceptance: row.driver_acceptance as DriverJob['driverAcceptance'],
+      version: row.version,
+      donorName: row.donor_name,
+      pickupAddress: row.pickup_address,
+      deliveryAddress: row.delivery_address,
+      windowStartsAt: row.window_starts_at.toISOString(),
+      windowEndsAt: row.window_ends_at.toISOString(),
+      contactName: row.contact_name,
+      contactPhone: row.contact_phone_e164,
+      handlingRequirements: row.handling_requirements,
+      operationalNotes: row.operational_notes,
+      foodItems: (row.food_items ?? []).map(item => ({
+        foodType: item.foodType, quantity: Number(item.quantity), unit: item.unit,
+        estimatedWeightKg: item.estimatedWeightKg == null ? null : Number(item.estimatedWeightKg),
+      })),
+      vehicle: { id: row.vehicle_id, registrationNumber: row.registration_number, kind: row.kind, capacityKg: Number(row.capacity_kg) },
+      crew: row.crew ?? [],
+      createdAt: row.created_at.toISOString(),
+      completedAt: row.terminal_at ? row.terminal_at.toISOString() : null,
+    })),
+    nextCursor: null,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -13,7 +13,8 @@ import { ApiClientError } from '../../api/client';
 
 type RegistrationForm = { email: string; name: string; phone: string };
 const emptyRegistration: RegistrationForm = { email: '', name: '', phone: '' };
-const volunteerSkillOptions = ['Food collection', 'Packing', 'Transportation', 'Distribution', 'Driver', 'Coordination', 'Other'];
+// Crew skills only. NGO drivers are employees invited by an Admin; there is no public driver option.
+const volunteerSkillOptions = ['Food collection', 'Packing', 'Loading', 'Distribution', 'Food handling', 'Coordination', 'Other'];
 
 export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
   const app = useApp(); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState('');
@@ -38,6 +39,12 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
     setBusy(true);
     try {
       const user = await signInWithEmail(identifier.trim(), password);
+      // One shared sign-in for Volunteers and NGO employee drivers: the server-owned role decides
+      // which experience opens, never the button that was tapped.
+      if (role === 'volunteer' && user.role === 'DRIVER') {
+        app.loginAuthenticated('driver');
+        return;
+      }
       if (user.role !== role.toUpperCase()) {
         await signOut();
         app.notify('This account does not have access to that role.');
@@ -123,6 +130,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
     } finally { registrationSubmitting.current = false; setRegistrationBusy(false); }
   };
   if (app.role === role) return <Redirect href={role === 'volunteer' ? '/volunteer/(tabs)/home' : '/donor/(tabs)/home'} />;
+  if (role === 'volunteer' && app.role === 'driver') return <Redirect href="/driver/(tabs)/jobs" />;
   return <Screen style={{ justifyContent: 'center' }}><View style={{ alignItems: 'flex-end', marginBottom: 24 }}><LanguageSwitcher /></View>
     {registerMode && role === 'donor' ? <>
       <Header title="Register as Donor" subtitle="Create your donor account" back />
@@ -170,7 +178,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         </>}
       </Card>
     </> : <>
-      <Header title={role === 'volunteer' ? 'Volunteer sign in' : 'Donor sign in'} subtitle="Welcome back" back />
+      <Header title={role === 'volunteer' ? 'Login as Volunteer / Driver' : 'Donor sign in'} subtitle={role === 'volunteer' ? 'Volunteers and NGO drivers use the same email sign-in.' : 'Welcome back'} back />
       {role === 'volunteer' && app.volunteerApplicationStatus && <Card style={{ marginBottom: 14 }}>
         <T weight="700" color={app.volunteerApplicationStatus === 'DENIED' ? C.red : C.ink}>
           {app.volunteerApplicationStatus === 'DENIED' ? 'Volunteer application not approved' : 'Volunteer application pending approval'}

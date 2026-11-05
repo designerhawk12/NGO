@@ -6,6 +6,7 @@ import type {
   UpdateEmployeeDriver,
 } from '@aaharaconnect/shared';
 import { getPool, withTransaction } from '../../db/pool';
+import { inviteSupabaseUserByEmail } from '../../auth/supabase';
 import { HttpError } from '../../middleware/errorHandler';
 
 // Module 5 owns the canonical driver registry. NGO employee drivers are app.people rows without a
@@ -31,12 +32,14 @@ type DriverRow = {
   vehicle_status: 'ACTIVE' | 'MAINTENANCE' | 'RETIRED' | null;
   size_category: 'SMALL' | 'MEDIUM' | 'LARGE' | null;
   indicative_max_vessels: number | null;
+  login_email: string | null;
+  app_user_id: string | null;
 };
 
 const DRIVER_SELECT = `
   SELECT d.id, d.person_id, d.driver_type, p.name, p.phone_e164, d.employee_code,
          d.licence_number, d.licence_expires_on::text AS licence_expires_on, d.status,
-         d.created_at, d.updated_at,
+         d.created_at, d.updated_at, d.login_email, p.app_user_id,
          v.id AS vehicle_id, v.registration_number, v.kind, v.capacity_kg, v.status AS vehicle_status,
          v.size_category, v.indicative_max_vessels
   FROM app.drivers d
@@ -68,6 +71,8 @@ function toDriver(row: DriverRow, now = new Date()): EmployeeDriver {
       sizeCategory: row.size_category,
       indicativeMaxVessels: row.indicative_max_vessels,
     } : null,
+    loginEmail: row.login_email,
+    hasAppLogin: Boolean(row.app_user_id) && row.driver_type === 'EMPLOYEE',
     createdAt: row.created_at ? row.created_at.toISOString() : null,
     updatedAt: row.updated_at ? row.updated_at.toISOString() : null,
   };
@@ -79,6 +84,7 @@ export function mapDriverWriteError(error: unknown): never {
     const pgError = error as { code: string; constraint?: string; message?: string };
     if (pgError.code === '23505') {
       const constraint = pgError.constraint ?? '';
+      if (constraint.includes('login_email')) throw new HttpError(409, 'DRIVER_EMAIL_IN_USE', 'Another driver already uses this email address.');
       if (constraint.includes('licence')) throw new HttpError(409, 'DRIVER_LICENCE_CONFLICT', 'This driving licence is already registered.');
       if (constraint.includes('phone')) throw new HttpError(409, 'PHONE_CONFLICT', 'This phone number already belongs to another person in the system.');
       if (constraint.includes('employee_code')) throw new HttpError(409, 'EMPLOYEE_CODE_CONFLICT', 'This employee ID is already registered.');
@@ -163,8 +169,51 @@ async function assertPhoneAvailable(phone: string, exceptPersonId: string | null
   if (duplicate.rows.length) throw new HttpError(409, 'PHONE_CONFLICT', 'This phone number already belongs to another person in the system.');
 }
 
+export type DriverInviter = (email: string, name: string) => Promise<{ authUserId: string }>;
+
+async function assertLoginEmailAvailable(email: string, tx: PoolClient) {
+  const duplicate = await tx.query('SELECT 1 FROM app.drivers WHERE login_email = $1 LIMIT 1', [email]);
+  if (duplicate.rows.length) throw new HttpError(409, 'DRIVER_EMAIL_IN_USE', 'Another driver already uses this email address.');
+}
+
+function mapInviteError(error: unknown): never {
+  if (error instanceof HttpError && error.code === 'VOLUNTEER_ALREADY_EXISTS') {
+    throw new HttpError(409, 'DRIVER_EMAIL_IN_USE', 'An AaharaConnect account already exists for this email. Use a different email address for the driver.');
+  }
+  throw error;
+}
+
+/**
+ * Sends the Supabase invitation and links the new Auth identity to the driver's person as a DRIVER
+ * app user. Runs inside the caller's transaction, after every database check has passed, so a
+ * failed invitation leaves nothing behind. If the invitation succeeds but the link cannot be saved,
+ * the error says so explicitly instead of reporting success.
+ */
+async function inviteAndLinkDriverLogin(
+  tx: PoolClient, driver: { driverId: string; personId: string; name: string }, email: string, inviter: DriverInviter
+): Promise<void> {
+  let invited: { authUserId: string };
+  try {
+    invited = await inviter(email, driver.name);
+  } catch (error) {
+    mapInviteError(error);
+  }
+  try {
+    const appUser = await tx.query<{ id: string }>(
+      `INSERT INTO app.app_users(auth_user_id, role, display_name) VALUES ($1, 'DRIVER', $2) RETURNING id`,
+      [invited.authUserId, driver.name]
+    );
+    await tx.query('UPDATE app.people SET app_user_id = $2 WHERE id = $1 AND app_user_id IS NULL', [driver.personId, appUser.rows[0].id]);
+    await tx.query('UPDATE app.drivers SET login_email = $2 WHERE id = $1', [driver.driverId, email]);
+  } catch {
+    console.error(JSON.stringify({ level: 'error', subsystem: 'DriverProvisioning', code: 'DRIVER_INVITE_RECOVERY_REQUIRED' }));
+    throw new HttpError(503, 'DRIVER_INVITE_RECOVERY_REQUIRED',
+      'The invitation email may have been sent, but the driver was not saved. Do not retry with the same email; ask the system maintainer to review the account.');
+  }
+}
+
 export async function createEmployeeDriver(
-  input: CreateEmployeeDriver, actorUserId: string, client?: PoolClient
+  input: CreateEmployeeDriver, actorUserId: string, client?: PoolClient, inviter: DriverInviter = inviteSupabaseUserByEmail
 ): Promise<EmployeeDriver> {
   if (input.licenceExpiresOn < todayIsoDate()) {
     throw new HttpError(400, 'LICENCE_EXPIRED', 'The driving licence has expired. Enter a current licence.');
@@ -186,6 +235,7 @@ export async function createEmployeeDriver(
       await assertLicenceAvailable(input.licenceNumber, null, tx);
       await assertEmployeeCodeAvailable(input.employeeCode, null, tx);
       await assertPhoneAvailable(input.phoneE164, null, tx);
+      await assertLoginEmailAvailable(input.email, tx);
 
       const person = await tx.query<{ id: string }>(
         'INSERT INTO app.people(name, phone_e164) VALUES ($1, $2) RETURNING id',
@@ -205,6 +255,8 @@ export async function createEmployeeDriver(
       }
       // Run the deferred "employee driver must have a vehicle" check now so failures map cleanly.
       await tx.query('SET CONSTRAINTS app.employee_driver_requires_vehicle IMMEDIATE');
+      // Every database check has passed; only now send the sign-in invitation.
+      await inviteAndLinkDriverLogin(tx, { driverId: driver.rows[0].id, personId: person.rows[0].id, name: input.name }, input.email, inviter);
       const created = await findDriverWithVehicle(driver.rows[0].id, tx);
       if (!created) throw new HttpError(500, 'INTERNAL_ERROR', 'Driver was not found after creation.');
       return created;
@@ -213,6 +265,41 @@ export async function createEmployeeDriver(
     }
   };
   return client ? run(client) : withTransaction(run);
+}
+
+/** Gives an employee driver registered before app sign-in existed a secure invitation. */
+export async function inviteExistingEmployeeDriver(
+  driverId: string, email: string, client?: PoolClient, inviter: DriverInviter = inviteSupabaseUserByEmail
+): Promise<EmployeeDriver> {
+  const run = async (tx: PoolClient): Promise<EmployeeDriver> => {
+    try {
+      const current = await tx.query<{ person_id: string; driver_type: string; name: string; app_user_id: string | null }>(
+        `SELECT d.person_id, d.driver_type, p.name, p.app_user_id
+         FROM app.drivers d JOIN app.people p ON p.id = d.person_id WHERE d.id = $1 FOR UPDATE OF d, p`, [driverId]
+      );
+      const row = current.rows[0];
+      if (!row) throw new HttpError(404, 'DRIVER_NOT_FOUND', 'Driver not found.');
+      if (row.driver_type !== 'EMPLOYEE') {
+        throw new HttpError(409, 'LEGACY_DRIVER_READ_ONLY', 'Only NGO employee drivers registered in Assign Driver can sign in as drivers.');
+      }
+      if (row.app_user_id) throw new HttpError(409, 'DRIVER_ALREADY_INVITED', 'This driver already has an app sign-in.');
+      await assertLoginEmailAvailable(email, tx);
+      await inviteAndLinkDriverLogin(tx, { driverId, personId: row.person_id, name: row.name }, email, inviter);
+      const updated = await findDriverWithVehicle(driverId, tx);
+      if (!updated) throw new HttpError(404, 'DRIVER_NOT_FOUND', 'Driver not found.');
+      return updated;
+    } catch (error) {
+      mapDriverWriteError(error);
+    }
+  };
+  return client ? run(client) : withTransaction(run);
+}
+
+/** The signed-in DRIVER's own profile and fixed vehicle. */
+export async function findDriverForAppUser(appUserId: string, client?: PoolClient): Promise<EmployeeDriver | null> {
+  const db = client ?? getPool();
+  const result = await db.query<DriverRow>(`${DRIVER_SELECT} WHERE p.app_user_id = $1 AND d.driver_type = 'EMPLOYEE'`, [appUserId]);
+  return result.rows[0] ? toDriver(result.rows[0]) : null;
 }
 
 export async function updateEmployeeDriver(

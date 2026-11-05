@@ -17,15 +17,23 @@ const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a YYYY-MM-DD 
 const employeeCodeSchema = z.string().trim().min(1).max(40)
   .regex(/^[A-Za-z0-9][A-Za-z0-9 /_-]*$/, 'Employee IDs may contain letters, digits, spaces, /, _ and -.');
 
+export const driverEmailSchema = z.string().trim().toLowerCase().email('Enter a valid email address.').max(254);
+
 export const createEmployeeDriverSchema = z.strictObject({
   name: z.string().trim().min(2, 'Enter the driver’s full name.').max(200),
   phoneE164: indianMobileE164Schema,
   licenceNumber: drivingLicenceNumberSchema,
   licenceExpiresOn: isoDateSchema,
   employeeCode: employeeCodeSchema.nullable().optional(),
+  // The driver receives a secure invitation at this address and sets their own password.
+  email: driverEmailSchema,
   vehicleId: uuidSchema,
 });
 export type CreateEmployeeDriver = z.infer<typeof createEmployeeDriverSchema>;
+
+// Invite an existing employee driver (registered before app sign-in existed) to the Android app.
+export const inviteEmployeeDriverSchema = z.strictObject({ email: driverEmailSchema });
+export type InviteEmployeeDriver = z.infer<typeof inviteEmployeeDriverSchema>;
 
 // The fixed vehicle is intentionally absent: any vehicleId in an edit request is rejected.
 export const updateEmployeeDriverSchema = z.strictObject({
@@ -64,10 +72,16 @@ export const employeeDriverSchema = z.object({
   licenceExpired: z.boolean(),
   status: employeeDriverStatusSchema,
   vehicle: driverVehicleSummarySchema.nullable(),
+  loginEmail: z.string().nullable(),
+  hasAppLogin: z.boolean(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 export type EmployeeDriver = z.infer<typeof employeeDriverSchema>;
+
+// What a signed-in DRIVER sees about themself on Android.
+export type DriverSelfProfile = Pick<EmployeeDriver,
+  'driverId' | 'name' | 'phone' | 'employeeCode' | 'licenceNumber' | 'licenceExpiresOn' | 'licenceExpired' | 'status' | 'vehicle'>;
 
 export const driverVehicleOptionSchema = driverVehicleSummarySchema.extend({
   eligible: z.boolean(),

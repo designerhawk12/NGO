@@ -80,6 +80,10 @@ export async function setAppUserRole(id: string, role: AppRole, actorUserId: str
     );
     const user = current.rows[0];
     if (!user) throw new HttpError(404, 'NOT_FOUND', 'Application user not found.');
+    // DRIVER sign-ins belong to NGO employee driver records and are managed only from Assign Driver.
+    if (role === 'DRIVER' || user.role === 'DRIVER') {
+      throw new HttpError(409, 'DRIVER_ROLE_MANAGED_BY_ASSIGN_DRIVER', 'Driver sign-ins are created and managed only from Assign Driver.');
+    }
     if (id === actorUserId && role !== 'ADMIN') throw new HttpError(409, 'RESOURCE_CONFLICT', 'An administrator cannot remove their own administrator access.');
     if (role === 'VOLUNTEER' && !user.volunteer_profile_id) {
       throw new HttpError(409, 'RESOURCE_CONFLICT', 'A Volunteer profile is required before assigning the Volunteer role.');

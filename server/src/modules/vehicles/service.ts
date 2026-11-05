@@ -11,7 +11,9 @@ import type { CreateEmployeeDriver, UpdateEmployeeDriver } from '@aaharaconnect/
 import * as vehicleRepo from './repository';
 import {
   createEmployeeDriver,
+  findDriverForAppUser,
   findDriverWithVehicle,
+  inviteExistingEmployeeDriver,
   listDriversWithVehicles,
   listVehicleOptionsForNewDriver,
   updateEmployeeDriver,
@@ -86,6 +88,20 @@ export async function registerEmployeeDriver(input: CreateEmployeeDriver, actorU
 
 export async function editEmployeeDriver(driverId: string, input: UpdateEmployeeDriver, client?: PoolClient) {
   return updateEmployeeDriver(driverId, input, client);
+}
+
+export async function inviteDriverToApp(driverId: string, email: string, client?: PoolClient) {
+  return inviteExistingEmployeeDriver(driverId, email, client);
+}
+
+export async function getOwnDriverProfile(appUserId: string, client?: PoolClient) {
+  const driver = await findDriverForAppUser(appUserId, client);
+  if (!driver) throw new HttpError(404, 'DRIVER_PROFILE_NOT_FOUND', 'No NGO driver record is linked to this account. Contact the NGO administrator.');
+  return {
+    driverId: driver.driverId, name: driver.name, phone: driver.phone, employeeCode: driver.employeeCode,
+    licenceNumber: driver.licenceNumber, licenceExpiresOn: driver.licenceExpiresOn, licenceExpired: driver.licenceExpired,
+    status: driver.status, vehicle: driver.vehicle,
+  };
 }
 
 export async function getDriver(driverId: string, client?: PoolClient) {

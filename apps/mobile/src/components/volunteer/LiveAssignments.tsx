@@ -48,7 +48,9 @@ export default function LiveAssignments({ historyOnly = false }: { historyOnly?:
     } catch (cause) {
       setActionError(cause instanceof ApiClientError && cause.code === 'VERSION_CONFLICT'
         ? 'Assignment changed. Refresh and try again.'
-        : 'Could not update assignment. Refresh and try again.');
+        : cause instanceof ApiClientError && cause.code === 'DRIVER_NOT_ACCEPTED'
+          ? 'Waiting for the NGO driver to accept this job before the pickup can start.'
+          : 'Could not update assignment. Refresh and try again.');
     } finally { setBusyId(null); }
   };
 
@@ -88,6 +90,9 @@ export default function LiveAssignments({ historyOnly = false }: { historyOnly?:
           <T color={C.muted} translate={false}>{item.id}</T>
           <T color={C.muted} translate={false}>Pickup: {item.pickupId}</T>
           {item.pickupAddress && <T color={C.ink} translate={false}>Pickup location: {item.pickupAddress}</T>}
+          {item.driverAcceptance && item.driverAcceptance !== 'NOT_REQUIRED' && !terminal.has(item.status) && <T color={item.driverAcceptance === 'ACCEPTED' ? C.green : C.muted}>
+            {item.driverAcceptance === 'ACCEPTED' ? 'NGO driver has accepted' : 'Waiting for the NGO driver to accept'}
+          </T>}
           {item.windowStartsAt && <T color={C.muted} translate={false}>Pickup window: {new Date(item.windowStartsAt).toLocaleString('en-IN')} — {item.windowEndsAt ? new Date(item.windowEndsAt).toLocaleString('en-IN') : ''}</T>}
           {terminal.has(item.status) && item.completedAt && <T color={C.muted} translate={false}>Closed: {new Date(item.completedAt).toLocaleString('en-IN')}</T>}
           {['ACCEPTED', 'EN_ROUTE', 'ARRIVED_AT_DONOR', 'FOOD_COLLECTED'].includes(item.status) && <Button title="Navigate to Pickup — Google Maps" variant="outline" onPress={() => void navigate(item.pickupAddress ?? '')} style={{ marginTop: 10 }} />}

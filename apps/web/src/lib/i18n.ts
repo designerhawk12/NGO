@@ -905,6 +905,22 @@ const kannada: Record<string, string> = {
   'Food pickup assistance': 'ಆಹಾರ ಸಂಗ್ರಹ ಸಹಾಯ',
   'Loading': 'ಲೋಡಿಂಗ್',
   'Food handling': 'ಆಹಾರ ನಿರ್ವಹಣೆ',
+  // Driver app sign-in (migration 013)
+  'Ask an administrator for a new invitation.': 'ಹೊಸ ಆಹ್ವಾನಕ್ಕಾಗಿ ನಿರ್ವಾಹಕರನ್ನು ಸಂಪರ್ಕಿಸಿ.',
+  'Finish setting up your AaharaConnect account. You will use this password in the AaharaConnect mobile app (Login as Volunteer / Driver).': 'ನಿಮ್ಮ AaharaConnect ಖಾತೆಯ ಸಿದ್ಧತೆಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಿ. ಈ ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು AaharaConnect ಮೊಬೈಲ್ ಆ್ಯಪ್‌ನಲ್ಲಿ ಬಳಸುತ್ತೀರಿ (ಸ್ವಯಂಸೇವಕ / ಚಾಲಕರಾಗಿ ಪ್ರವೇಶಿಸಿ).',
+  'Invite driver to the app': 'ಚಾಲಕರನ್ನು ಆ್ಯಪ್‌ಗೆ ಆಹ್ವಾನಿಸಿ',
+  'Invite to app': 'ಆ್ಯಪ್‌ಗೆ ಆಹ್ವಾನಿಸಿ',
+  'The driver receives a secure email to set their own password, then signs in to the Android app with “Login as Volunteer / Driver”.': 'ಚಾಲಕರು ತಮ್ಮ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಲು ಸುರಕ್ಷಿತ ಇಮೇಲ್ ಪಡೆಯುತ್ತಾರೆ, ನಂತರ “ಸ್ವಯಂಸೇವಕ / ಚಾಲಕರಾಗಿ ಪ್ರವೇಶಿಸಿ” ಮೂಲಕ Android ಆ್ಯಪ್‌ಗೆ ಪ್ರವೇಶಿಸುತ್ತಾರೆ.',
+  'The driver receives a secure email to set their own password, then signs in to the Android app with “Login as Volunteer / Driver”. You never see or choose the password.': 'ಚಾಲಕರು ತಮ್ಮ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಲು ಸುರಕ್ಷಿತ ಇಮೇಲ್ ಪಡೆಯುತ್ತಾರೆ, ನಂತರ “ಸ್ವಯಂಸೇವಕ / ಚಾಲಕರಾಗಿ ಪ್ರವೇಶಿಸಿ” ಮೂಲಕ Android ಆ್ಯಪ್‌ಗೆ ಪ್ರವೇಶಿಸುತ್ತಾರೆ. ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ನೀವು ಎಂದಿಗೂ ನೋಡುವುದಿಲ್ಲ ಅಥವಾ ಆಯ್ಕೆ ಮಾಡುವುದಿಲ್ಲ.',
+  'Your AaharaConnect account is ready.': 'ನಿಮ್ಮ AaharaConnect ಖಾತೆ ಸಿದ್ಧವಾಗಿದೆ.',
+  'driver@example.com': 'driver@example.com',
+  'Send invitation': 'ಆಹ್ವಾನ ಕಳುಹಿಸಿ',
+  'Sending…': 'ಕಳುಹಿಸಲಾಗುತ್ತಿದೆ…',
+  'App sign-in: invited': 'ಆ್ಯಪ್ ಪ್ರವೇಶ: ಆಹ್ವಾನಿಸಲಾಗಿದೆ',
+  'No app sign-in yet': 'ಇನ್ನೂ ಆ್ಯಪ್ ಪ್ರವೇಶವಿಲ್ಲ',
+  'Driver accepted': 'ಚಾಲಕರು ಸ್ವೀಕರಿಸಿದ್ದಾರೆ',
+  'Driver declined': 'ಚಾಲಕರು ನಿರಾಕರಿಸಿದ್ದಾರೆ',
+  'Waiting for driver': 'ಚಾಲಕರಿಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ',
 }
 
 function translateDynamic(value: string): string | undefined {

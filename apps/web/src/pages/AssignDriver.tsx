@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { IdCard, Lock, Pencil, Plus, RefreshCw, Truck } from 'lucide-react'
+import { IdCard, Lock, Mail, Pencil, Plus, RefreshCw, Truck } from 'lucide-react'
 import type { DriverVehicleOption, EmployeeDriver } from '@aaharaconnect/shared'
 import { ApiClientError } from '../api/client'
 import { EmptyState, formatDate, Modal, StatusBadge } from '../components/common/UI'
-import { createEmployeeDriver, listDriverVehicleOptions, listDrivers, updateEmployeeDriver } from '../features/drivers/api'
+import { createEmployeeDriver, inviteDriverToApp, listDriverVehicleOptions, listDrivers, updateEmployeeDriver } from '../features/drivers/api'
 
 type Props = {
   notify: (message: string, kind?: 'success' | 'error') => void
@@ -12,6 +12,7 @@ type Props = {
 
 type DriverForm = {
   name: string
+  email: string
   mobile: string
   licenceNumber: string
   licenceExpiresOn: string
@@ -19,7 +20,7 @@ type DriverForm = {
   vehicleId: string
   status: 'ACTIVE' | 'INACTIVE'
 }
-const emptyForm: DriverForm = { name: '', mobile: '', licenceNumber: '', licenceExpiresOn: '', employeeCode: '', vehicleId: '', status: 'ACTIVE' }
+const emptyForm: DriverForm = { name: '', email: '', mobile: '', licenceNumber: '', licenceExpiresOn: '', employeeCode: '', vehicleId: '', status: 'ACTIVE' }
 const today = () => new Date().toISOString().slice(0, 10)
 const toMobileDigits = (phone: string) => phone.replace(/^\+91/, '')
 const formatPhone = (phone: string) => /^\+91\d{10}$/.test(phone) ? `+91 ${phone.slice(3, 8)} ${phone.slice(8)}` : phone || '—'
@@ -37,6 +38,13 @@ function driverWriteError(cause: unknown): string {
     DRIVER_HAS_UPCOMING_ASSIGNMENTS: 'This driver has upcoming pickups. Complete or cancel them before marking the driver inactive.',
     FIXED_VEHICLE_IMMUTABLE: 'A driver’s vehicle is fixed and cannot be changed.',
     VERSION_CONFLICT: 'This driver was changed by someone else. Reload and try again.',
+    DRIVER_EMAIL_IN_USE: 'An AaharaConnect account or another driver already uses this email. Use a different email address.',
+    DRIVER_ALREADY_INVITED: 'This driver already has an app sign-in.',
+    DRIVER_INVITE_RECOVERY_REQUIRED: 'The invitation email may have been sent, but the driver was not saved. Do not retry with the same email; ask the system maintainer to review it.',
+    INVITE_RATE_LIMITED: 'The invitation email limit was reached. Wait a while, then try again.',
+    INVITE_EMAIL_NOT_AUTHORIZED: 'This email cannot receive invitations with the current email settings.',
+    INVITE_SERVICE_UNAVAILABLE: 'The invitation service is temporarily unavailable. Nothing was saved; try again shortly.',
+    INVITE_CONFIGURATION_ERROR: 'Invitation email settings need administrator attention. Nothing was saved.',
     NETWORK_ERROR: 'Could not reach the API. Check your connection and try again.',
   }
   return messages[cause.code] ?? cause.message ?? 'Could not save the driver. Try again.'
@@ -44,6 +52,7 @@ function driverWriteError(cause: unknown): string {
 
 function validate(form: DriverForm, isCreate: boolean): string | null {
   if (form.name.trim().length < 2) return 'Enter the driver’s full name.'
+  if (isCreate && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) || form.email.trim().length > 254)) return 'Enter the driver’s email address for the app invitation.'
   if (!/^[6-9]\d{9}$/.test(form.mobile.trim())) return 'Enter a 10-digit Indian mobile number starting with 6, 7, 8 or 9.'
   if (!/^[A-Za-z0-9][A-Za-z0-9 /-]{4,39}$/.test(form.licenceNumber.trim())) return 'Enter the full driving licence number.'
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.licenceExpiresOn)) return 'Enter the licence expiry date.'
@@ -68,6 +77,26 @@ export default function AssignDriver({ notify, onOpenVehicles }: Props) {
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const submitting = useRef(false)
+  const [inviteFor, setInviteFor] = useState<EmployeeDriver | null>(null)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviting, setInviting] = useState(false)
+
+  const sendInvite = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!inviteFor || submitting.current) return
+    const email = inviteEmail.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) { setInviteError('Enter the driver’s email address.'); return }
+    submitting.current = true; setInviting(true); setInviteError(null)
+    try {
+      await inviteDriverToApp(inviteFor.driverId, email)
+      notify('App sign-in invitation sent to the driver.')
+      setInviteFor(null)
+      await load()
+    } catch (cause) {
+      setInviteError(driverWriteError(cause))
+    } finally { submitting.current = false; setInviting(false) }
+  }
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -90,7 +119,7 @@ export default function AssignDriver({ notify, onOpenVehicles }: Props) {
   const openEdit = (driver: EmployeeDriver) => {
     setEditing(driver)
     setForm({
-      name: driver.name, mobile: toMobileDigits(driver.phone), licenceNumber: driver.licenceNumber,
+      name: driver.name, email: driver.loginEmail ?? '', mobile: toMobileDigits(driver.phone), licenceNumber: driver.licenceNumber,
       licenceExpiresOn: driver.licenceExpiresOn, employeeCode: driver.employeeCode ?? '', vehicleId: driver.vehicle?.id ?? '', status: driver.status,
     })
     setFormError(null); setMode('edit')
@@ -103,7 +132,7 @@ export default function AssignDriver({ notify, onOpenVehicles }: Props) {
     if (problem) { setFormError(problem); return }
     if (mode === 'create') {
       const vehicle = vehicleOptions.find(option => option.id === form.vehicleId)
-      if (!window.confirm(`Link ${form.name.trim()} permanently to ${vehicle?.registrationNumber ?? 'this vehicle'}? The vehicle cannot be changed later from the normal Admin screens.`)) return
+      if (!window.confirm(`Link ${form.name.trim()} permanently to ${vehicle?.registrationNumber ?? 'this vehicle'} and email an app sign-in invitation to ${form.email.trim()}? The vehicle cannot be changed later from the normal Admin screens.`)) return
     }
     submitting.current = true; setSaving(true); setFormError(null)
     try {
@@ -115,8 +144,8 @@ export default function AssignDriver({ notify, onOpenVehicles }: Props) {
         employeeCode: form.employeeCode.trim() || null,
       }
       if (mode === 'create') {
-        await createEmployeeDriver({ ...common, vehicleId: form.vehicleId })
-        notify('Driver registered and linked to the vehicle.')
+        await createEmployeeDriver({ ...common, email: form.email.trim().toLowerCase(), vehicleId: form.vehicleId })
+        notify('Driver registered, linked to the vehicle, and invited to the app by email.')
       } else if (editing) {
         await updateEmployeeDriver(editing.driverId, {
           ...common, status: form.status, ...(editing.updatedAt ? { expectedUpdatedAt: editing.updatedAt } : {}),
@@ -142,11 +171,11 @@ export default function AssignDriver({ notify, onOpenVehicles }: Props) {
           : employees.length === 0 ? <EmptyState title="No drivers registered yet" description="Register a vehicle in Vehicle Details first, then add the NGO employee who drives it." action={<button className="button button-primary" onClick={openCreate}><Plus size={16}/> Add Driver</button>}/>
             : <div className="table-scroll"><table className="data-table driver-table"><thead><tr><th>Driver</th><th>Contact</th><th>Driving licence</th><th>Assigned vehicle</th><th>Status</th><th>Actions</th></tr></thead><tbody>{employees.map(driver => <tr key={driver.driverId}>
               <td><span className="person-cell"><span><strong>{driver.name}</strong><small>{driver.employeeCode ? `Employee ID ${driver.employeeCode}` : 'No employee ID'}</small></span></span></td>
-              <td>{formatPhone(driver.phone)}</td>
+              <td><div className="time-cell"><strong>{formatPhone(driver.phone)}</strong>{driver.loginEmail && <small>{driver.loginEmail}</small>}<small>{driver.hasAppLogin ? 'App sign-in: invited' : 'No app sign-in yet'}</small></div></td>
               <td><div className="time-cell"><strong>{driver.licenceNumber}</strong><small>{driver.licenceExpired ? 'Expired' : 'Valid until'} {formatDate(driver.licenceExpiresOn)}</small></div></td>
               <td>{driver.vehicle ? <div className="time-cell"><strong><Truck size={14} aria-hidden="true"/> {driver.vehicle.registrationNumber}</strong><small>{vehicleSummary(driver.vehicle)}</small><small>Vehicle status: {driver.vehicle.status.toLowerCase()}</small></div> : <span className="quiet-text">No vehicle linked</span>}</td>
               <td><StatusBadge status={driver.licenceExpired ? 'LICENCE EXPIRED' : driver.status}/></td>
-              <td className="actions-cell"><button className="button button-secondary" onClick={() => openEdit(driver)}><Pencil size={15}/> Edit details</button></td>
+              <td className="actions-cell"><button className="button button-secondary" onClick={() => openEdit(driver)}><Pencil size={15}/> Edit details</button>{!driver.hasAppLogin && <button className="button button-secondary" onClick={() => { setInviteFor(driver); setInviteEmail(''); setInviteError(null) }}><Mail size={15}/> Invite to app</button>}</td>
             </tr>)}</tbody></table></div>}
       {legacy.length > 0 && <div className="detail-section" style={{ padding: '16px 20px' }}><h3>Historical volunteer-linked driver records</h3><p className="quiet-text">These records come from the earlier model, where volunteers could be drivers. They stay readable for past assignments but cannot be assigned to new pickups.</p><ul>{legacy.map(driver => <li key={driver.driverId}>{driver.name} · {driver.licenceNumber}{driver.vehicle ? ` · ${driver.vehicle.registrationNumber}` : ''}</li>)}</ul></div>}
       <div className="table-footer"><span>NGO employee drivers</span><span>{employees.length} {employees.length === 1 ? 'driver' : 'drivers'}</span></div>
@@ -156,6 +185,7 @@ export default function AssignDriver({ notify, onOpenVehicles }: Props) {
       <form className="dialog-form" onSubmit={event => void submit(event)} noValidate>
         <div className="form-grid">
           <label className="field field-full">Full name <span aria-hidden="true">*</span><input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="e.g. Ramesh Kumar" maxLength={200} required/></label>
+          {mode === 'create' && <label className="field field-full">Email address <span aria-hidden="true">*</span><input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} placeholder="driver@example.com" maxLength={254} autoComplete="off" required/><small>The driver receives a secure email to set their own password, then signs in to the Android app with “Login as Volunteer / Driver”. You never see or choose the password.</small></label>}
           <label className="field">Mobile number <span aria-hidden="true">*</span><div className="phone-input"><span>+91</span><input type="tel" inputMode="numeric" value={form.mobile} onChange={event => setForm({ ...form, mobile: event.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="9876543210" aria-label="10-digit mobile number" required/></div><small>10-digit Indian mobile number.</small></label>
           <label className="field">Employee ID<input value={form.employeeCode} onChange={event => setForm({ ...form, employeeCode: event.target.value })} placeholder="EMP-014" maxLength={40}/><small>Optional NGO staff identifier.</small></label>
           <label className="field">Driving licence number <span aria-hidden="true">*</span><input value={form.licenceNumber} onChange={event => setForm({ ...form, licenceNumber: event.target.value.toUpperCase() })} placeholder="KA0120200001234" maxLength={40} autoComplete="off" required/></label>
@@ -172,6 +202,16 @@ export default function AssignDriver({ notify, onOpenVehicles }: Props) {
         </div>
         {formError && <p className="settings-auth-message" role="alert">{formError}</p>}
         <div className="dialog-footer"><button type="button" className="button button-secondary" disabled={saving} onClick={() => setMode(null)}>Cancel</button><button type="submit" className="button button-primary" disabled={saving || (mode === 'create' && eligibleVehicles.length === 0)}>{saving ? 'Saving…' : mode === 'create' ? 'Assign Driver' : 'Save Changes'}</button></div>
+      </form>
+    </Modal>}
+
+    {inviteFor && <Modal title="Invite driver to the app" subtitle={`${inviteFor.name} · ${inviteFor.vehicle?.registrationNumber ?? 'no vehicle'}`} onClose={() => { if (!inviting) setInviteFor(null) }}>
+      <form className="dialog-form" onSubmit={event => void sendInvite(event)} noValidate>
+        <div className="form-grid">
+          <label className="field field-full">Email address <span aria-hidden="true">*</span><input type="email" value={inviteEmail} onChange={event => setInviteEmail(event.target.value)} placeholder="driver@example.com" maxLength={254} autoComplete="off" required/><small>The driver receives a secure email to set their own password, then signs in to the Android app with “Login as Volunteer / Driver”.</small></label>
+        </div>
+        {inviteError && <p className="settings-auth-message" role="alert">{inviteError}</p>}
+        <div className="dialog-footer"><button type="button" className="button button-secondary" disabled={inviting} onClick={() => setInviteFor(null)}>Cancel</button><button type="submit" className="button button-primary" disabled={inviting}>{inviting ? 'Sending…' : 'Send invitation'}</button></div>
       </form>
     </Modal>}
   </>

@@ -1,5 +1,5 @@
 export type Language = 'en' | 'kn';
-export type Role = 'volunteer' | 'donor' | null;
+export type Role = 'volunteer' | 'donor' | 'driver' | null;
 export type AssignmentStatus = 'Pending' | 'Accepted' | 'In Progress' | 'Checked In' | 'Completed' | 'Rejected';
 export type RequestStatus = 'Submitted' | 'Assigned' | 'Pickup In Progress' | 'Completed' | 'Cancelled';
 export type VolunteerAssignment = {

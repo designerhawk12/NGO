@@ -29,3 +29,9 @@ Only integration maintainers change migrations. Never edit an applied migration;
 - The fixed link is the existing `vehicles.assigned_driver_id`. The partial unique index `vehicles_one_vehicle_per_driver` plus the single column give one driver ↔ one vehicle. Trigger `vehicles_fixed_driver_guard` forbids changing or clearing an employee driver's link, creating a vehicle that already carries an employee driver, and deleting a linked vehicle. The deferred constraint trigger `employee_driver_requires_vehicle` makes an employee driver without a vehicle impossible at commit. Vehicles are still created with no driver, so there is no circular dependency.
 - `pickups.food_request_id` uniqueness is now the partial index `pickups_one_open_pickup_per_food_request` (`status <> 'CANCELLED'`), so an Admin-cancelled pickup no longer blocks rescheduling the same donor request. `pickups.operational_notes` was added. `pickup_schedule_changes` audits every Admin edit (RLS enabled; no client grants).
 - The migration stops with an explicit error, rather than unlinking anything, if legacy data links one driver to several vehicles. Rollback statements are in the migration header and are safe only before any employee driver or rescheduled request exists.
+
+## Migration 013 — driver sign-in and acknowledgement
+
+- `app_users.role` adds `DRIVER`. A driver's Auth identity links through the existing `people.app_user_id`, so drivers are never Volunteers.
+- `drivers.login_email` stores the invited address in lower case (unique when present).
+- `assignments.driver_acceptance` (`NOT_REQUIRED`, `PENDING`, `ACCEPTED`, `DECLINED`) and `driver_responded_at` record the driver's own response, separate from the shared crew status. Existing rows are `NOT_REQUIRED`. Driver responses write `assignment_status_events` rows (same from/to status) and increment `version`.

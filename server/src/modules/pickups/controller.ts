@@ -121,6 +121,15 @@ export const updateAssignmentStatusHandler: RequestHandler = async (request, res
   }
 };
 
+export const getDriverJobsHandler: RequestHandler = async (_request, response, next) => {
+  try {
+    const actor = requireActor(response);
+    sendSuccess(response, await pickupService.getDriverJobs(actor.id));
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getVolunteerAssignmentsHandler: RequestHandler = async (_request, response, next) => {
   try {
     const actor = response.locals.appUser as AppUser | undefined;

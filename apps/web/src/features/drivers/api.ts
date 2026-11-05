@@ -28,3 +28,10 @@ export async function updateEmployeeDriver(driverId: string, input: UpdateEmploy
     method: 'PATCH', headers: await getAuthHeaders(), body: input,
   })
 }
+
+// Sends a secure sign-in invitation to an employee driver registered before app sign-in existed.
+export async function inviteDriverToApp(driverId: string, email: string): Promise<EmployeeDriver> {
+  return apiRequest<EmployeeDriver>(`drivers/${encodeURIComponent(driverId)}/invite`, {
+    method: 'POST', headers: await getAuthHeaders(), body: { email },
+  })
+}

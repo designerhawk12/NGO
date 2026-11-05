@@ -10,9 +10,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 //   * Admin pickup edit and safe "delete" (cancellation).
 
 const { actor } = vi.hoisted(() => ({ actor: { id: '', role: 'ADMIN' } }));
-vi.mock('../src/auth/supabase', () => ({
-  verifySupabaseToken: vi.fn(async () => ({ authUserId: 'b0000000-0000-4000-8000-0000000000aa', email: 'admin@example.test' })),
-}));
+vi.mock('../src/auth/supabase', async () => {
+  const { randomUUID: uuid } = await import('node:crypto');
+  return {
+    verifySupabaseToken: vi.fn(async () => ({ authUserId: 'b0000000-0000-4000-8000-0000000000aa', email: 'admin@example.test' })),
+    // Driver registration sends a Supabase invitation; this test only needs a fresh Auth identity.
+    inviteSupabaseUserByEmail: vi.fn(async () => ({ authUserId: uuid(), inviteNonce: 'integration' })),
+  };
+});
 vi.mock('../src/auth/appUsers', () => ({
   findOrCreateAppUser: vi.fn(async () => ({
     id: actor.id, authUserId: 'b0000000-0000-4000-8000-0000000000aa', role: actor.role, displayName: 'Integration admin',
@@ -97,6 +102,7 @@ async function registerDriver(vehicleId: string | undefined, overrides: Record<s
     licenceNumber: `KA01${Math.floor(Math.random() * 1e11)}`,
     licenceExpiresOn: '2099-12-31',
     employeeCode: `EMP-${randomUUID().slice(0, 6)}`,
+    email: `driver-${randomUUID().slice(0, 8)}@example.test`,
     ...(vehicleId ? { vehicleId } : {}),
     ...overrides,
   });
@@ -147,7 +153,11 @@ afterAll(async () => {
     await client.query('DELETE FROM app.volunteers WHERE id = ANY($1::uuid[])', [created.volunteers]);
     await client.query('DELETE FROM app.vehicles WHERE id = ANY($1::uuid[])', [created.vehicles]);
     await client.query('DELETE FROM app.drivers WHERE id = ANY($1::uuid[])', [created.drivers]);
+    const driverLogins = (await client.query<{ app_user_id: string }>(
+      'SELECT app_user_id FROM app.people WHERE id = ANY($1::uuid[]) AND app_user_id IS NOT NULL', [created.people]
+    )).rows.map(row => row.app_user_id);
     await client.query('DELETE FROM app.people WHERE id = ANY($1::uuid[])', [created.people]);
+    await client.query('DELETE FROM app.app_users WHERE id = ANY($1::uuid[])', [driverLogins]);
     await client.query('DELETE FROM app.app_users WHERE id = ANY($1::uuid[])', [created.appUsers]);
     await client.query('COMMIT');
   } catch (error) {
@@ -213,16 +223,18 @@ describe.skipIf(!enabled)('Assign Driver: zero-record flow and the fixed driver-
     } finally { actor.role = 'ADMIN'; }
   });
 
-  it('creates Employee Driver A linked to Vehicle A, as staff rather than a Volunteer or login', async () => {
-    const response = await registerDriver(vehicleA, { name: `Driver A ${tag}` });
+  it('creates Employee Driver A linked to Vehicle A, with a DRIVER sign-in and no Volunteer record', async () => {
+    const email = `driver-a-${tag.toLowerCase()}@example.test`;
+    const response = await registerDriver(vehicleA, { name: `Driver A ${tag}`, email });
     expect(response.status).toBe(201);
     driverA = response.body.data.driverId;
-    expect(response.body.data).toMatchObject({ driverType: 'EMPLOYEE', status: 'ACTIVE', vehicle: { id: vehicleA } });
-    const person = await q<{ app_user_id: string | null; volunteers: number }>(
-      'SELECT p.app_user_id, (SELECT count(*)::int FROM app.volunteers v WHERE v.person_id = p.id) AS volunteers FROM app.people p WHERE p.id = $1',
+    expect(response.body.data).toMatchObject({ driverType: 'EMPLOYEE', status: 'ACTIVE', vehicle: { id: vehicleA }, loginEmail: email, hasAppLogin: true });
+    const person = await q<{ role: string | null; volunteers: number }>(
+      `SELECT au.role, (SELECT count(*)::int FROM app.volunteers v WHERE v.person_id = p.id) AS volunteers
+       FROM app.people p LEFT JOIN app.app_users au ON au.id = p.app_user_id WHERE p.id = $1`,
       [response.body.data.personId]
     );
-    expect(person[0]).toEqual({ app_user_id: null, volunteers: 0 });
+    expect(person[0]).toEqual({ role: 'DRIVER', volunteers: 0 });
   });
 
   it('keeps the link after reloading both Vehicle Details and Assign Driver', async () => {

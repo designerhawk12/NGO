@@ -385,7 +385,7 @@ try {
   assert.equal(liveRequests.length, requestsBeforeInvite, 'Password must never go to Express')
   await act(async () => releaseUpdate({ data:{ user:inviteUser }, error:null }))
   await flush()
-  assert.match(document.querySelector('.invite-page').textContent, /Your Volunteer account is ready/)
+  assert.match(document.querySelector('.invite-page').textContent, /Your AaharaConnect account is ready/)
   assert.deepEqual(inviteCalls.signOut, [{ scope:'local' }])
   await act(async () => inviteRoot.unmount())
 
