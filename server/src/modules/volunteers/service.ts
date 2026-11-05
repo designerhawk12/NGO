@@ -13,20 +13,12 @@ import type { PoolClient } from 'pg';
 import { withTransaction } from '../../db/pool';
 import { getSupabaseUserEmail, inviteSupabaseUserByEmail } from '../../auth/supabase';
 import { HttpError } from '../../middleware/errorHandler';
-import {
-  assertDriverDetailsAvailable,
-  getDriverDetailsForPerson,
-  saveDriverDetailsForPerson,
-  setDriverStatusForPerson,
-  type DriverDetails,
-  type DriverDetailsInput,
-} from '../vehicles/driverProfiles';
+import { getDriverDetailsForPerson, type DriverDetails } from '../vehicles/driverProfiles';
 import * as volunteerRepository from './repository';
 import type { VolunteerProfileRow } from './repository';
 import type { AvailabilityRow } from './repository';
 import { consumeVolunteerRegistrationRateLimit } from './registrationRateLimit';
 import type {
-  CreateAdminVolunteerInput,
   CreateSelfRegistrationInput,
   CreateTeamInput,
   ListApplicationsQuery,
@@ -207,12 +199,6 @@ export async function getAdminVolunteerDriverDetails(actor: AppUser, id: string)
   return getDriverDetailsForPerson(volunteer.person_id);
 }
 
-function assertCurrentLicence(input: DriverDetailsInput, status: 'ACTIVE' | 'INACTIVE'): void {
-  if (status === 'ACTIVE' && input.licenceExpiresOn < new Date().toISOString().slice(0, 10)) {
-    throw new HttpError(400, 'VALIDATION_ERROR', 'An active driver needs an unexpired driving licence.');
-  }
-}
-
 function throwAdminVolunteerConflict(field: 'registrationCode' | 'phoneE164'): never {
   throw new HttpError(409, field === 'registrationCode' ? 'REGISTRATION_CODE_ALREADY_EXISTS' : 'PHONE_ALREADY_EXISTS',
     field === 'registrationCode' ? 'Registration code is already in use.' : 'Phone number is already in use.');
@@ -225,32 +211,16 @@ function handleAdminVolunteerWriteError(error: unknown): never {
   throw error;
 }
 
-export async function createAdminVolunteer(actor: AppUser, input: CreateAdminVolunteerInput): Promise<Volunteer> {
+// Ordinary Volunteers now join only through mobile registration followed by Admin approval.
+// The former Admin "Add Volunteer" invitation endpoint is retired: it never creates Auth
+// identities or Volunteer rows any more. Existing invited Volunteers are unaffected.
+export function createAdminVolunteer(actor: AppUser): never {
   requireAdmin(actor);
-  const conflict = await volunteerRepository.findAdminVolunteerConflict(input.registrationCode, input.phoneE164);
-  if (conflict) throwAdminVolunteerConflict(conflict);
-  if (input.driverDetails) {
-    assertCurrentLicence(input.driverDetails, 'ACTIVE');
-    // Check before sending an external invitation so a missing vehicle cannot strand an Auth identity.
-    await assertDriverDetailsAvailable(input.driverDetails);
-  }
-
-  const invited = await inviteSupabaseUserByEmail(input.email, input.name);
-  try {
-    const row = await withTransaction(async client => {
-      const created = await volunteerRepository.insertInvitedVolunteer(invited.authUserId, input, client);
-      if (input.driverDetails) {
-        await saveDriverDetailsForPerson(created.person_id, input.driverDetails, 'ACTIVE', client);
-      }
-      return created;
-    });
-    return toVolunteer(row);
-  } catch (error) {
-    // An external Auth invitation cannot join the PostgreSQL transaction.
-    // Never delete an Auth identity here; report a repairable partial failure.
-    console.error(JSON.stringify({ level: 'error', subsystem: 'VolunteerProvisioning', code: 'INVITE_RECOVERY_REQUIRED' }));
-    throw new HttpError(503, 'INVITE_RECOVERY_REQUIRED', 'Volunteer provisioning needs administrator review before retrying.');
-  }
+  throw new HttpError(
+    410,
+    'ADMIN_VOLUNTEER_CREATION_RETIRED',
+    'Volunteers register in the AaharaConnect mobile app and are approved under Volunteer applications. NGO drivers are added from Assign Driver.'
+  );
 }
 
 function registrationConflict(): HttpError {
@@ -350,47 +320,16 @@ export async function updateAdminVolunteer(actor: AppUser, id: string, input: Up
         );
         if (conflict) throwAdminVolunteerConflict(conflict);
       }
-      const skills = input.skills ?? current.skills;
-      const hasDriverSkill = skills.some(skill => skill.toLowerCase() === 'driver');
-      const hadDriverSkill = current.skills.some(skill => skill.toLowerCase() === 'driver');
-      const driver = hasDriverSkill || hadDriverSkill || input.driverDetails || input.driverStatus
-        ? await getDriverDetailsForPerson(current.person_id, client) : null;
-      if (!hasDriverSkill && input.driverDetails) {
-        throw new HttpError(400, 'VALIDATION_ERROR', 'Select Driver before supplying driver details.');
-      }
-      if (hasDriverSkill && !driver && !input.driverDetails) {
-        throw new HttpError(400, 'VALIDATION_ERROR', 'Driver details are required when Driver is selected.');
-      }
-      if (hadDriverSkill && !hasDriverSkill && driver?.status === 'ACTIVE' && input.driverStatus !== 'INACTIVE') {
-        throw new HttpError(400, 'DRIVER_DEACTIVATION_REQUIRED', 'Confirm driver deactivation before removing the Driver skill.');
-      }
-      if (input.driverStatus && !driver && !input.driverDetails) {
-        throw new HttpError(404, 'DRIVER_NOT_FOUND', 'Driver details were not found.');
-      }
-      const status = input.driverStatus ?? driver?.status ?? 'ACTIVE';
-      if (!hasDriverSkill && input.driverStatus === 'ACTIVE') {
-        throw new HttpError(400, 'VALIDATION_ERROR', 'A driver without the Driver skill cannot be active.');
-      }
-      if (input.driverDetails) assertCurrentLicence(input.driverDetails, status);
-      else if (driver && input.driverStatus === 'ACTIVE') assertCurrentLicence(driver, status);
+      // Skills describe crew work only. They never create or change driver records: NGO drivers
+      // are employees registered from Assign Driver.
       const volunteerChanged = (input.name !== undefined && input.name !== current.name)
         || (input.phoneE164 !== undefined && input.phoneE164 !== current.phone_e164)
         || (input.registrationCode !== undefined && input.registrationCode !== current.registration_code)
         || (input.status !== undefined && input.status !== current.status)
         || (input.skills !== undefined && (input.skills.length !== current.skills.length
           || input.skills.some((skill, index) => skill !== current.skills[index])));
-      const updated = volunteerChanged
+      return volunteerChanged
         ? await volunteerRepository.updateAdminVolunteerRows(current, input, client) : current;
-      const driverDetailsChanged = input.driverDetails && (!driver
-        || input.driverDetails.licenceNumber !== driver.licenceNumber
-        || input.driverDetails.licenceExpiresOn !== driver.licenceExpiresOn
-        || input.driverDetails.vehicleRegistrationNumber !== driver.vehicleRegistrationNumber);
-      if (driverDetailsChanged && input.driverDetails) {
-        await saveDriverDetailsForPerson(current.person_id, input.driverDetails, status, client);
-      } else if (input.driverStatus && driver && input.driverStatus !== driver.status) {
-        await setDriverStatusForPerson(current.person_id, input.driverStatus, client);
-      }
-      return updated;
     });
     return toVolunteer(row);
   } catch (error) { handleAdminVolunteerWriteError(error); }

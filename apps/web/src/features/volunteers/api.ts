@@ -30,31 +30,14 @@ export const decideAdminVolunteerApplication = (
 )
 export const getAdminVolunteer = (accessToken: string, id: string) =>
   apiRequest<Volunteer>(`volunteers/${encodeURIComponent(id)}`, { headers: bearer(accessToken) })
-export type AdminDriverDetails = {
-  driverId: string
-  licenceNumber: string
-  licenceExpiresOn: string
-  vehicleRegistrationNumber: string
-  status: 'ACTIVE' | 'INACTIVE'
-  additionalVehicleCount: number
+// Volunteers are created only by mobile registration and Admin approval; Admins edit profiles.
+export type UpdateAdminVolunteerInput = {
+  name?: string
+  phoneE164?: string | null
+  registrationCode?: string
+  skills?: string[]
+  status?: 'ACTIVE' | 'INACTIVE'
 }
-export type AdminDriverDetailsInput = Pick<AdminDriverDetails, 'licenceNumber' | 'licenceExpiresOn' | 'vehicleRegistrationNumber'>
-export const getAdminVolunteerDriverDetails = (accessToken: string, id: string) =>
-  apiRequest<AdminDriverDetails | null>(`volunteers/${encodeURIComponent(id)}/driver-details`, { headers: bearer(accessToken) })
-export type CreateAdminVolunteerInput = {
-  email: string
-  name: string
-  phoneE164: string | null
-  registrationCode: string
-  skills: string[]
-  status: 'ACTIVE' | 'INACTIVE'
-  driverDetails?: AdminDriverDetailsInput
-}
-export type UpdateAdminVolunteerInput = Partial<Omit<CreateAdminVolunteerInput, 'email'>> & {
-  driverStatus?: 'ACTIVE' | 'INACTIVE'
-}
-export const createAdminVolunteer = (accessToken: string, input: CreateAdminVolunteerInput) =>
-  apiRequest<Volunteer>('volunteers', { method: 'POST', headers: bearer(accessToken), body: input })
 export const updateAdminVolunteer = (accessToken: string, id: string, input: UpdateAdminVolunteerInput) =>
   apiRequest<Volunteer>(`volunteers/${encodeURIComponent(id)}`, { method: 'PATCH', headers: bearer(accessToken), body: input })
 export const listAdminTeams = (accessToken: string) => readAll<Team>('teams', accessToken)

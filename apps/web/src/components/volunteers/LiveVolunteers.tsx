@@ -1,100 +1,57 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { Team, Volunteer, VolunteerApplication } from '@aaharaconnect/shared'
-import { Check, ChevronDown, Phone, Plus, Search, SlidersHorizontal, Users, X, XCircle } from 'lucide-react'
+import { Check, ChevronDown, Phone, Search, SlidersHorizontal, Smartphone, Users, X, XCircle } from 'lucide-react'
 import { ApiClientError } from '../../api/client'
 import {
-  createAdminVolunteer, decideAdminVolunteerApplication, getAdminVolunteer, getAdminVolunteerDriverDetails, listAdminTeams, listAdminVolunteerApplications,
-  listAdminVolunteers, updateAdminVolunteer,
-  type AdminDriverDetails, type CreateAdminVolunteerInput, type UpdateAdminVolunteerInput,
+  decideAdminVolunteerApplication, getAdminVolunteer, listAdminTeams, listAdminVolunteerApplications,
+  listAdminVolunteers, updateAdminVolunteer, type UpdateAdminVolunteerInput,
 } from '../../features/volunteers/api'
-import { fetchVehicles } from '../../features/vehicles/api'
 import { Avatar, Drawer, EmptyState, Modal, StatusBadge, Toast } from '../common/UI'
 
 type VolunteerForm = {
-  email: string
   name: string
   phone: string
   registrationCode: string
   skills: string
   status: 'ACTIVE' | 'INACTIVE'
-  licenceNumber: string
-  licenceExpiresOn: string
-  vehicleRegistrationNumber: string
-  driverStatus: 'ACTIVE' | 'INACTIVE'
 }
-const emptyForm: VolunteerForm = {
-  email: '', name: '', phone: '', registrationCode: '', skills: '', status: 'ACTIVE',
-  licenceNumber: '', licenceExpiresOn: '', vehicleRegistrationNumber: '', driverStatus: 'ACTIVE',
-}
+const emptyForm: VolunteerForm = { name: '', phone: '', registrationCode: '', skills: '', status: 'ACTIVE' }
 const phonePattern = /^\+[1-9][0-9]{7,14}$/
-const hasDriverSkill = (skills: string) => skills.split(',').some(skill => skill.trim().toLowerCase() === 'driver')
+// Volunteers are crew members. Driving NGO vehicles is reserved for employee drivers (Assign Driver).
+const crewSkillSuggestions = ['Food pickup assistance', 'Packing', 'Loading', 'Distribution', 'Food handling', 'Coordination']
+const splitSkills = (value: string) => value.split(',').map(skill => skill.trim()).filter(Boolean)
 
 function volunteerWriteError(cause: unknown): string {
   if (!(cause instanceof ApiClientError)) return 'Could not save volunteer. Try again.'
   const messages: Record<string, string> = {
     PHONE_ALREADY_EXISTS: 'A volunteer with this phone number already exists.',
     REGISTRATION_CODE_ALREADY_EXISTS: 'This registration code is already in use.',
-    VOLUNTEER_ALREADY_EXISTS: 'A volunteer account already exists for this email.',
-    INVITE_RATE_LIMITED: 'Invitation email limit reached. Please wait before sending another invitation.',
-    INVITE_EMAIL_NOT_AUTHORIZED: 'This email cannot receive invitations with the current Supabase email settings. Ask an administrator to configure SMTP.',
-    INVITE_SERVICE_UNAVAILABLE: 'The invitation service is temporarily unavailable. Try again shortly.',
-    INVITE_CONFIGURATION_ERROR: 'Invitation configuration needs administrator attention.',
-    INVITE_RECOVERY_REQUIRED: 'Invitation may have been sent, but the profile was not saved. Ask an administrator to review before retrying.',
     DATABASE_UNAVAILABLE: 'The database is temporarily unavailable.',
-    VEHICLE_NOT_FOUND: 'Register this vehicle in Vehicle Details before linking a driver.',
-    VEHICLE_DRIVER_CONFLICT: 'This vehicle is already linked to another driver.',
-    VEHICLE_REGISTRATION_AMBIGUOUS: 'Review duplicate vehicle registrations in Vehicle Details.',
-    DRIVER_LICENCE_CONFLICT: 'This driving licence is already registered.',
-    MULTIPLE_DRIVER_VEHICLES: 'Manage this driver’s multiple vehicle links in Vehicle Details.',
     NETWORK_ERROR: 'Could not reach the API. Check your connection and try again.',
   }
   return messages[cause.code] ?? 'Could not save volunteer. Try again.'
 }
 
-function parseForm(form: VolunteerForm, isCreate: boolean):
-  | { value: CreateAdminVolunteerInput | UpdateAdminVolunteerInput; error: null }
+function parseForm(form: VolunteerForm):
+  | { value: UpdateAdminVolunteerInput; error: null }
   | { value: null; error: string } {
   const name = form.name.trim()
   const registrationCode = form.registrationCode.trim()
-  const email = form.email.trim().toLowerCase()
   const phone = form.phone.trim()
-  const skills = form.skills.split(',').map(value => value.trim()).filter(Boolean)
+  const skills = splitSkills(form.skills)
   if (!name || name.length > 200) return { value: null, error: 'Enter a name (up to 200 characters).' }
   if (!registrationCode || registrationCode.length > 64) return { value: null, error: 'Enter a registration code (up to 64 characters).' }
-  if (isCreate && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)) {
-    return { value: null, error: 'Enter a valid email address.' }
-  }
   if (phone && !phonePattern.test(phone)) return { value: null, error: 'Use E.164 phone format, for example +919876543210.' }
   if (skills.length > 32 || skills.some(skill => skill.length > 100)
     || new Set(skills.map(skill => skill.toLowerCase())).size !== skills.length) {
     return { value: null, error: 'Enter up to 32 unique skills, separated by commas.' }
   }
-  const driverSelected = skills.some(skill => skill.toLowerCase() === 'driver')
-  const licenceNumber = form.licenceNumber.trim().toUpperCase()
-  const licenceExpiresOn = form.licenceExpiresOn.trim()
-  const vehicleRegistrationNumber = form.vehicleRegistrationNumber.trim().toUpperCase()
-  if (driverSelected && (!/^[A-Z0-9][A-Z0-9 /-]{4,39}$/.test(licenceNumber)
-    || !/^\d{4}-\d{2}-\d{2}$/.test(licenceExpiresOn)
-    || !/^[A-Z0-9][A-Z0-9 -]{3,31}$/.test(vehicleRegistrationNumber))) {
-    return { value: null, error: 'Enter a valid driving licence number, expiry date and registered vehicle number.' }
-  }
-  if (driverSelected && form.driverStatus === 'ACTIVE' && licenceExpiresOn < new Date().toISOString().slice(0, 10)) {
-    return { value: null, error: 'An active driver needs an unexpired driving licence.' }
-  }
-  const fields = {
-    name, phoneE164: phone || null, registrationCode, skills, status: form.status,
-    ...(driverSelected ? { driverDetails: { licenceNumber, licenceExpiresOn, vehicleRegistrationNumber } } : {}),
-    ...(!isCreate && driverSelected ? { driverStatus: form.driverStatus } : {}),
-  }
-  return { value: isCreate ? { ...fields, email } : fields, error: null }
+  return { value: { name, phoneE164: phone || null, registrationCode, skills, status: form.status }, error: null }
 }
 
 export default function LiveVolunteers({ token }: { token: string }) {
   const [volunteers, setVolunteers] = useState<Volunteer[]>([])
   const [teams, setTeams] = useState<Team[]>([])
-  const [registeredVehicleNumbers, setRegisteredVehicleNumbers] = useState<string[]>([])
-  const [vehicleOptionsLoading, setVehicleOptionsLoading] = useState(true)
-  const [vehicleOptionsError, setVehicleOptionsError] = useState(false)
   const [applications, setApplications] = useState<VolunteerApplication[]>([])
   const [applicationsLoading, setApplicationsLoading] = useState(true)
   const [applicationsError, setApplicationsError] = useState(false)
@@ -107,13 +64,9 @@ export default function LiveVolunteers({ token }: { token: string }) {
   const [skill, setSkill] = useState('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<Volunteer | null>(null)
-  const [detailDriver, setDetailDriver] = useState<AdminDriverDetails | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState(false)
-  const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingDriver, setEditingDriver] = useState<AdminDriverDetails | null>(null)
-  const [editingLoadingId, setEditingLoadingId] = useState<string | null>(null)
   const [form, setForm] = useState<VolunteerForm>(emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -134,93 +87,37 @@ export default function LiveVolunteers({ token }: { token: string }) {
     catch { setApplicationsError(true) }
     finally { setApplicationsLoading(false) }
   }, [token])
-  const loadRegisteredVehicles = useCallback(async () => {
-    setVehicleOptionsLoading(true)
-    setVehicleOptionsError(false)
-    try {
-      const items: string[] = []
-      let cursor: string | null = null
-      const seenCursors = new Set<string>()
-      do {
-        const page = await fetchVehicles({ limit: 100, ...(cursor ? { cursor } : {}) }, token)
-        items.push(...page.items.map(vehicle => vehicle.registrationNumber.trim().toUpperCase()).filter(Boolean))
-        cursor = page.nextCursor
-        if (cursor && seenCursors.has(cursor)) throw new Error('Vehicle registry pagination did not advance.')
-        if (cursor) seenCursors.add(cursor)
-      } while (cursor)
-      setRegisteredVehicleNumbers([...new Set(items)])
-    } catch {
-      setRegisteredVehicleNumbers([])
-      setVehicleOptionsError(true)
-    } finally { setVehicleOptionsLoading(false) }
-  }, [token])
-  useEffect(() => { void load(); void loadApplications(); void loadRegisteredVehicles() }, [load, loadApplications, loadRegisteredVehicles])
-  const refreshRosterAndVehicles = useCallback(async () => {
-    await Promise.all([load(), loadRegisteredVehicles()])
-  }, [load, loadRegisteredVehicles])
+  useEffect(() => { void load(); void loadApplications() }, [load, loadApplications])
   const loadDetail = useCallback(async (id: string) => {
-    setSelectedId(id); setDetail(null); setDetailDriver(null); setDetailLoading(true); setDetailError(false)
-    try {
-      const [volunteer, driver] = await Promise.all([
-        getAdminVolunteer(token, id), getAdminVolunteerDriverDetails(token, id),
-      ])
-      setDetail(volunteer); setDetailDriver(driver)
-    }
+    setSelectedId(id); setDetail(null); setDetailLoading(true); setDetailError(false)
+    try { setDetail(await getAdminVolunteer(token, id)) }
     catch { setDetailError(true) }
     finally { setDetailLoading(false) }
   }, [token])
-  const openCreate = () => {
-    setForm(emptyForm); setEditingId(null); setEditingDriver(null); setFormError(null); setFormMode('create')
+  const openEdit = (volunteer: Volunteer) => {
+    setForm({
+      name: volunteer.name, phone: volunteer.phoneE164 ?? '',
+      registrationCode: volunteer.registrationCode, skills: volunteer.skills.join(', '), status: volunteer.status,
+    })
+    setEditingId(volunteer.id); setFormError(null)
   }
-  const openEdit = async (volunteer: Volunteer) => {
-    setEditingLoadingId(volunteer.id)
-    try {
-      const driver = await getAdminVolunteerDriverDetails(token, volunteer.id)
-      setEditingDriver(driver)
-      setForm({
-        email: '', name: volunteer.name, phone: volunteer.phoneE164 ?? '',
-        registrationCode: volunteer.registrationCode, skills: volunteer.skills.join(', '), status: volunteer.status,
-        licenceNumber: driver?.licenceNumber ?? '', licenceExpiresOn: driver?.licenceExpiresOn ?? '',
-        vehicleRegistrationNumber: driver?.vehicleRegistrationNumber ?? '', driverStatus: driver?.status ?? 'ACTIVE',
-      })
-      setEditingId(volunteer.id); setFormError(null); setFormMode('edit')
-    } catch { setFeedback({ message: 'Could not load driver details. Retry editing this volunteer.', kind: 'error' }) }
-    finally { setEditingLoadingId(null) }
+  const toggleSuggestedSkill = (value: string) => {
+    const current = splitSkills(form.skills)
+    const exists = current.some(item => item.toLowerCase() === value.toLowerCase())
+    setForm({ ...form, skills: (exists ? current.filter(item => item.toLowerCase() !== value.toLowerCase()) : [...current, value]).join(', ') })
   }
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (submitting.current) return
-    const parsed = parseForm(form, formMode === 'create')
-    if (parsed.error) { setFormError(parsed.error); return }
-    if (hasDriverSkill(form.skills)
-      && !registeredVehicleNumbers.includes(form.vehicleRegistrationNumber.trim().toUpperCase())) {
-      setFormError(vehicleOptionsError
-        ? 'Could not verify the registered vehicle list. Refresh and try again.'
-        : 'Select a vehicle already registered in Vehicle Details.')
-      return
-    }
-    if (formMode === 'edit' && editingDriver && !hasDriverSkill(form.skills) && editingDriver.status === 'ACTIVE') {
-      if (!window.confirm('Remove the Driver skill and deactivate this driver? Saved licence and vehicle details will be retained.')) return
-      const update = parsed.value as UpdateAdminVolunteerInput
-      update.driverStatus = 'INACTIVE'
-    }
+    if (submitting.current || !editingId) return
+    const parsed = parseForm(form)
+    if (parsed.value === null) { setFormError(parsed.error); return }
     submitting.current = true; setSaving(true); setFormError(null)
     try {
-      let updated: Volunteer
-      if (formMode === 'create') {
-        updated = await createAdminVolunteer(token, parsed.value as CreateAdminVolunteerInput)
-        setVolunteers(current => [updated, ...current.filter(item => item.id !== updated.id)])
-        setSearch(''); setStatus('all'); setTeamId('all'); setSkill('all')
-        setFeedback({ message: 'Volunteer created and invitation sent.', kind: 'success' })
-      } else if (editingId) {
-        updated = await updateAdminVolunteer(token, editingId, parsed.value as UpdateAdminVolunteerInput)
-        setVolunteers(current => current.map(item => item.id === updated.id ? updated : item))
-        if (selectedId === updated.id) setDetail(updated)
-        setFeedback({ message: 'Volunteer profile updated successfully.', kind: 'success' })
-      } else {
-        throw new Error('Choose a volunteer to edit.')
-      }
-      setFormMode(null); setEditingId(null); setEditingDriver(null); setForm(emptyForm)
+      const updated = await updateAdminVolunteer(token, editingId, parsed.value)
+      setVolunteers(current => current.map(item => item.id === updated.id ? updated : item))
+      if (selectedId === updated.id) setDetail(updated)
+      setFeedback({ message: 'Volunteer profile updated successfully.', kind: 'success' })
+      setEditingId(null); setForm(emptyForm)
       void load()
     } catch (cause) {
       setFormError(volunteerWriteError(cause))
@@ -255,10 +152,11 @@ export default function LiveVolunteers({ token }: { token: string }) {
       && (teamId === 'all' || (teamId === 'none' ? !teams.some(team => team.memberIds.includes(volunteer.id)) : teams.some(team => team.id === teamId && team.memberIds.includes(volunteer.id))))
       && (skill === 'all' || volunteer.skills.includes(skill))
   }), [volunteers, teams, search, status, teamId, skill])
+  const formSkills = splitSkills(form.skills).map(item => item.toLowerCase())
 
   return <>
-    <div className="page-heading"><div><span className="eyebrow">PEOPLE & CAPACITY</span><h1>Volunteers</h1><p>Manage NGO volunteers and their availability.</p></div><button className="button button-primary" onClick={openCreate}><Plus size={18}/> Add Volunteer</button></div>
-    <div className="info-strip"><div className="info-strip-icon"><Users size={21}/></div><div><strong>Live administrator roster</strong><span>Volunteer profiles and invitations are managed through the shared API.</span></div><span className="info-strip-count">{volunteers.length} profiles</span></div>
+    <div className="page-heading"><div><span className="eyebrow">PEOPLE & CAPACITY</span><h1>Volunteers</h1><p>Manage NGO volunteers and their availability.</p></div></div>
+    <div className="info-strip"><div className="info-strip-icon"><Smartphone size={21}/></div><div><strong>Volunteers join through the mobile app</strong><span>New volunteers register in the AaharaConnect Android app and appear below for approval. NGO drivers are employees and are added from Assign Driver.</span></div><span className="info-strip-count">{volunteers.length} profiles</span></div>
     <section className="panel volunteer-panel" aria-live="polite" aria-labelledby="volunteer-approval-heading">
       <div className="table-toolbar">
         <div><strong id="volunteer-approval-heading">Volunteer Applications</strong><p className="quiet-text">{applications.length} <span>{applications.length === 1 ? 'pending application' : 'pending applications'}</span></p></div>
@@ -290,34 +188,23 @@ export default function LiveVolunteers({ token }: { token: string }) {
       <div className="filters"><span className="filter-caption"><SlidersHorizontal size={17}/> Filters</span><label className="select-wrap"><select value={status} onChange={event => setStatus(event.target.value)} aria-label="Filter by status"><option value="all">All statuses</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select><ChevronDown size={15}/></label><label className="select-wrap"><select value={teamId} onChange={event => setTeamId(event.target.value)} aria-label="Filter by team"><option value="all">All teams</option>{teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}<option value="none">Unassigned</option></select><ChevronDown size={15}/></label><label className="select-wrap"><select value={skill} onChange={event => setSkill(event.target.value)} aria-label="Filter by skill"><option value="all">All skills</option>{skills.map(value => <option key={value} value={value}>{value}</option>)}</select><ChevronDown size={15}/></label>{(status !== 'all' || teamId !== 'all' || skill !== 'all') && <button className="clear-filters" onClick={() => { setStatus('all'); setTeamId('all'); setSkill('all') }}>Clear filters</button>}</div>
       {loading && volunteers.length === 0 ? <p className="quiet-text" style={{ padding: 20 }}>Loading volunteers…</p> : error && volunteers.length === 0 ? <EmptyState title="Could not load volunteers" description="Check your administrator session and API connection, then retry." action={<button className="button button-secondary" onClick={() => void load()}>Retry</button>}/> : <>
         {error && <p className="quiet-text" role="alert">Could not refresh volunteers. Showing the last loaded roster. <button className="text-link" onClick={() => void load()}>Retry</button></p>}
-        {filtered.length ? <div className="table-scroll"><table className="data-table volunteer-table"><thead><tr><th>Volunteer</th><th>Phone</th><th>Skills</th><th>Team</th><th>Status</th><th>Actions</th></tr></thead><tbody>{filtered.map(volunteer => <tr key={volunteer.id}><td><button className="person-cell" onClick={() => void loadDetail(volunteer.id)}><Avatar name={volunteer.name}/><span><strong>{volunteer.name}</strong><small>{volunteer.registrationCode}</small></span></button></td><td>{volunteer.phoneE164 ?? '—'}</td><td><div className="skill-list">{volunteer.skills.map(value => <span className="skill-badge" key={value}>{value}</span>)}</div></td><td><span className="team-cell">{teamNames(volunteer.id)}</span></td><td><StatusBadge status={volunteer.status}/></td><td><button className="text-link" onClick={() => void loadDetail(volunteer.id)}>View profile</button><button className="text-link" disabled={editingLoadingId === volunteer.id} onClick={() => void openEdit(volunteer)}>{editingLoadingId === volunteer.id ? 'Loading…' : 'Edit volunteer'}</button></td></tr>)}</tbody></table></div> : <EmptyState title="No volunteers found" description="Try a different search or clear the filters to see more people." action={<button className="button button-secondary" onClick={() => { setSearch(''); setStatus('all'); setTeamId('all'); setSkill('all') }}>Clear search and filters</button>}/>}
+        {filtered.length ? <div className="table-scroll"><table className="data-table volunteer-table"><thead><tr><th>Volunteer</th><th>Phone</th><th>Skills</th><th>Team</th><th>Status</th><th>Actions</th></tr></thead><tbody>{filtered.map(volunteer => <tr key={volunteer.id}><td><button className="person-cell" onClick={() => void loadDetail(volunteer.id)}><Avatar name={volunteer.name}/><span><strong>{volunteer.name}</strong><small>{volunteer.registrationCode}</small></span></button></td><td>{volunteer.phoneE164 ?? '—'}</td><td><div className="skill-list">{volunteer.skills.map(value => <span className="skill-badge" key={value}>{value}</span>)}</div></td><td><span className="team-cell">{teamNames(volunteer.id)}</span></td><td><StatusBadge status={volunteer.status}/></td><td><button className="text-link" onClick={() => void loadDetail(volunteer.id)}>View profile</button><button className="text-link" onClick={() => openEdit(volunteer)}>Edit volunteer</button></td></tr>)}</tbody></table></div> : <EmptyState title="No volunteers found" description="Try a different search or clear the filters to see more people." action={<button className="button button-secondary" onClick={() => { setSearch(''); setStatus('all'); setTeamId('all'); setSkill('all') }}>Clear search and filters</button>}/>}
       </>}
-      <div className="table-footer"><span>Live volunteer roster</span><button className="text-link" onClick={() => void refreshRosterAndVehicles()} disabled={loading || vehicleOptionsLoading}>Refresh</button></div>
+      <div className="table-footer"><span>Live volunteer roster</span><button className="text-link" onClick={() => void load()} disabled={loading}>Refresh</button></div>
     </section>
-    {selectedId && <Drawer title="Volunteer profile" onClose={() => { setSelectedId(null); setDetail(null); setDetailDriver(null) }}><div className="drawer-body">{detailLoading ? <p className="quiet-text">Loading volunteer profile…</p> : detailError ? <EmptyState title="Could not load volunteer profile" description="Try again to read this record." action={<button className="button button-secondary" onClick={() => void loadDetail(selectedId)}>Retry</button>}/> : detail ? <><div className="profile-hero"><Avatar name={detail.name} size="lg"/><h2>{detail.name}</h2><span className="muted-id">{detail.registrationCode}</span><StatusBadge status={detail.status}/><button className="button button-secondary" disabled={editingLoadingId === detail.id} onClick={() => { setSelectedId(null); setDetail(null); void openEdit(detail) }}>Edit Volunteer</button></div><div className="detail-section"><h3>Volunteer details</h3><div className="detail-grid"><div><span>Phone</span><strong><Phone size={15}/>{detail.phoneE164 ?? '—'}</strong></div><div><span>Team</span><strong><Users size={15}/>{teamNames(detail.id)}</strong></div></div><div className="detail-skills"><span>Skills</span><div className="skill-list">{detail.skills.map(value => <span className="skill-badge" key={value}>{value}</span>)}</div></div></div>{detailDriver && <div className="detail-section"><h3>Driver details</h3><div className="detail-grid"><div><span>Driver status</span><strong><StatusBadge status={detailDriver.status}/></strong></div><div><span>Vehicle registration</span><strong>{detailDriver.vehicleRegistrationNumber || 'Unlinked'}</strong></div><div><span>Driving licence</span><strong>{detailDriver.licenceNumber}</strong></div><div><span>Licence expires</span><strong>{detailDriver.licenceExpiresOn}</strong></div></div>{detailDriver.additionalVehicleCount > 0 && <p className="quiet-text">Also linked to {detailDriver.additionalVehicleCount} other vehicles. Manage links in Vehicle Details.</p>}<p className="quiet-text">Driver status is separate from Volunteer approval and availability.</p></div>}<p className="quiet-text">Availability and assignment history are not included in this administrator read API.</p></> : null}</div></Drawer>}
-    {formMode && <Modal title={formMode === 'create' ? 'Add a volunteer' : 'Edit volunteer'} subtitle={formMode === 'create' ? 'Create a volunteer profile and send an invitation.' : 'Update this volunteer’s administrative profile.'} onClose={() => { if (!saving) setFormMode(null) }}>
+    {selectedId && <Drawer title="Volunteer profile" onClose={() => { setSelectedId(null); setDetail(null) }}><div className="drawer-body">{detailLoading ? <p className="quiet-text">Loading volunteer profile…</p> : detailError ? <EmptyState title="Could not load volunteer profile" description="Try again to read this record." action={<button className="button button-secondary" onClick={() => void loadDetail(selectedId)}>Retry</button>}/> : detail ? <><div className="profile-hero"><Avatar name={detail.name} size="lg"/><h2>{detail.name}</h2><span className="muted-id">{detail.registrationCode}</span><StatusBadge status={detail.status}/><button className="button button-secondary" onClick={() => { setSelectedId(null); setDetail(null); openEdit(detail) }}>Edit Volunteer</button></div><div className="detail-section"><h3>Volunteer details</h3><div className="detail-grid"><div><span>Phone</span><strong><Phone size={15}/>{detail.phoneE164 ?? '—'}</strong></div><div><span>Team</span><strong><Users size={15}/>{teamNames(detail.id)}</strong></div></div><div className="detail-skills"><span>Skills</span><div className="skill-list">{detail.skills.map(value => <span className="skill-badge" key={value}>{value}</span>)}</div></div></div><p className="quiet-text">Availability and assignment history are not included in this administrator read API.</p></> : null}</div></Drawer>}
+    {editingId && <Modal title="Edit volunteer" subtitle="Update this volunteer’s administrative profile." onClose={() => { if (!saving) setEditingId(null) }}>
       <form className="dialog-form" onSubmit={event => void submit(event)} noValidate>
         <div className="form-grid">
-          {formMode === 'create' && <label className="field field-full">Email <span aria-hidden="true">*</span><input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} placeholder="name@example.com" required maxLength={254}/></label>}
           <label className="field field-full">Full name <span aria-hidden="true">*</span><input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="e.g. Kavya Iyer" required maxLength={200}/></label>
           <label className="field">Phone<input type="tel" value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} placeholder="+919876543210" aria-describedby="volunteer-phone-help"/><small id="volunteer-phone-help">Include country code, for example +919876543210.</small></label>
           <label className="field">Registration code <span aria-hidden="true">*</span><input value={form.registrationCode} onChange={event => setForm({ ...form, registrationCode: event.target.value })} placeholder="VOL-002" required maxLength={64}/></label>
-          <label className="field field-full">Skills<input value={form.skills} onChange={event => setForm({ ...form, skills: event.target.value })} placeholder="Driver, Packing"/><small>Separate skills with commas.</small></label>
-          <label className="driver-skill-toggle field-full"><input type="checkbox" checked={hasDriverSkill(form.skills)} onChange={event => {
-            const skills = form.skills.split(',').map(skill => skill.trim()).filter(Boolean).filter(skill => skill.toLowerCase() !== 'driver')
-            setForm({ ...form, skills: [...skills, ...(event.target.checked ? ['Driver'] : [])].join(', ') })
-          }}/> Driver</label>
-          {hasDriverSkill(form.skills) && <>
-            <label className="field">Driving License Number <span aria-hidden="true">*</span><input value={form.licenceNumber} onChange={event => setForm({ ...form, licenceNumber: event.target.value })} required maxLength={40} autoComplete="off"/></label>
-            <label className="field">Vehicle Registration Number <span aria-hidden="true">*</span><select value={form.vehicleRegistrationNumber} onChange={event => setForm({ ...form, vehicleRegistrationNumber: event.target.value })} required disabled={vehicleOptionsLoading || Boolean(editingDriver?.additionalVehicleCount)}><option value="">{vehicleOptionsLoading ? 'Loading registered vehicles…' : 'Select a registered vehicle'}</option>{registeredVehicleNumbers.map(registration => <option key={registration} value={registration}>{registration}</option>)}</select><small>{vehicleOptionsError ? 'Vehicle registry could not be loaded. Retry before saving a driver.' : editingDriver?.additionalVehicleCount ? 'Manage multiple vehicle links in Vehicle Details.' : 'Only vehicles registered in Vehicle Details can be linked.'}</small></label>
-            <label className="field">License Expiry Date <span aria-hidden="true">*</span><input type="date" value={form.licenceExpiresOn} onChange={event => setForm({ ...form, licenceExpiresOn: event.target.value })} required/></label>
-            {formMode === 'edit' && <label className="field">Driver status<select value={form.driverStatus} onChange={event => setForm({ ...form, driverStatus: event.target.value as VolunteerForm['driverStatus'] })}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select><small>Separate from Volunteer status and approval.</small></label>}
-          </>}
-          {formMode === 'edit' && editingDriver && !hasDriverSkill(form.skills) && <p className="quiet-text field-full">Saved driver details are retained. Removing Driver will deactivate the driver after confirmation.</p>}
+          <label className="field field-full">Crew skills<input value={form.skills} onChange={event => setForm({ ...form, skills: event.target.value })} placeholder="Packing, Loading"/><small>Separate skills with commas. Skills describe crew work only; they never make a volunteer a vehicle driver.</small></label>
+          <div className="field field-full"><span>Common crew skills</span><div className="skill-picker">{crewSkillSuggestions.map(value => <label key={value} className={formSkills.includes(value.toLowerCase()) ? 'selected' : ''}><input type="checkbox" checked={formSkills.includes(value.toLowerCase())} onChange={() => toggleSuggestedSkill(value)}/>{value}</label>)}</div></div>
           <label className="field">Volunteer status<select value={form.status} onChange={event => setForm({ ...form, status: event.target.value as VolunteerForm['status'] })}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></label>
         </div>
         {formError && <p className="settings-auth-message" role="alert">{formError}</p>}
-        <div className="dialog-footer"><button type="button" className="button button-secondary" disabled={saving} onClick={() => setFormMode(null)}>Cancel</button><button type="submit" className="button button-primary" disabled={saving}>{saving ? 'Saving…' : formMode === 'create' ? 'Add Volunteer' : 'Save Changes'}</button></div>
+        <div className="dialog-footer"><button type="button" className="button button-secondary" disabled={saving} onClick={() => setEditingId(null)}>Cancel</button><button type="submit" className="button button-primary" disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</button></div>
       </form>
     </Modal>}
     {feedback && <Toast message={feedback.message} kind={feedback.kind} onClose={() => setFeedback(null)}/>}

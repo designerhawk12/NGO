@@ -598,12 +598,14 @@ const testPersonDriver = '10000000-0000-4000-8000-000000000001';
 const testPersonVol1 = '10000000-0000-4000-8000-000000000002';
 const testPersonVol2 = '10000000-0000-4000-8000-000000000003';
 const testAssignmentId = '70000000-0000-4000-8000-000000000001';
+const testVesselId = '90000000-0000-4000-8000-000000000001';
 
 const validAssignmentPayload = {
   teamId: null,
   volunteerIds: [testVolunteerId1],
   driverId: testDriverId,
   vehicleId: testVehicleId,
+  vesselIds: [testVesselId],
   role: 'Pickup Volunteer',
   windowStartsAt: '2030-10-30T10:00:00.000Z',
   windowEndsAt: '2030-10-30T12:00:00.000Z',
@@ -620,6 +622,9 @@ function setupDefaultAssignmentDb(overrides: {
   volunteerAvailable?: boolean;
   volunteerUnavailable?: boolean;
   dbError?: { code: string; message?: string };
+  foodItems?: Record<string, unknown>[];
+  vessels?: null;
+  vessel?: Record<string, unknown>;
 } = {}) {
   query.mockImplementation(async (sql: string, params: unknown[]) => {
     if (overrides.dbError) {
@@ -666,9 +671,41 @@ function setupDefaultAssignmentDb(overrides: {
           pickup_deadline: new Date('2030-10-30T14:00:00.000Z'),
           ready_at: new Date('2030-10-30T09:00:00.000Z'),
           estimated_weight_kg: 20,
+          handling_requirements: '',
           ...overrides.foodRequest,
         }],
       };
+    }
+    if (sql.includes('FROM app.food_items')) {
+      return { rows: overrides.foodItems ?? [{ food_type: 'Rice', quantity: 20, unit: 'KG', handling_requirements: '', estimated_weight_kg: null }] };
+    }
+    if (sql.includes('FROM app.vessels')) {
+      if (overrides.vessels === null) return { rows: [] };
+      return {
+        rows: [{
+          id: testVesselId,
+          vessel_code: 'HB-001',
+          name: 'Hot box',
+          vessel_type: 'HOT_BOX',
+          material: 'STAINLESS_STEEL',
+          capacity_value: 40,
+          capacity_unit: 'KG',
+          temperature_suitability: 'HOT',
+          food_grade_certified: true,
+          has_tight_lid: true,
+          status: 'AVAILABLE',
+          cleaning_status: 'CLEAN',
+          maintenance_condition: 'GOOD',
+          inspection_result: 'PASSED',
+          ...overrides.vessel,
+        }],
+      };
+    }
+    if (sql.includes('INSERT INTO app.vessel_issuances')) {
+      return { rows: [{ id: '91000000-0000-4000-8000-000000000001', issued_at: new Date('2030-10-01T00:00:00.000Z') }] };
+    }
+    if (sql.includes('SELECT id FROM app.pickups WHERE id = $1')) {
+      return { rows: [{ id: testPickupId }] };
     }
     if (sql.includes('FROM app.drivers')) {
       if (overrides.driver === null) return { rows: [] };
@@ -679,6 +716,8 @@ function setupDefaultAssignmentDb(overrides: {
           licence_number: 'DL12345678',
           licence_expires_on: new Date('2031-01-01'),
           status: 'ACTIVE',
+          driver_type: 'EMPLOYEE',
+          fixed_vehicle_id: testVehicleId,
           ...overrides.driver,
         }],
       };
@@ -1076,8 +1115,8 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
       expect(res.body.error.message).toContain('UNSAFE');
     });
 
-    it('returns 409 RESOURCE_CONFLICT when vehicle capacity is less than estimated load', async () => {
-      setupDefaultAssignmentDb({ vehicle: { capacity_kg: 10 } }); // load is 20 kg
+    it('returns 409 VEHICLE_CAPACITY_INSUFFICIENT when vehicle capacity is less than the stored food load', async () => {
+      setupDefaultAssignmentDb({ vehicle: { capacity_kg: 10 } }); // stored food load is 20 kg
 
       const res = await request(app)
         .post(`/api/v1/pickups/${testPickupId}/assignments`)
@@ -1086,7 +1125,7 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
         .send(validAssignmentPayload);
 
       expect(res.status).toBe(409);
-      expect(res.body.error.code).toBe('RESOURCE_CONFLICT');
+      expect(res.body.error.code).toBe('VEHICLE_CAPACITY_INSUFFICIENT');
       expect(res.body.error.message).toContain('capacity');
     });
 

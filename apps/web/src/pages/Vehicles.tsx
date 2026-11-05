@@ -58,10 +58,11 @@ function toFrontendVehicle(item: ApiVehicleItem, existing?: Vehicle): Vehicle {
     nextServiceDate: existing?.nextServiceDate ?? existing?.nextMaintenance ?? item.latestMaintenance?.nextServiceDueOn ?? undefined,
     lastCleaningDate: existing?.lastCleaningDate,
     nextCleaningDueDate: existing?.nextCleaningDueDate,
-    driverId: item.currentDriver?.driverId ?? existing?.driverId,
-    driverName: item.currentDriver?.name ?? existing?.driverName,
-    driverPhone: item.currentDriver?.phone ?? existing?.driverPhone,
-    driverLicence: item.currentDriver?.licenceNumber ?? existing?.driverLicence,
+    // The fixed NGO employee driver comes only from the server (set in Assign Driver).
+    driverId: item.assignedDriver?.driverId,
+    driverName: item.assignedDriver?.name,
+    driverPhone: item.assignedDriver?.phone ?? undefined,
+    driverLicence: item.assignedDriver?.licenceNumber,
     lastMaintenance: item.latestMaintenance?.servicedOn ?? existing?.lastMaintenance,
     nextMaintenance: item.latestMaintenance?.nextServiceDueOn ?? existing?.nextMaintenance ?? existing?.nextServiceDate,
     readiness: item.readiness ?? existing?.readiness,
@@ -222,7 +223,6 @@ export default function Vehicles({
             status: vehicle.status === 'MAINTENANCE' || vehicle.status === 'RETIRED' ? vehicle.status : 'ACTIVE',
             sizeCategory: vehicle.sizeCategory ?? null,
             indicativeMaxVessels: vehicle.indicativeMaxVessels ?? null,
-            assignedDriverId: vehicle.driverId ?? null,
           })
           notify('Vehicle updated successfully.', 'success')
         } else {
@@ -234,7 +234,6 @@ export default function Vehicles({
             status: vehicle.status === 'MAINTENANCE' || vehicle.status === 'RETIRED' ? vehicle.status : 'ACTIVE',
             sizeCategory: vehicle.sizeCategory ?? null,
             indicativeMaxVessels: vehicle.indicativeMaxVessels ?? null,
-            assignedDriverId: vehicle.driverId ?? null,
           })
           notify('Vehicle added to registry successfully.', 'success')
         }
@@ -511,8 +510,6 @@ export default function Vehicles({
       {modalMode === 'add' && (
         <VehicleModal
           existingVehicles={visibleVehicles}
-          drivers={eligibleDrivers}
-          registeredDriversOnly={isLiveAdmin()}
           maintenanceRecords={maintenanceRecords}
           onClose={() => setModalMode(null)}
           onSave={handleSaveVehicle}
@@ -525,8 +522,6 @@ export default function Vehicles({
           key={selectedVehicle.vehicleId}
           vehicle={selectedVehicle}
           existingVehicles={visibleVehicles}
-          drivers={eligibleDrivers}
-          registeredDriversOnly={isLiveAdmin()}
           maintenanceRecords={maintenanceRecords}
           onClose={() => {
             setSelectedVehicle(null)

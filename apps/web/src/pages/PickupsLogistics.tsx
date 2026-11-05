@@ -1,4 +1,4 @@
-import { Plus, RefreshCw, Search, Sparkles } from 'lucide-react'
+import { Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { EmptyState, formatDate, formatTime, StatusBadge } from '../components/common/UI'
 import { AssignWizard } from '../features/pickups/AssignWizard'
@@ -6,6 +6,7 @@ import { CreatePickupDialog } from '../features/pickups/CreatePickupDialog'
 import { usePickups } from '../features/pickups/hooks'
 import { fetchActiveAssignment } from '../features/pickups/api'
 import { PickupDrawer } from '../features/pickups/PickupDrawer'
+import { DeletePickupDialog, EditPickupDialog, isPickupEditable, isPickupRemovable } from '../features/pickups/PickupAdminDialogs'
 import type { LiveAssignment, Pickup } from '../features/pickups/types'
 import type { Assignment, Volunteer, VolunteerTeam } from '../types'
 import Assignments from './Assignments'
@@ -46,6 +47,9 @@ export default function PickupsLogistics({
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedPickup, setSelectedPickup] = useState<Pickup | null>(null)
   const [assignPickup, setAssignPickup] = useState<Pickup | null>(null)
+  const [editPickup, setEditPickup] = useState<Pickup | null>(null)
+  const [deletePickup, setDeletePickup] = useState<Pickup | null>(null)
+  const [showRemoved, setShowRemoved] = useState(false)
   const [liveAssignmentsMap, setLiveAssignmentsMap] = useState<Record<string, LiveAssignment>>({})
   const [liveAssignments, setLiveAssignments] = useState<Array<{ pickup: Pickup; assignment: LiveAssignment }>>([])
   const [assignmentsLoading, setAssignmentsLoading] = useState(false)
@@ -84,10 +88,13 @@ export default function PickupsLogistics({
     if (activeTab === 'Assignments' && isLiveAdmin()) void loadLiveAssignments()
   }, [activeTab, loadLiveAssignments])
 
+  // Removed (cancelled) pickups stay in the database for audit but leave the active schedule.
+  const removedCount = pickups.filter(p => p.status === 'CANCELLED').length
   const filteredPickups = useMemo(() => {
-    if (!searchQuery.trim()) return pickups
+    const scoped = showRemoved ? pickups : pickups.filter(p => p.status !== 'CANCELLED')
+    if (!searchQuery.trim()) return scoped
     const q = searchQuery.toLowerCase().trim()
-    return pickups.filter(
+    return scoped.filter(
       p =>
         p.id.toLowerCase().includes(q) ||
         p.deliveryAddress.toLowerCase().includes(q) ||
@@ -96,7 +103,7 @@ export default function PickupsLogistics({
         (p.aiAssessment?.vehicle.vehicleType &&
           p.aiAssessment.vehicle.vehicleType.toLowerCase().includes(q))
     )
-  }, [pickups, searchQuery])
+  }, [pickups, searchQuery, showRemoved])
 
   const handlePickupCreated = (_newPickup: Pickup) => {
     void reload()
@@ -184,7 +191,7 @@ export default function PickupsLogistics({
                 Retry
               </button>
             </div>
-          ) : filteredPickups.length === 0 ? (
+          ) : filteredPickups.length === 0 && removedCount === 0 ? (
             <EmptyState
               title="No pickups yet"
               description="Approved food requests will appear here once the live connection is ready."
@@ -218,9 +225,17 @@ export default function PickupsLogistics({
                 >
                   <RefreshCw size={15} className={loading ? 'animate-spin' : ''}/> Refresh pickups
                 </button>
+                {removedCount > 0 && (
+                  <button type="button" className="text-link" aria-pressed={showRemoved} onClick={() => setShowRemoved(value => !value)}>
+                    {showRemoved ? 'Hide removed pickups' : `Show removed pickups (${removedCount})`}
+                  </button>
+                )}
               </div>
+              {filteredPickups.length === 0 && (
+                <p className="quiet-text" style={{ padding: '1rem 1.25rem' }}>No active scheduled pickups. Removed pickups are hidden from the schedule.</p>
+              )}
 
-              <div className="table-scroll">
+              <div className="table-scroll" hidden={filteredPickups.length === 0}>
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -268,6 +283,11 @@ export default function PickupsLogistics({
                               <small style={{ display: 'block', color: '#047857', fontWeight: 500 }}>
                                 ➔ Deliver to NGO: {p.deliveryAddress}
                               </small>
+                              {p.operationalNotes && (
+                                <small style={{ display: 'block', color: '#475569' }}>
+                                  📝 Notes: {p.operationalNotes}
+                                </small>
+                              )}
                               {p.foods && p.foods.length > 0 && (
                                 <small style={{ display: 'block', color: '#b45309', fontWeight: 600, marginTop: '2px' }}>
                                   🥘 Food to collect: {p.foods.map(f => `${f.name} (${f.quantity} ${f.unit})`).join(', ')}
@@ -330,6 +350,16 @@ export default function PickupsLogistics({
                                 Assign Crew
                               </button>
                             )}
+                            {isLiveAdmin() && isPickupEditable(p) && (
+                              <button type="button" className="button button-secondary" onClick={() => setEditPickup(p)}>
+                                <Pencil size={14} /> Edit
+                              </button>
+                            )}
+                            {isLiveAdmin() && isPickupRemovable(p) && (
+                              <button type="button" className="button button-danger" onClick={() => setDeletePickup(p)}>
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="button button-secondary"
@@ -388,6 +418,35 @@ export default function PickupsLogistics({
             void reload()
           }}
           notify={notify}
+        />
+      )}
+
+      {editPickup && (
+        <EditPickupDialog
+          pickup={editPickup}
+          onClose={() => setEditPickup(null)}
+          onSaved={() => {
+            setEditPickup(null)
+            void reload()
+            notify('Pickup updated.')
+          }}
+        />
+      )}
+
+      {deletePickup && (
+        <DeletePickupDialog
+          pickup={deletePickup}
+          onClose={() => setDeletePickup(null)}
+          onDeleted={alreadyCancelled => {
+            setDeletePickup(null)
+            setLiveAssignmentsMap(prev => {
+              const next = { ...prev }
+              delete next[deletePickup.id]
+              return next
+            })
+            void reload()
+            notify(alreadyCancelled ? 'This pickup was already removed.' : 'Pickup removed from the schedule.')
+          }}
         />
       )}
 

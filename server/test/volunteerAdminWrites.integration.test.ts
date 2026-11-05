@@ -27,95 +27,72 @@ if (process.env.CI && !enabled) {
 afterAll(async () => { if (enabled) await closePool() })
 beforeEach(() => { vi.clearAllMocks(); revoke.mockResolvedValue(true) })
 
-describe.skipIf(!enabled)('ADMIN volunteer create/edit persistence', () => {
-  it('creates one VOLUNTEER identity chain, edits fields and rejects duplicate code/phone', async () => {
-    const authIds: string[] = []
+const randomPhone = () => '+919' + String(Math.floor(Math.random() * 1_000_000_000)).padStart(9, '0')
+
+describe.skipIf(!enabled)('ADMIN volunteer edit persistence (Volunteers join through mobile registration)', () => {
+  it('retires Admin creation without writes, edits an approved Volunteer and rejects duplicate code/phone', async () => {
     const appUserIds: string[] = []
     const personIds: string[] = []
     const volunteerIds: string[] = []
     const code = `VOL-${randomUUID()}`
-    const phone = '+919' + String(Math.floor(Math.random() * 1_000_000_000)).padStart(9, '0')
+    const otherCode = `VOL-${randomUUID()}`
+    const phone = randomPhone()
+    const otherPhone = randomPhone()
     try {
       identity.authUserId = randomUUID()
-      authIds.push(identity.authUserId)
       appUserIds.push((await getPool().query<{ id: string }>(
         "INSERT INTO app.app_users(auth_user_id, role) VALUES ($1, 'ADMIN') RETURNING id", [identity.authUserId]
       )).rows[0].id)
-      const invitedAuthId = randomUUID()
-      authIds.push(invitedAuthId)
-      invite.mockResolvedValue({ authUserId: invitedAuthId, inviteNonce: 'integration-nonce' })
-      const created = await request(app).post('/api/v1/volunteers').set('Authorization', 'Bearer integration-token')
-        .send({ email: 'new@example.test', name: 'Integration Volunteer', phoneE164: phone, registrationCode: code, skills: ['Driving'] })
-      expect(created.status).toBe(201)
-      volunteerIds.push(created.body.data.id)
-      personIds.push(created.body.data.personId)
-      const stored = (await getPool().query<{
-        app_user_id: string; role: string; display_name: string; name: string; phone_e164: string; registration_code: string; status: string
-      }>(`SELECT p.app_user_id, u.role, u.display_name, p.name, p.phone_e164, v.registration_code, v.status
-          FROM app.volunteers v JOIN app.people p ON p.id = v.person_id
-          JOIN app.app_users u ON u.id = p.app_user_id WHERE v.id = $1`, [volunteerIds[0]])).rows[0]
-      appUserIds.push(stored.app_user_id)
-      expect(stored).toMatchObject({ role: 'VOLUNTEER', display_name: 'Integration Volunteer', name: 'Integration Volunteer', phone_e164: phone, registration_code: code, status: 'ACTIVE' })
+      // Two Volunteers as created by mobile registration and approved by an Admin.
+      for (const [name, volunteerPhone, volunteerCode] of [['Integration Volunteer', phone, code], ['Other Volunteer', otherPhone, otherCode]]) {
+        const userId = (await getPool().query<{ id: string }>(
+          "INSERT INTO app.app_users(auth_user_id, role, display_name) VALUES ($1, 'VOLUNTEER', $2) RETURNING id", [randomUUID(), name]
+        )).rows[0].id
+        appUserIds.push(userId)
+        const personId = (await getPool().query<{ id: string }>(
+          'INSERT INTO app.people(app_user_id, name, phone_e164) VALUES ($1, $2, $3) RETURNING id', [userId, name, volunteerPhone]
+        )).rows[0].id
+        personIds.push(personId)
+        const volunteerId = (await getPool().query<{ id: string }>(
+          "INSERT INTO app.volunteers(person_id, registration_code, skills) VALUES ($1, $2, ARRAY['Packing']) RETURNING id", [personId, volunteerCode]
+        )).rows[0].id
+        volunteerIds.push(volunteerId)
+        await getPool().query(
+          "INSERT INTO app.volunteer_applications(volunteer_id, status, reviewed_at, reviewed_by) VALUES ($1, 'APPROVED', now(), $2)",
+          [volunteerId, appUserIds[0]]
+        )
+      }
 
-      const phoneConflict = await request(app).post('/api/v1/volunteers').set('Authorization', 'Bearer integration-token')
-        .send({ email: 'other@example.test', name: 'Other', phoneE164: phone, registrationCode: `${code}-OTHER` })
-      expect(phoneConflict.status).toBe(409)
-      expect(invite).toHaveBeenCalledTimes(1)
+      const retired = await request(app).post('/api/v1/volunteers').set('Authorization', 'Bearer integration-token')
+        .send({ email: 'new@example.test', name: 'Should Not Exist', registrationCode: `VOL-${randomUUID()}`, skills: ['Driver'] })
+      expect(retired.status).toBe(410)
+      expect(invite).not.toHaveBeenCalled()
+      const strays = await getPool().query("SELECT count(*)::int AS count FROM app.people WHERE name = 'Should Not Exist'")
+      expect(strays.rows[0].count).toBe(0)
 
       const edited = await request(app).patch(`/api/v1/volunteers/${volunteerIds[0]}`)
         .set('Authorization', 'Bearer integration-token')
-        .send({ name: 'Edited Volunteer', skills: ['Packing'], status: 'INACTIVE', registrationCode: `${code}-EDIT`, phoneE164: null })
+        .send({ name: 'Edited Volunteer', skills: ['Packing', 'Distribution'], status: 'INACTIVE', registrationCode: `${code}-EDIT`, phoneE164: null })
       expect(edited.status).toBe(200)
-      expect(edited.body.data).toMatchObject({ name: 'Edited Volunteer', skills: ['Packing'], status: 'INACTIVE', registrationCode: `${code}-EDIT`, phoneE164: null })
+      expect(edited.body.data).toMatchObject({ name: 'Edited Volunteer', skills: ['Packing', 'Distribution'], status: 'INACTIVE', registrationCode: `${code}-EDIT`, phoneE164: null })
       const roster = await request(app).get('/api/v1/volunteers').query({ search: 'Edited Volunteer' })
         .set('Authorization', 'Bearer integration-token')
       expect(roster.body.data.items.some((item: { id: string }) => item.id === volunteerIds[0])).toBe(true)
 
-      const codeConflict = await request(app).post('/api/v1/volunteers').set('Authorization', 'Bearer integration-token')
-        .send({ email: 'other@example.test', name: 'Other', registrationCode: `${code}-EDIT` })
+      const phoneConflict = await request(app).patch(`/api/v1/volunteers/${volunteerIds[0]}`)
+        .set('Authorization', 'Bearer integration-token').send({ phoneE164: otherPhone })
+      expect(phoneConflict.status).toBe(409)
+      const codeConflict = await request(app).patch(`/api/v1/volunteers/${volunteerIds[0]}`)
+        .set('Authorization', 'Bearer integration-token').send({ registrationCode: otherCode })
       expect(codeConflict.status).toBe(409)
-      expect(invite).toHaveBeenCalledTimes(1)
+
+      const noDriver = await getPool().query('SELECT count(*)::int AS count FROM app.drivers WHERE person_id = ANY($1::uuid[])', [personIds])
+      expect(noDriver.rows[0].count).toBe(0)
     } finally {
+      for (const id of volunteerIds) await getPool().query('DELETE FROM app.volunteer_applications WHERE volunteer_id = $1', [id])
       for (const id of volunteerIds.reverse()) await getPool().query('DELETE FROM app.volunteers WHERE id = $1', [id])
       for (const id of personIds.reverse()) await getPool().query('DELETE FROM app.people WHERE id = $1', [id])
       for (const id of appUserIds.reverse()) await getPool().query('DELETE FROM app.app_users WHERE id = $1', [id])
-    }
-  })
-
-  it('rolls back partial provisioning and requests administrator recovery after a concurrent phone conflict', async () => {
-    const adminAuthId = randomUUID()
-    const newAuthId = randomUUID()
-    const code = `VOL-${randomUUID()}`
-    const phone = '+919' + String(Math.floor(Math.random() * 1_000_000_000)).padStart(9, '0')
-    let adminId = ''
-    let competingPersonId = ''
-    try {
-      identity.authUserId = adminAuthId
-      adminId = (await getPool().query<{ id: string }>(
-        "INSERT INTO app.app_users(auth_user_id, role) VALUES ($1, 'ADMIN') RETURNING id", [adminAuthId]
-      )).rows[0].id
-      invite.mockImplementationOnce(async () => {
-        competingPersonId = (await getPool().query<{ id: string }>(
-          'INSERT INTO app.people(name, phone_e164) VALUES ($1, $2) RETURNING id', ['Concurrent person', phone]
-        )).rows[0].id
-        return { authUserId: newAuthId, inviteNonce: 'integration-nonce' }
-      })
-      const result = await request(app).post('/api/v1/volunteers').set('Authorization', 'Bearer integration-token')
-        .send({ email: 'race@example.test', name: 'Race Volunteer', phoneE164: phone, registrationCode: code })
-      expect(result.status).toBe(503)
-      expect(result.body.error.code).toBe('INVITE_RECOVERY_REQUIRED')
-      expect(revoke).not.toHaveBeenCalled()
-      const userCount = await getPool().query<{ count: string }>(
-        'SELECT count(*)::text AS count FROM app.app_users WHERE auth_user_id = $1', [newAuthId]
-      )
-      const volunteerCount = await getPool().query<{ count: string }>(
-        'SELECT count(*)::text AS count FROM app.volunteers WHERE registration_code = $1', [code]
-      )
-      expect(userCount.rows[0].count).toBe('0')
-      expect(volunteerCount.rows[0].count).toBe('0')
-    } finally {
-      if (competingPersonId) await getPool().query('DELETE FROM app.people WHERE id = $1', [competingPersonId])
-      if (adminId) await getPool().query('DELETE FROM app.app_users WHERE id = $1', [adminId])
     }
   })
 })

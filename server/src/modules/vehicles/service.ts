@@ -7,7 +7,15 @@ import type {
   ListVehiclesQuery,
   UpdateVehicle,
 } from '@aaharaconnect/shared';
+import type { CreateEmployeeDriver, UpdateEmployeeDriver } from '@aaharaconnect/shared';
 import * as vehicleRepo from './repository';
+import {
+  createEmployeeDriver,
+  findDriverWithVehicle,
+  listDriversWithVehicles,
+  listVehicleOptionsForNewDriver,
+  updateEmployeeDriver,
+} from './employeeDrivers';
 
 export async function listVehicles(params: ListVehiclesQuery, client?: PoolClient) {
   return vehicleRepo.listVehicles(params, client);
@@ -65,7 +73,25 @@ export async function createMaintenanceRecord(
 }
 
 export async function listDrivers(client?: PoolClient) {
-  return vehicleRepo.listDrivers(client);
+  return listDriversWithVehicles(client);
+}
+
+export async function listVehicleOptionsForDriver(client?: PoolClient) {
+  return listVehicleOptionsForNewDriver(client);
+}
+
+export async function registerEmployeeDriver(input: CreateEmployeeDriver, actorUserId: string, client?: PoolClient) {
+  return createEmployeeDriver(input, actorUserId, client);
+}
+
+export async function editEmployeeDriver(driverId: string, input: UpdateEmployeeDriver, client?: PoolClient) {
+  return updateEmployeeDriver(driverId, input, client);
+}
+
+export async function getDriver(driverId: string, client?: PoolClient) {
+  const driver = await findDriverWithVehicle(driverId, client);
+  if (!driver) throw new HttpError(404, 'DRIVER_NOT_FOUND', 'Driver not found.');
+  return driver;
 }
 
 export async function removeVehicle(id: string, client?: PoolClient) {

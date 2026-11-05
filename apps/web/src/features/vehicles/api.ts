@@ -31,6 +31,16 @@ export interface ApiVehicleItem {
     phone: string | null;
     licenceNumber: string;
   } | null;
+  assignedDriver: {
+    driverId: string;
+    name: string;
+    phone: string | null;
+    licenceNumber: string;
+    licenceExpiresOn: string | null;
+    status: 'ACTIVE' | 'INACTIVE';
+    driverType: 'LEGACY_VOLUNTEER' | 'EMPLOYEE';
+    employeeCode: string | null;
+  } | null;
   currentAssignment: {
     assignmentId: string;
     pickupId: string;

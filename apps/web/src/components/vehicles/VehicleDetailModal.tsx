@@ -298,7 +298,7 @@ export default function VehicleDetailModal({
         <div>
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2">
-              <UserRound size={16} className="text-emerald-600" /> Current Assigned Driver
+              <UserRound size={16} className="text-emerald-600" /> Fixed Driver
             </h4>
           </div>
           {activeDriverName ? (
@@ -337,7 +337,7 @@ export default function VehicleDetailModal({
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-4 text-center">
               <UserRound size={22} className="mx-auto text-slate-300 mb-1" />
               <p className="text-xs text-slate-500 italic">
-                No driver currently assigned to this vehicle (drivers are linked per pickup dispatch).
+                Driver not assigned. Link an NGO employee driver from Assign Driver.
               </p>
             </div>
           )}

@@ -8,7 +8,6 @@ import {
   findVolunteerApplicationForUpdate,
   findVolunteerIdentityById,
   findWindowAvailability,
-  insertInvitedVolunteer,
   insertSelfRegisteredVolunteer,
   listEligibleVolunteerRows,
   listOwnTeamsByAppUserId,
@@ -112,21 +111,6 @@ describe('Volunteer admin write repository', () => {
     expect(query.mock.calls[0][1]).toEqual(['VOL-002', null]);
     expect(query.mock.calls[1][0]).toContain('FROM app.people p');
     expect(query.mock.calls[1][1]).toEqual(['+919876543210', null]);
-  });
-
-  it('inserts only a VOLUNTEER app user, person, and volunteer with parameterized values', async () => {
-    const personId = 'f50a3e0e-9f8c-4293-bb2b-fc55e4b3d3d8';
-    const client = { query: vi.fn() };
-    client.query.mockResolvedValueOnce({ rows: [{ id: ids[0] }] })
-      .mockResolvedValueOnce({ rows: [{ id: personId }] })
-      .mockResolvedValueOnce({ rows: [{ id: ids[1] }] })
-      .mockResolvedValueOnce({ rows: [{ id: ids[1], person_id: personId, name: 'Ada', phone_e164: null, registration_code: 'VOL-002', skills: [], status: 'ACTIVE' }] });
-    await insertInvitedVolunteer(ids[2], { email: 'ada@example.test', name: 'Ada', phoneE164: null, registrationCode: 'VOL-002', skills: [], status: 'ACTIVE' }, client as unknown as PoolClient);
-    expect(client.query.mock.calls[0][0]).toContain("VALUES ($1, 'VOLUNTEER', $2)");
-    expect(client.query.mock.calls[0][1]).toEqual([ids[2], 'Ada']);
-    expect(client.query.mock.calls[1][1]).toEqual([ids[0], 'Ada', null]);
-    expect(client.query.mock.calls[2][1]).toEqual([personId, 'VOL-002', [], 'ACTIVE']);
-    expect(client.query.mock.calls.map(call => call[0]).join(' ')).not.toMatch(/app\\.(assignments|resource_reservations|vehicles|vehicle_locations|food_requests)/);
   });
 
   it('updates allowed fields and keeps the application display name in sync', async () => {

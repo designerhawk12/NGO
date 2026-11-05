@@ -49,7 +49,7 @@ export async function createPickup(
     const result = await db.query<PickupRow>(
       `INSERT INTO app.pickups (food_request_id, window_starts_at, window_ends_at, delivery_address, status, version)
        VALUES ($1, $2, $3, $4, 'PLANNED', 0)
-       RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at`,
+       RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes`,
       [data.foodRequestId, data.windowStartsAt, data.windowEndsAt, data.deliveryAddress]
     );
     const pickup = result.rows[0];
@@ -70,7 +70,7 @@ export async function findById(id: string, client?: PoolClient): Promise<PickupR
   const db = client ?? getPool();
   try {
     const result = await db.query<PickupRow>(
-      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at FROM app.pickups WHERE id = $1`,
+      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes FROM app.pickups WHERE id = $1`,
       [id]
     );
     return result.rows[0] ?? null;
@@ -106,7 +106,7 @@ export async function listReservedPersonIds(
 export async function findPickupForUpdate(id: string, client: PoolClient): Promise<PickupRow | null> {
   try {
     const result = await client.query<PickupRow>(
-      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at
+      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes
        FROM app.pickups
        WHERE id = $1
        FOR UPDATE`,
@@ -259,9 +259,11 @@ export async function findByFoodRequestId(foodRequestId: string, client?: PoolCl
   const db = client ?? getPool();
   try {
     const result = await db.query<PickupRow>(
-      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at
+      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes
        FROM app.pickups
-       WHERE food_request_id = $1`,
+       WHERE food_request_id = $1
+       ORDER BY (status = 'CANCELLED'), created_at DESC
+       LIMIT 1`,
       [foodRequestId]
     );
     return result.rows[0] ?? null;
@@ -293,7 +295,7 @@ export async function listPickups(
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const sql = `
-    SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at
+    SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes
     FROM app.pickups
     ${whereClause}
     ORDER BY created_at DESC, id DESC
@@ -419,7 +421,7 @@ export async function updatePickupStatus(
       `UPDATE app.pickups
        SET status = $1, version = version + 1
        WHERE id = $2
-       RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at`,
+       RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes`,
       [params.toStatus, params.pickupId]
     );
     const pickup = result.rows[0];
@@ -534,13 +536,54 @@ export async function findPickupByFoodRequestIdForUpdate(
 ): Promise<PickupRow | null> {
   try {
     const result = await client.query<PickupRow>(
-      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at
+      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes
        FROM app.pickups
        WHERE food_request_id = $1
+       ORDER BY (status = 'CANCELLED'), created_at DESC
+       LIMIT 1
        FOR UPDATE`,
       [foodRequestId]
     );
     return result.rows[0] ?? null;
+  } catch (error) {
+    handleDbError(error);
+  }
+}
+
+export async function updatePickupSchedule(
+  params: {
+    pickupId: string;
+    actorUserId: string;
+    previous: PickupRow;
+    windowStartsAt: Date;
+    windowEndsAt: Date;
+    deliveryAddress: string;
+    operationalNotes: string | null;
+  },
+  client: PoolClient
+): Promise<PickupRow> {
+  try {
+    const result = await client.query<PickupRow>(
+      `UPDATE app.pickups
+       SET window_starts_at = $2, window_ends_at = $3, delivery_address = $4, operational_notes = $5,
+           version = version + 1
+       WHERE id = $1
+       RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes`,
+      [params.pickupId, params.windowStartsAt, params.windowEndsAt, params.deliveryAddress, params.operationalNotes]
+    );
+    await client.query(
+      `INSERT INTO app.pickup_schedule_changes (
+         pickup_id, actor_user_id, previous_window_starts_at, previous_window_ends_at,
+         new_window_starts_at, new_window_ends_at, previous_delivery_address, new_delivery_address,
+         previous_operational_notes, new_operational_notes
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        params.pickupId, params.actorUserId, params.previous.window_starts_at, params.previous.window_ends_at,
+        params.windowStartsAt, params.windowEndsAt, params.previous.delivery_address, params.deliveryAddress,
+        params.previous.operational_notes ?? null, params.operationalNotes,
+      ]
+    );
+    return result.rows[0];
   } catch (error) {
     handleDbError(error);
   }

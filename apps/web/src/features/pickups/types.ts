@@ -28,6 +28,7 @@ export interface Pickup {
   deliveryAddress: string
   version: number
   createdAt: string
+  operationalNotes?: string | null
   donorName?: string
   donorLocation?: string
   foods?: FoodItemSummary[]
@@ -44,7 +45,7 @@ export interface CreatePickupInput {
 export interface ContainerPlan {
   containerType: string
   count: number
-  estimatedLoadKg?: number
+  estimatedLoadKg?: number | null
 }
 
 export interface CreateAssignmentInput {
@@ -52,7 +53,7 @@ export interface CreateAssignmentInput {
   volunteerIds: string[]
   vesselIds?: string[]
   driverId: string
-  vehicleId: string
+  vehicleId?: string
   role: string
   windowStartsAt: string
   windowEndsAt: string

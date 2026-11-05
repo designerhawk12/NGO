@@ -33,30 +33,6 @@ const adminSkillsSchema = z.array(z.string().trim().min(1).max(100)).max(32)
   .refine(skills => new Set(skills.map(skill => skill.toLowerCase())).size === skills.length, 'Skills must be unique.');
 const registrationCodeSchema = z.string().trim().min(1).max(64);
 const adminPhoneSchema = phoneE164Schema.nullable();
-const hasDriverSkill = (skills: string[]) => skills.some(skill => skill.toLowerCase() === 'driver');
-export const adminDriverDetailsSchema = z.strictObject({
-  licenceNumber: z.string().trim().toUpperCase().min(5).max(40).regex(/^[A-Z0-9][A-Z0-9 /-]+$/),
-  licenceExpiresOn: z.string().date(),
-  vehicleRegistrationNumber: z.string().trim().toUpperCase().min(4).max(32).regex(/^[A-Z0-9][A-Z0-9 -]+$/),
-});
-
-export const createAdminVolunteerSchema = z.strictObject({
-  email: z.string().trim().toLowerCase().email().max(254),
-  name: z.string().trim().min(1).max(200),
-  phoneE164: adminPhoneSchema.optional().default(null),
-  registrationCode: registrationCodeSchema,
-  skills: adminSkillsSchema.default([]),
-  status: volunteerStatusSchema.default('ACTIVE'),
-  driverDetails: adminDriverDetailsSchema.optional(),
-}).superRefine((value, context) => {
-  if (hasDriverSkill(value.skills) && !value.driverDetails) {
-    context.addIssue({ code: 'custom', path: ['driverDetails'], message: 'Driver details are required when Driver is selected.' });
-  }
-  if (!hasDriverSkill(value.skills) && value.driverDetails) {
-    context.addIssue({ code: 'custom', path: ['driverDetails'], message: 'Select Driver before supplying driver details.' });
-  }
-});
-export type CreateAdminVolunteerInput = z.infer<typeof createAdminVolunteerSchema>;
 
 export const createSelfRegistrationSchema = volunteerRegistrationInputSchema;
 export type CreateSelfRegistrationInput = z.infer<typeof createSelfRegistrationSchema>;
@@ -73,8 +49,6 @@ export const updateAdminVolunteerSchema = z.strictObject({
   registrationCode: registrationCodeSchema.optional(),
   skills: adminSkillsSchema.optional(),
   status: volunteerStatusSchema.optional(),
-  driverDetails: adminDriverDetailsSchema.optional(),
-  driverStatus: z.enum(['ACTIVE', 'INACTIVE']).optional(),
 }).refine(value => Object.keys(value).length > 0, 'Provide at least one editable volunteer field.');
 export type UpdateAdminVolunteerInput = z.infer<typeof updateAdminVolunteerSchema>;
 

@@ -6,7 +6,6 @@ import * as volunteerService from './service';
 import {
   listTeamsQuerySchema,
   listVolunteersQuerySchema,
-  type CreateAdminVolunteerInput,
   type CreateSelfRegistrationInput,
   type CreateTeamInput,
   type DecideVolunteerApplicationInput,
@@ -124,9 +123,7 @@ export const getAdminVolunteerDriverDetailsHandler: RequestHandler = async (requ
 
 export const createAdminVolunteerHandler: RequestHandler = async (_request, response, next) => {
   try {
-    sendSuccess(response, await volunteerService.createAdminVolunteer(
-      response.locals.appUser as AppUser, response.locals.validatedBody as CreateAdminVolunteerInput
-    ), 201);
+    volunteerService.createAdminVolunteer(response.locals.appUser as AppUser);
   } catch (error) { next(error); }
 };
 

@@ -3,11 +3,18 @@ import { requireAuth } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/authorize';
 import { validateBody } from '../../middleware/validate';
 import {
+  createEmployeeDriverSchema,
   createVehicleMaintenanceRecordSchema,
   createVehicleSchema,
+  updateEmployeeDriverSchema,
   updateVehicleSchema,
 } from '@aaharaconnect/shared';
 import {
+  createEmployeeDriverHandler,
+  getDriverHandler,
+  listDriverVehicleOptionsHandler,
+  rejectFixedVehicleChange,
+  updateEmployeeDriverHandler,
   createMaintenanceHandler,
   createVehicleHandler,
   deleteVehicleHandler,
@@ -40,8 +47,19 @@ vehicleSubRouter.post(
   createMaintenanceHandler
 );
 
-// Driver endpoints for registry display
+// Driver registry. NGO employee drivers are created only here, each with one fixed vehicle.
 driverSubRouter.get('/', requireAuth, requireRole('ADMIN'), listDriversHandler);
+driverSubRouter.get('/vehicle-options', requireAuth, requireRole('ADMIN'), listDriverVehicleOptionsHandler);
+driverSubRouter.post('/', requireAuth, requireRole('ADMIN'), validateBody(createEmployeeDriverSchema), createEmployeeDriverHandler);
+driverSubRouter.get('/:id', requireAuth, requireRole('ADMIN'), getDriverHandler);
+driverSubRouter.patch(
+  '/:id',
+  requireAuth,
+  requireRole('ADMIN'),
+  rejectFixedVehicleChange,
+  validateBody(updateEmployeeDriverSchema),
+  updateEmployeeDriverHandler
+);
 
 // Dispatch to subrouters based on baseUrl mount point (/vehicles vs /drivers)
 vehicleRoutes.use((request, response, next) => {

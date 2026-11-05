@@ -28,7 +28,7 @@ This is an NGO food-donation platform. Donors and Volunteers use an Android app 
 | | Production | Staging |
 |---|---|---|
 | Web/API | https://ngo-eight-umber.vercel.app (Vercel team `equinox10`, project `ngo`) | Vercel `aaharaconnect-ngo-staging` (prj_W1MrwAqFsWTFohHs6UXR2fo1EEIL), `aaharaconnect-ngo-staging-api`. Deployment Protection stays ON |
-| Supabase | ref `pyzyxgpcfwpcqyqrihuo` | ref not recorded locally yet. Confirm it in the dashboard before any use |
+| Supabase | ref `pyzyxgpcfwpcqyqrihuo` (ledger 001–011) | ref `tughgqggsndtraaymtvf` "aaharaconnect-staging" (ledger 001–012) |
 - **This worktree's `.vercel/project.json` links to Production `ngo`.** Never run `vercel deploy`/`--prod` without explicit approval. Check the target with `vercel project ls` / `vercel inspect`.
 - Health checks: `GET /api/v1/health` (liveness) and `/api/v1/health/ready` (DB).
 - Expo/EAS: project `6406b528-a2ba-4abb-a356-6bfb405c3957`, Android package `com.rajashishpatil10.aaharaconnect`, profile `production-apk`. Do not run `eas init`, change credentials, or start builds without approval.
@@ -36,7 +36,10 @@ This is an NGO food-donation platform. Donors and Volunteers use an Android app 
 ## Hard rules
 - No Production DB writes, migrations, Auth-user deletions or cleanup scripts without explicit approval. Production holds real accounts.
 - Protected Admin: Auth UUID `ef236ebf-b38f-478e-94c1-478fb5599f4b`, app user UUID `f2e2c2e6-9edf-457a-9785-69f866040449`. Never modify or delete them.
-- Migrations are forward-only and applied files are immutable (the runner checks checksums). 001–011 are applied in Production. Stage first, and follow `docs/DEPLOYMENT.md` "Migration procedure".
+- Migrations are forward-only and applied files are immutable (the runner checks checksums). 001–011 are applied in Production; 012 (employee drivers, pickup edit/cancel) is applied on staging only. Never edit `012_employee_drivers_and_pickup_admin.sql` now: staging records its checksum. Stage first, and follow `docs/DEPLOYMENT.md` "Migration procedure".
+- Drivers are NGO employees (`drivers.driver_type = 'EMPLOYEE'`), registered only from Assign Driver (`POST /drivers`) with one permanent vehicle (`vehicles.assigned_driver_id`, guarded by DB triggers). Volunteers never become drivers. Admin "Add Volunteer" is retired (`POST /volunteers` → 410).
+- Local DB tests: run a throwaway `postgres:17` Docker container whose database name ends in `_test`, and set `TEST_DATABASE_URL` = `DATABASE_URL`, `ALLOW_TEST_DATABASE_MUTATION=true`, `DATABASE_SSL=false`. `npm run migrate:up` is denied in `.claude/settings.json`, so load the SQL files with `psql` into that container only.
+- Web code may import only *types* from `@aaharaconnect/shared` (its CommonJS build breaks the Vite SSR smoke test). Server-only logic lives in `packages/shared/src/contracts/logistics.ts`.
 - Never commit `.env*` (except `.env.example`), tokens or keys. Never put `DATABASE_URL`/secret keys in `VITE_`/`EXPO_PUBLIC_` vars.
 - Do not force-push, reset or rewrite `integration/ngo-recovery`.
 - Roles come from `app.app_users` on the server, never from client state.
@@ -47,4 +50,6 @@ Inspect the existing components and API client, reuse the design in `styles.css`
 
 ## Known open items
 - APK build `c93aa889` (commit 3c7eb14): the `sb_secret_` hit was checked on 2026-11-05. It is the 10-char supabase-js prefix literal used in a `startsWith` check. Its byte neighbourhood is identical to the earlier APK, whose Hermes string table shows it as a standalone entry. No other secret markers were found. The only Supabase host in it is Production.
-- `gh` CLI is not installed. The staging Supabase ref is not recorded.
+- `gh` CLI is not installed.
+- The mobile registration form still offers a "Driver" skill. It is harmless metadata now; remove it in the next approved APK build.
+- Vehicle temperature, equipment, cargo volume and insurance dates are stored only in browser localStorage, not the database, so the server cannot enforce them. Food temperature needs are free text and shown to Admins as warnings.

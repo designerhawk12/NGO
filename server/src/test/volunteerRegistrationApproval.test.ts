@@ -114,14 +114,14 @@ describe('Volunteer self-registration', () => {
     expect(invite).not.toHaveBeenCalled();
   });
 
-  it('keeps authenticated Admin invitations working when public registration is disabled', async () => {
+  it('routes new Volunteers to mobile registration: the retired Admin create endpoint sends nothing', async () => {
     vi.stubEnv('PUBLIC_VOLUNTEER_REGISTRATION_ENABLED', 'false');
     const result = await request(app).post('/api/v1/volunteers').set(auth).send({
       email: 'applicant@example.test', name: 'Applicant Person', registrationCode: 'VOL-020',
     });
-    expect(result.status).toBe(201);
-    expect(invite).toHaveBeenCalledWith('applicant@example.test', 'Applicant Person');
-    expect(repo.insertInvitedVolunteer).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe(410);
+    expect(result.body.error.code).toBe('ADMIN_VOLUNTEER_CREATION_RETIRED');
+    expect(invite).not.toHaveBeenCalled();
     expect(repo.insertSelfRegisteredVolunteer).not.toHaveBeenCalled();
   });
 

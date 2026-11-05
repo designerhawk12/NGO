@@ -285,3 +285,45 @@ h1,h2,h3 { letter-spacing:-.025em; }
   .language-switch button { padding:7px 8px; }
   .profile-name { display:none; }
 }
+
+/* Assign Driver: +91 mobile input */
+.phone-input { display: flex; align-items: stretch; }
+.phone-input > span { display: inline-flex; align-items: center; padding: 0 10px; border: 1px solid #dfe9e0; border-right: 0; border-radius: 7px 0 0 7px; background: #f6faf6; color: #516b59; font-weight: 600; }
+.phone-input > input { flex: 1; min-width: 0; border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; }
+.driver-table .time-cell strong { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Four-step assignment wizard: driver + fixed vehicle, containers, review */
+.driver-option-list, .container-option-list { display: flex; flex-direction: column; gap: 8px; }
+.driver-option { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; cursor: pointer; }
+.driver-option.selected { border-color: #86c79c; background: #f0fdf4; }
+.driver-option.disabled { cursor: not-allowed; background: #f8fafc; opacity: .8; }
+.driver-option input { margin-top: 4px; accent-color: #16a34a; width: 17px; height: 17px; }
+.driver-option-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; font-size: .84rem; color: #334155; }
+.driver-option-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+.driver-option-row > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.driver-option-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 4px 16px; font-size: .8rem; color: #475569; }
+.driver-option-grid span { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.driver-option-note { margin: 0; font-size: .78rem; display: flex; align-items: center; gap: 5px; }
+.driver-option-note.ok { color: #047857; }
+.driver-option-note.warn { color: #92400e; }
+.driver-option-note.bad { color: #b91c1c; }
+.container-option { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 9px; background: #fff; cursor: pointer; font-size: .84rem; color: #334155; }
+.container-option.selected { border-color: #86c79c; background: #f0fdf4; }
+.container-option.disabled { cursor: not-allowed; background: #f8fafc; color: #94a3b8; }
+.container-option input { accent-color: #16a34a; width: 17px; height: 17px; }
+.container-option small { grid-column: 2 / -1; color: #b91c1c; }
+.assign-review-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.assign-review-grid section { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; background: #fff; }
+.assign-review-grid h4 { margin: 0 0 10px; font-size: .9rem; color: #23402e; }
+.assign-review-grid dl { display: grid; grid-template-columns: minmax(120px, auto) 1fr; gap: 6px 12px; margin: 0; font-size: .82rem; }
+.assign-review-grid dt { color: #64748b; display: inline-flex; align-items: center; gap: 4px; }
+.assign-review-grid dd { margin: 0; color: #0f172a; font-weight: 500; }
+@media (max-width: 640px) {
+  .container-option { grid-template-columns: auto 1fr; }
+  .assign-review-grid dl { grid-template-columns: 1fr; }
+}
+
+/* Pickup edit dialog notes */
+.field textarea.notes-input { width: 100%; min-height: 76px; border: 1px solid #dfe9e0; border-radius: 7px; padding: 10px 12px; color: #2f4d39; font-size: 14px; font-family: inherit; resize: vertical; outline: 0; }
+.field textarea.notes-input:focus { border-color: #72add5; box-shadow: 0 0 0 3px #72add526; }
+.field input:disabled { background: #f6f8f6; color: #8a9a8d; }

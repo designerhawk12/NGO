@@ -27,7 +27,6 @@ import {
 } from './controller';
 import {
   availabilityWriteSchema,
-  createAdminVolunteerSchema,
   createSelfRegistrationSchema,
   createTeamSchema,
   decideVolunteerApplicationSchema,
@@ -56,7 +55,8 @@ selfProfileRoutes.get('/me/teams', requireAuth, requireRole('VOLUNTEER'), listOw
 selfProfileRoutes.post('/me/availability', requireAuth, requireRole('VOLUNTEER'), validateBody(availabilityWriteSchema), createOwnAvailabilityHandler);
 selfProfileRoutes.patch('/me/availability/:id', requireAuth, requireRole('VOLUNTEER'), validateBody(availabilityWriteSchema), replaceOwnAvailabilityHandler);
 selfProfileRoutes.get('/', requireAuth, requireRole('ADMIN'), listAdminVolunteersHandler);
-selfProfileRoutes.post('/', requireAuth, requireRole('ADMIN'), validateBody(createAdminVolunteerSchema), createAdminVolunteerHandler);
+// Retired: answers 410 so old clients get a clear message; it never creates accounts.
+selfProfileRoutes.post('/', requireAuth, requireRole('ADMIN'), createAdminVolunteerHandler);
 selfProfileRoutes.get('/:id/driver-details', requireAuth, requireRole('ADMIN'), getAdminVolunteerDriverDetailsHandler);
 selfProfileRoutes.get('/:id', requireAuth, requireRole('ADMIN'), getAdminVolunteerHandler);
 selfProfileRoutes.patch('/:id', requireAuth, requireRole('ADMIN'), validateBody(updateAdminVolunteerSchema), updateAdminVolunteerHandler);

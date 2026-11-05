@@ -6,7 +6,6 @@ import type { CreateAvailabilityRequest } from '@aaharaconnect/shared';
 import { uuidSchema } from '@aaharaconnect/shared';
 import { HttpError } from '../../middleware/errorHandler';
 import type {
-  CreateAdminVolunteerInput,
   CreateSelfRegistrationInput,
   ListApplicationsQuery,
   ListTeamsQuery,
@@ -338,27 +337,6 @@ export async function findAdminVolunteerConflict(
     if (phone.rowCount) return 'phoneE164';
   }
   return null;
-}
-
-export async function insertInvitedVolunteer(
-  authUserId: string, input: CreateAdminVolunteerInput, client: PoolClient
-): Promise<VolunteerProfileRow> {
-  const appUser = await client.query<{ id: string }>(
-    `INSERT INTO app.app_users(auth_user_id, role, display_name)
-     VALUES ($1, 'VOLUNTEER', $2) RETURNING id`, [authUserId, input.name]
-  );
-  const person = await client.query<{ id: string }>(
-    'INSERT INTO app.people(app_user_id, name, phone_e164) VALUES ($1, $2, $3) RETURNING id',
-    [appUser.rows[0].id, input.name, input.phoneE164]
-  );
-  const volunteer = await client.query<{ id: string }>(
-    `INSERT INTO app.volunteers(person_id, registration_code, skills, status)
-     VALUES ($1, $2, $3::text[], $4) RETURNING id`,
-    [person.rows[0].id, input.registrationCode, input.skills, input.status]
-  );
-  const row = await findVolunteerById(volunteer.rows[0].id, client);
-  if (!row) throw new HttpError(500, 'INTERNAL_ERROR', 'Created volunteer could not be read.');
-  return row;
 }
 
 export async function insertSelfRegisteredVolunteer(

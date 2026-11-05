@@ -29,6 +29,7 @@ export type PickupRow = {
   status: PickupStatus;
   version: number;
   created_at: Date;
+  operational_notes?: string | null;
 };
 
 export type AssignmentRow = {
