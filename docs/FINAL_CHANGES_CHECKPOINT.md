@@ -29,3 +29,10 @@ Server with Postgres 17 (all migrations): 460 passed, 1 todo (44 files). Mobile:
 - Not built: DB integration test for center CRUD, upload/replace against real storage.
 - Per-item quantity: item count uses the labelled −/+ selector; meals per item keep a typed field with −/+ (step 5). Weight stays typed.
 - A new Android APK is **required** (new native modules `expo-location`, `expo-image-picker`).
+
+## Update 2026-11-07 (after push of 0d6e1d0)
+- Staging website `dpl_7WXo9CybWE3YdjLtUGy2EaHp48AH` READY on commit `0d6e1d0`; staging API READY (`/distribution-centers` and `/profile-photos/me` answer 401 without sign-in).
+- New `server/test/distributionCenters.integration.test.ts` (PostgreSQL 17, migrations 001–014): 4 tests pass (unauthorized rejected, add/edit/archive, snapshot kept after edits, missing/unknown/archived centers blocked, legacy typed-address pickup readable).
+- Photo SQL (replace and read previous path) verified against real Postgres. Storage calls still untested against real Supabase: needs a signed-in staging session.
+- EAS `production` env (read-only check): API `https://ngo-eight-umber.vercel.app/api/v1`, Supabase `pyzyxgpcfwpcqyqrihuo`, only a publishable key; no secrets in the mobile source.
+- Hosted workflow tests are waiting for a staging Admin sign-in (see the report).
