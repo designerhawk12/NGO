@@ -40,17 +40,17 @@ export function decodeCursor(cursor: string): { createdAt: Date; id: string } | 
 }
 
 export async function createPickup(
-  data: CreatePickup,
+  data: Omit<CreatePickup, 'deliveryAddress' | 'distributionCenterId'> & { deliveryAddress: string; distributionCenterId?: string | null },
   actorUserId?: string,
   client?: PoolClient
 ): Promise<PickupRow> {
   const db = client ?? getPool();
   try {
     const result = await db.query<PickupRow>(
-      `INSERT INTO app.pickups (food_request_id, window_starts_at, window_ends_at, delivery_address, status, version)
-       VALUES ($1, $2, $3, $4, 'PLANNED', 0)
-       RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at`,
-      [data.foodRequestId, data.windowStartsAt, data.windowEndsAt, data.deliveryAddress]
+      `INSERT INTO app.pickups (food_request_id, window_starts_at, window_ends_at, delivery_address, distribution_center_id, status, version)
+       VALUES ($1, $2, $3, $4, $5, 'PLANNED', 0)
+       RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes`,
+      [data.foodRequestId, data.windowStartsAt, data.windowEndsAt, data.deliveryAddress, data.distributionCenterId ?? null]
     );
     const pickup = result.rows[0];
 
@@ -70,7 +70,7 @@ export async function findById(id: string, client?: PoolClient): Promise<PickupR
   const db = client ?? getPool();
   try {
     const result = await db.query<PickupRow>(
-      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at FROM app.pickups WHERE id = $1`,
+      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes FROM app.pickups WHERE id = $1`,
       [id]
     );
     return result.rows[0] ?? null;
@@ -106,7 +106,7 @@ export async function listReservedPersonIds(
 export async function findPickupForUpdate(id: string, client: PoolClient): Promise<PickupRow | null> {
   try {
     const result = await client.query<PickupRow>(
-      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at
+      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes
        FROM app.pickups
        WHERE id = $1
        FOR UPDATE`,
@@ -143,7 +143,7 @@ export async function findAssignmentById(
 ): Promise<{ assignment: AssignmentRow; volunteerIds: string[] } | null> {
   try {
     const result = await client.query<AssignmentRow>(
-      `SELECT id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at FROM app.assignments WHERE id = $1`,
+      `SELECT id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at, driver_acceptance FROM app.assignments WHERE id = $1`,
       [id]
     );
     if (result.rows.length === 0) return null;
@@ -181,7 +181,7 @@ export async function createAssignmentWithDetails(
     const assignResult = await client.query<AssignmentRow>(
       `INSERT INTO app.assignments (pickup_id, team_id, driver_id, vehicle_id, role, status, version)
        VALUES ($1, $2, $3, $4, $5, 'PENDING', 0)
-       RETURNING id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at`,
+       RETURNING id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at, driver_acceptance`,
       [
         params.pickupId,
         params.data.teamId ?? null,
@@ -259,9 +259,11 @@ export async function findByFoodRequestId(foodRequestId: string, client?: PoolCl
   const db = client ?? getPool();
   try {
     const result = await db.query<PickupRow>(
-      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at
+      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes
        FROM app.pickups
-       WHERE food_request_id = $1`,
+       WHERE food_request_id = $1
+       ORDER BY (status = 'CANCELLED'), created_at DESC
+       LIMIT 1`,
       [foodRequestId]
     );
     return result.rows[0] ?? null;
@@ -293,7 +295,7 @@ export async function listPickups(
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const sql = `
-    SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at
+    SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes
     FROM app.pickups
     ${whereClause}
     ORDER BY created_at DESC, id DESC
@@ -323,7 +325,7 @@ export async function findAssignmentForUpdate(
 ): Promise<AssignmentRow | null> {
   try {
     const result = await client.query<AssignmentRow>(
-      `SELECT id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at
+      `SELECT id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at, driver_acceptance
        FROM app.assignments
        WHERE id = $1
        FOR UPDATE`,
@@ -387,7 +389,7 @@ export async function updateAssignmentStatus(
       `UPDATE app.assignments
        SET status = $1, version = version + 1
        WHERE id = $2
-       RETURNING id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at`,
+       RETURNING id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at, driver_acceptance`,
       [params.toStatus, params.assignmentId]
     );
     const assignment = result.rows[0];
@@ -419,7 +421,7 @@ export async function updatePickupStatus(
       `UPDATE app.pickups
        SET status = $1, version = version + 1
        WHERE id = $2
-       RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at`,
+       RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes`,
       [params.toStatus, params.pickupId]
     );
     const pickup = result.rows[0];
@@ -488,16 +490,21 @@ export async function listAssignmentsForVolunteer(
   const db = client ?? getPool();
   try {
     const result = await db.query<AssignmentRow & { volunteer_ids: string[] }>(
-      `SELECT a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at,
+      `SELECT a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at, a.driver_acceptance, fr.pickup_address, pu.delivery_address, pu.window_starts_at, pu.window_ends_at, terminal_event.occurred_at AS terminal_at,
               COALESCE(array_agg(DISTINCT am_all.volunteer_id ORDER BY am_all.volunteer_id) FILTER (WHERE am_all.volunteer_id IS NOT NULL), '{}'::uuid[]) AS volunteer_ids
        FROM app.assignments a
        JOIN app.assignment_members am ON am.assignment_id = a.id
        JOIN app.volunteers v ON v.id = am.volunteer_id
        JOIN app.people p ON p.id = v.person_id
+       JOIN app.pickups pu ON pu.id = a.pickup_id
+       JOIN app.food_requests fr ON fr.id = pu.food_request_id
+       LEFT JOIN LATERAL (SELECT occurred_at FROM app.assignment_status_events e
+         WHERE e.assignment_id = a.id AND e.to_status IN ('DELIVERED', 'REJECTED', 'CANCELLED', 'FAILED')
+         ORDER BY occurred_at DESC LIMIT 1) terminal_event ON TRUE
        LEFT JOIN app.assignment_members am_all ON am_all.assignment_id = a.id
        WHERE p.app_user_id = $1
-       GROUP BY a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at
-       ORDER BY a.created_at DESC, a.id DESC`,
+       GROUP BY a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at, a.driver_acceptance, fr.pickup_address, pu.delivery_address, pu.window_starts_at, pu.window_ends_at, terminal_event.occurred_at
+       ORDER BY COALESCE(terminal_event.occurred_at, a.created_at) DESC, a.id DESC`,
       [actorUserId]
     );
     return result.rows.map(r => ({
@@ -511,9 +518,105 @@ export async function listAssignmentsForVolunteer(
         status: r.status,
         version: r.version,
         created_at: r.created_at,
+        driver_acceptance: r.driver_acceptance,
+        pickup_address: r.pickup_address,
+        delivery_address: r.delivery_address,
+        window_starts_at: r.window_starts_at,
+        window_ends_at: r.window_ends_at,
+        terminal_at: r.terminal_at,
       },
       volunteerIds: r.volunteer_ids,
     }));
+  } catch (error) {
+    handleDbError(error);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// NGO employee driver views and acknowledgement (migration 013).
+
+/** True only when this app user is the employee driver of the assignment. */
+export async function isDriverOfAssignment(assignmentId: string, appUserId: string, client?: PoolClient): Promise<boolean> {
+  const db = client ?? getPool();
+  try {
+    const result = await db.query(
+      `SELECT 1 FROM app.assignments a
+       JOIN app.drivers d ON d.id = a.driver_id AND d.driver_type = 'EMPLOYEE'
+       JOIN app.people p ON p.id = d.person_id
+       WHERE a.id = $1 AND p.app_user_id = $2`,
+      [assignmentId, appUserId]
+    );
+    return result.rows.length > 0;
+  } catch (error) {
+    handleDbError(error);
+  }
+}
+
+export async function setDriverAcceptance(
+  params: { assignmentId: string; acceptance: 'ACCEPTED' | 'DECLINED'; status: AssignmentStatus; actorUserId: string; reason: string },
+  client: PoolClient
+): Promise<AssignmentRow> {
+  try {
+    const result = await client.query<AssignmentRow>(
+      `UPDATE app.assignments
+       SET driver_acceptance = $2, driver_responded_at = now(), version = version + 1
+       WHERE id = $1
+       RETURNING id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at, driver_acceptance`,
+      [params.assignmentId, params.acceptance]
+    );
+    await client.query(
+      `INSERT INTO app.assignment_status_events (assignment_id, actor_user_id, from_status, to_status, reason)
+       VALUES ($1, $2, $3, $3, $4)`,
+      [params.assignmentId, params.actorUserId, params.status, params.reason]
+    );
+    return result.rows[0];
+  } catch (error) {
+    handleDbError(error);
+  }
+}
+
+export type DriverJobRow = {
+  assignment_id: string; pickup_id: string; status: AssignmentStatus; driver_acceptance: string; version: number;
+  donor_name: string; pickup_address: string; delivery_address: string; window_starts_at: Date; window_ends_at: Date;
+  contact_name: string | null; contact_phone_e164: string | null; handling_requirements: string | null; operational_notes: string | null;
+  vehicle_id: string; registration_number: string; kind: string; capacity_kg: string | number;
+  created_at: Date; terminal_at: Date | null;
+  food_items: Array<{ foodType: string; quantity: number | string; unit: string; estimatedWeightKg: number | string | null }> | null;
+  crew: Array<{ name: string }> | null;
+};
+
+/** Every assignment of the signed-in employee driver, newest first. Only that driver's rows. */
+export async function listJobsForDriverAppUser(appUserId: string, client?: PoolClient): Promise<DriverJobRow[]> {
+  const db = client ?? getPool();
+  try {
+    const result = await db.query<DriverJobRow>(
+      `SELECT a.id AS assignment_id, a.pickup_id, a.status, a.driver_acceptance, a.version, a.created_at,
+              fr.source_name AS donor_name, fr.pickup_address, pu.delivery_address, pu.window_starts_at, pu.window_ends_at,
+              fr.contact_name, fr.contact_phone_e164, NULLIF(fr.handling_requirements, '') AS handling_requirements,
+              pu.operational_notes,
+              v.id AS vehicle_id, v.registration_number, v.kind, v.capacity_kg,
+              terminal_event.occurred_at AS terminal_at,
+              (SELECT json_agg(json_build_object('foodType', fi.food_type, 'quantity', fi.quantity, 'unit', fi.unit,
+                        'estimatedWeightKg', fi.estimated_weight_kg) ORDER BY fi.id)
+                 FROM app.food_items fi WHERE fi.food_request_id = fr.id) AS food_items,
+              (SELECT json_agg(json_build_object('name', cp.name) ORDER BY cp.name)
+                 FROM app.assignment_members am JOIN app.volunteers cv ON cv.id = am.volunteer_id
+                 JOIN app.people cp ON cp.id = cv.person_id WHERE am.assignment_id = a.id) AS crew
+       FROM app.assignments a
+       JOIN app.drivers d ON d.id = a.driver_id AND d.driver_type = 'EMPLOYEE'
+       JOIN app.people p ON p.id = d.person_id
+       JOIN app.vehicles v ON v.id = a.vehicle_id
+       JOIN app.pickups pu ON pu.id = a.pickup_id
+       JOIN app.food_requests fr ON fr.id = pu.food_request_id
+       LEFT JOIN LATERAL (SELECT occurred_at FROM app.assignment_status_events e
+         WHERE e.assignment_id = a.id AND e.to_status IN ('DELIVERED', 'REJECTED', 'CANCELLED', 'FAILED')
+         ORDER BY occurred_at DESC LIMIT 1) terminal_event ON TRUE
+       WHERE p.app_user_id = $1
+       ORDER BY COALESCE(terminal_event.occurred_at, a.created_at) DESC, a.id DESC
+       LIMIT 200`,
+      [appUserId]
+    );
+    return result.rows;
   } catch (error) {
     handleDbError(error);
   }
@@ -525,13 +628,56 @@ export async function findPickupByFoodRequestIdForUpdate(
 ): Promise<PickupRow | null> {
   try {
     const result = await client.query<PickupRow>(
-      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at
+      `SELECT id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes
        FROM app.pickups
        WHERE food_request_id = $1
+       ORDER BY (status = 'CANCELLED'), created_at DESC
+       LIMIT 1
        FOR UPDATE`,
       [foodRequestId]
     );
     return result.rows[0] ?? null;
+  } catch (error) {
+    handleDbError(error);
+  }
+}
+
+export async function updatePickupSchedule(
+  params: {
+    pickupId: string;
+    actorUserId: string;
+    previous: PickupRow;
+    windowStartsAt: Date;
+    windowEndsAt: Date;
+    deliveryAddress: string;
+    distributionCenterId?: string;
+    operationalNotes: string | null;
+  },
+  client: PoolClient
+): Promise<PickupRow> {
+  try {
+    const result = await client.query<PickupRow>(
+      `UPDATE app.pickups
+       SET window_starts_at = $2, window_ends_at = $3, delivery_address = $4, operational_notes = $5,
+           distribution_center_id = COALESCE($6, distribution_center_id),
+           version = version + 1
+       WHERE id = $1
+       RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes`,
+      [params.pickupId, params.windowStartsAt, params.windowEndsAt, params.deliveryAddress, params.operationalNotes, params.distributionCenterId ?? null]
+    );
+    await client.query(
+      `INSERT INTO app.pickup_schedule_changes (
+         pickup_id, actor_user_id, previous_window_starts_at, previous_window_ends_at,
+         new_window_starts_at, new_window_ends_at, previous_delivery_address, new_delivery_address,
+         previous_operational_notes, new_operational_notes
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        params.pickupId, params.actorUserId, params.previous.window_starts_at, params.previous.window_ends_at,
+        params.windowStartsAt, params.windowEndsAt, params.previous.delivery_address, params.deliveryAddress,
+        params.previous.operational_notes ?? null, params.operationalNotes,
+      ]
+    );
+    return result.rows[0];
   } catch (error) {
     handleDbError(error);
   }
@@ -543,7 +689,7 @@ export async function findActiveAssignmentByPickupIdForUpdate(
 ): Promise<AssignmentRow | null> {
   try {
     const result = await client.query<AssignmentRow>(
-      `SELECT id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at
+      `SELECT id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at, driver_acceptance
        FROM app.assignments
        WHERE pickup_id = $1 AND status NOT IN ('REJECTED', 'CANCELLED', 'FAILED')
        FOR UPDATE`,
@@ -577,7 +723,7 @@ export async function findActiveAssignmentsByPickupId(
   const db = client ?? getPool();
   try {
     const result = await db.query<AssignmentRow>(
-      `SELECT id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at
+      `SELECT id, pickup_id, team_id, driver_id, vehicle_id, role, status, version, created_at, driver_acceptance
        FROM app.assignments
        WHERE pickup_id = $1 AND status = ANY($2::text[])
        ORDER BY created_at ASC`,

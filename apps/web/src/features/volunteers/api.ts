@@ -30,17 +30,14 @@ export const decideAdminVolunteerApplication = (
 )
 export const getAdminVolunteer = (accessToken: string, id: string) =>
   apiRequest<Volunteer>(`volunteers/${encodeURIComponent(id)}`, { headers: bearer(accessToken) })
-export type CreateAdminVolunteerInput = {
-  email: string
-  name: string
-  phoneE164: string | null
-  registrationCode: string
-  skills: string[]
-  status: 'ACTIVE' | 'INACTIVE'
+// Volunteers are created only by mobile registration and Admin approval; Admins edit profiles.
+export type UpdateAdminVolunteerInput = {
+  name?: string
+  phoneE164?: string | null
+  registrationCode?: string
+  skills?: string[]
+  status?: 'ACTIVE' | 'INACTIVE'
 }
-export type UpdateAdminVolunteerInput = Partial<Omit<CreateAdminVolunteerInput, 'email'>>
-export const createAdminVolunteer = (accessToken: string, input: CreateAdminVolunteerInput) =>
-  apiRequest<Volunteer>('volunteers', { method: 'POST', headers: bearer(accessToken), body: input })
 export const updateAdminVolunteer = (accessToken: string, id: string, input: UpdateAdminVolunteerInput) =>
   apiRequest<Volunteer>(`volunteers/${encodeURIComponent(id)}`, { method: 'PATCH', headers: bearer(accessToken), body: input })
 export const listAdminTeams = (accessToken: string) => readAll<Team>('teams', accessToken)
@@ -51,3 +48,5 @@ export const createAdminTeam = (accessToken: string, input: TeamWriteInput) =>
   apiRequest<Team>('teams', { method: 'POST', headers: bearer(accessToken), body: input })
 export const updateAdminTeam = (accessToken: string, id: string, input: TeamWriteInput) =>
   apiRequest<Team>(`teams/${encodeURIComponent(id)}`, { method: 'PATCH', headers: bearer(accessToken), body: input })
+export const deleteAdminTeam = (accessToken: string, id: string) =>
+  apiRequest<{ id: string; deleted: true }>(`teams/${encodeURIComponent(id)}`, { method: 'DELETE', headers: bearer(accessToken) })

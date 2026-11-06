@@ -3,6 +3,9 @@ import {
   listVehiclesQuerySchema,
   uuidSchema,
   type AppUser,
+  type CreateEmployeeDriver,
+  type InviteEmployeeDriver,
+  type UpdateEmployeeDriver,
   type CreateVehicle,
   type CreateVehicleMaintenanceRecord,
   type UpdateVehicle,
@@ -107,6 +110,77 @@ export const listDriversHandler: RequestHandler = async (_request, response, nex
   } catch (error) {
     next(error);
   }
+};
+
+export const listDriverVehicleOptionsHandler: RequestHandler = async (_request, response, next) => {
+  try {
+    sendSuccess(response, { items: await vehicleService.listVehicleOptionsForDriver() });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDriverHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const idResult = uuidSchema.safeParse(request.params.id);
+    if (!idResult.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Driver ID must be a UUID.');
+    sendSuccess(response, await vehicleService.getDriver(idResult.data));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createEmployeeDriverHandler: RequestHandler = async (_request, response, next) => {
+  try {
+    const actor = response.locals.appUser as AppUser | undefined;
+    if (!actor?.id) throw new HttpError(401, 'UNAUTHENTICATED', 'Authentication required.');
+    const input = response.locals.validatedBody as CreateEmployeeDriver;
+    sendSuccess(response, await vehicleService.registerEmployeeDriver(input, actor.id), 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateEmployeeDriverHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const idResult = uuidSchema.safeParse(request.params.id);
+    if (!idResult.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Driver ID must be a UUID.');
+    const input = response.locals.validatedBody as UpdateEmployeeDriver;
+    sendSuccess(response, await vehicleService.editEmployeeDriver(idResult.data, input));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const inviteDriverHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const idResult = uuidSchema.safeParse(request.params.id);
+    if (!idResult.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Driver ID must be a UUID.');
+    const input = response.locals.validatedBody as InviteEmployeeDriver;
+    sendSuccess(response, await vehicleService.inviteDriverToApp(idResult.data, input.email));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getOwnDriverProfileHandler: RequestHandler = async (_request, response, next) => {
+  try {
+    const actor = response.locals.appUser as AppUser | undefined;
+    if (!actor?.id) throw new HttpError(401, 'UNAUTHENTICATED', 'Authentication required.');
+    sendSuccess(response, await vehicleService.getOwnDriverProfile(actor.id));
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Reject any attempt to change the fixed vehicle before generic validation, with a clear code.
+export const rejectFixedVehicleChange: RequestHandler = (request, _response, next) => {
+  const body = request.body as Record<string, unknown> | undefined;
+  if (body && typeof body === 'object' && ['vehicleId', 'assignedVehicleId', 'vehicleRegistrationNumber'].some(key => key in body)) {
+    next(new HttpError(409, 'FIXED_VEHICLE_IMMUTABLE', 'A driver’s vehicle is fixed when the driver is registered and cannot be changed.'));
+    return;
+  }
+  next();
 };
 
 export const deleteVehicleHandler: RequestHandler = async (request, response, next) => {

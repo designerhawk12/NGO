@@ -1,14 +1,18 @@
 import { Router } from 'express';
+import { isPublicVolunteerRegistrationEnabled } from '../../config/env';
 import { requireAuth } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/authorize';
+import { HttpError } from '../../middleware/errorHandler';
 import { validateBody } from '../../middleware/validate';
 import {
+  deleteAdminTeamHandler,
   createAdminTeamHandler,
   createAdminVolunteerHandler,
   decideAdminVolunteerApplicationHandler,
   createOwnAvailabilityHandler,
   getAdminTeamHandler,
   getAdminVolunteerHandler,
+  getAdminVolunteerDriverDetailsHandler,
   getOwnProfileHandler,
   listAdminTeamsHandler,
   listAdminVolunteerApplicationsHandler,
@@ -23,7 +27,6 @@ import {
 } from './controller';
 import {
   availabilityWriteSchema,
-  createAdminVolunteerSchema,
   createSelfRegistrationSchema,
   createTeamSchema,
   decideVolunteerApplicationSchema,
@@ -37,7 +40,13 @@ const selfProfileRoutes = Router();
 const teamRoutes = Router();
 
 selfProfileRoutes.get('/me', requireAuth, requireRole('VOLUNTEER'), getOwnProfileHandler);
-selfProfileRoutes.post('/register', validateBody(createSelfRegistrationSchema), registerVolunteerHandler);
+selfProfileRoutes.post('/register', (_request, _response, next) => {
+  if (!isPublicVolunteerRegistrationEnabled()) {
+    next(new HttpError(403, 'REGISTRATION_DISABLED', 'Public Volunteer registration is unavailable. Ask an administrator for an invitation.'));
+    return;
+  }
+  next();
+}, validateBody(createSelfRegistrationSchema), registerVolunteerHandler);
 selfProfileRoutes.get('/applications', requireAuth, requireRole('ADMIN'), listAdminVolunteerApplicationsHandler);
 selfProfileRoutes.patch('/:id/approval', requireAuth, requireRole('ADMIN'), validateBody(decideVolunteerApplicationSchema), decideAdminVolunteerApplicationHandler);
 selfProfileRoutes.patch('/me', requireAuth, requireRole('VOLUNTEER'), validateBody(updateOwnProfileSchema), updateOwnProfileHandler);
@@ -46,7 +55,9 @@ selfProfileRoutes.get('/me/teams', requireAuth, requireRole('VOLUNTEER'), listOw
 selfProfileRoutes.post('/me/availability', requireAuth, requireRole('VOLUNTEER'), validateBody(availabilityWriteSchema), createOwnAvailabilityHandler);
 selfProfileRoutes.patch('/me/availability/:id', requireAuth, requireRole('VOLUNTEER'), validateBody(availabilityWriteSchema), replaceOwnAvailabilityHandler);
 selfProfileRoutes.get('/', requireAuth, requireRole('ADMIN'), listAdminVolunteersHandler);
-selfProfileRoutes.post('/', requireAuth, requireRole('ADMIN'), validateBody(createAdminVolunteerSchema), createAdminVolunteerHandler);
+// Retired: answers 410 so old clients get a clear message; it never creates accounts.
+selfProfileRoutes.post('/', requireAuth, requireRole('ADMIN'), createAdminVolunteerHandler);
+selfProfileRoutes.get('/:id/driver-details', requireAuth, requireRole('ADMIN'), getAdminVolunteerDriverDetailsHandler);
 selfProfileRoutes.get('/:id', requireAuth, requireRole('ADMIN'), getAdminVolunteerHandler);
 selfProfileRoutes.patch('/:id', requireAuth, requireRole('ADMIN'), validateBody(updateAdminVolunteerSchema), updateAdminVolunteerHandler);
 
@@ -54,6 +65,7 @@ teamRoutes.get('/', requireAuth, requireRole('ADMIN'), listAdminTeamsHandler);
 teamRoutes.get('/:id', requireAuth, requireRole('ADMIN'), getAdminTeamHandler);
 teamRoutes.post('/', requireAuth, requireRole('ADMIN'), validateBody(createTeamSchema), createAdminTeamHandler);
 teamRoutes.patch('/:id', requireAuth, requireRole('ADMIN'), validateBody(updateTeamSchema), updateAdminTeamHandler);
+teamRoutes.delete('/:id', requireAuth, requireRole('ADMIN'), deleteAdminTeamHandler);
 
 // The central router mounts this module at both /volunteers and /teams.
 volunteerRoutes.use((request, response, next) => {

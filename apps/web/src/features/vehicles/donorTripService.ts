@@ -20,6 +20,8 @@ export interface EquipmentRequirement {
 
 export interface DonorPickupRequest {
   id: string
+  donorId?: string
+  preparedAt?: string
   donorName: string
   pickupAddress: string
   contactName?: string
@@ -31,6 +33,7 @@ export interface DonorPickupRequest {
   totalVessels: number
   foods: FoodItemDetail[]
   handlingRequirements: string
+  notes?: string | null
   equipment: EquipmentRequirement
   safetyReview?: 'PENDING' | 'APPROVED' | 'REJECTED'
   status: 'SUBMITTED' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'COMPLETED' | 'CANCELLED'
@@ -247,7 +250,10 @@ const SEEDED_DONOR_REQUESTS: DonorPickupRequest[] = [
  * Fetch all available donor requests from the backend API,
  * merging with any donor requests submitted by the teammate's donor app.
  */
-export async function fetchAllDonorRequests(liveOnly = false): Promise<DonorPickupRequest[]> {
+export async function fetchAllDonorRequests(
+  liveOnly = false,
+  status?: 'CANCELLED',
+): Promise<DonorPickupRequest[]> {
   const result: DonorPickupRequest[] = []
   const seenIds = new Set<string>()
 
@@ -255,7 +261,8 @@ export async function fetchAllDonorRequests(liveOnly = false): Promise<DonorPick
   if (isLiveAdmin()) {
     try {
       const headers = await getAuthHeaders()
-      const data = await apiRequest<{ items: any[] }>('food-requests', { headers })
+      const endpoint = status ? `food-requests?status=${status}` : 'food-requests'
+      const data = await apiRequest<{ items: any[] }>(endpoint, { headers })
       if (data && Array.isArray(data.items)) {
         for (const item of data.items) {
           const foods: FoodItemDetail[] = (item.items || item.foods || []).map((f: any) => ({
@@ -293,6 +300,8 @@ export async function fetchAllDonorRequests(liveOnly = false): Promise<DonorPick
 
           result.push({
             id: item.id,
+            donorId: item.donorId,
+            preparedAt: item.preparedAt,
             donorName: item.sourceName || item.donorName || 'Food Donor',
             pickupAddress: item.pickupAddress || item.location || 'Bengaluru',
             contactName: item.contactName,
@@ -304,6 +313,7 @@ export async function fetchAllDonorRequests(liveOnly = false): Promise<DonorPick
             totalVessels,
             foods,
             handlingRequirements: item.handlingRequirements || '',
+            notes: item.notes ?? null,
             equipment: eq,
             safetyReview: item.safetyReview,
             status,
@@ -376,7 +386,7 @@ export async function fetchAllDonorRequests(liveOnly = false): Promise<DonorPick
     }
   }
 
-  return result
+  return status ? result.filter(request => request.status === status) : result
 }
 
 /**

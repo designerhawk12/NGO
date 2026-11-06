@@ -3,7 +3,8 @@ import { router, useFocusEffect } from 'expo-router';
 import type { AppUser } from '@aaharaconnect/shared';
 import { View } from 'react-native';
 import { getCurrentAccessToken, getCurrentAppUser } from '../../api/auth';
-import { Button, Card, Header, Icon, LanguageSwitcher, Screen, T } from '../common/UI';
+import ProfilePhoto from '../common/ProfilePhoto';
+import { Button, Card, Header, LanguageSwitcher, Screen, T } from '../common/UI';
 import { C } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 
@@ -33,8 +34,7 @@ export default function LiveDonorProfile() {
     {loading ? <T>Loading profile...</T>
       : error ? <Card><T color={C.red}>{error}</T><Button title="Retry" variant="outline" onPress={() => void refresh()} /></Card>
         : <Card style={{ alignItems: 'center', marginBottom: 18, paddingVertical: 23 }}>
-          <View style={{ width: 66, height: 66, borderRadius: 22, backgroundColor: C.greenSoft,
-            alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}><Icon name="person" size={33} /></View>
+          <ProfilePhoto iconName="person" />
           <T size={22} weight="800" color={C.ink} translate={false}>{user?.displayName || 'Donor'}</T>
           <T color={C.muted}>Food Donor</T>
         </Card>}

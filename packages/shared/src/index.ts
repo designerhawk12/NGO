@@ -5,3 +5,6 @@ export * from './contracts/food';
 export * from './contracts/vehicles';
 export * from './contracts/pickups';
 export * from './contracts/vessels';
+export * from './contracts/drivers';
+export * from './contracts/logistics';
+export * from './contracts/distribution';

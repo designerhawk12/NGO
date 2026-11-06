@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { photoDataUrlSchema, uuidSchema } from './common';
 
+const FIXED_DRIVER_MESSAGE = 'Drivers are linked to vehicles only from Assign Driver, and the link cannot be changed here.';
 export const vehicleStatusSchema = z.enum(['ACTIVE', 'MAINTENANCE', 'RETIRED']);
 export const vehicleSizeCategorySchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 export const vehicleConditionSchema = z.enum(['GOOD', 'NEEDS_SERVICE', 'UNSAFE']);
@@ -48,7 +49,12 @@ export const createVehicleSchema = z.object({
   photoDataUrl: vehiclePhotoSchema.nullable().optional(),
   sizeCategory: vehicleSizeCategorySchema.nullable().optional(),
   indicativeMaxVessels: z.number().int().positive().nullable().optional(),
-  assignedDriverId: z.string().nullable().optional(),
+  // Vehicles are registered without a driver. Drivers are linked only from Assign Driver.
+  assignedDriverId: z.unknown().optional(),
+}).superRefine((value, context) => {
+  if (value.assignedDriverId !== undefined) {
+    context.addIssue({ code: 'custom', path: ['assignedDriverId'], message: FIXED_DRIVER_MESSAGE });
+  }
 });
 export type CreateVehicle = z.infer<typeof createVehicleSchema>;
 
@@ -60,7 +66,12 @@ export const updateVehicleSchema = z.object({
   photoDataUrl: vehiclePhotoSchema.nullable().optional(),
   sizeCategory: vehicleSizeCategorySchema.nullable().optional(),
   indicativeMaxVessels: z.number().int().positive().nullable().optional(),
-  assignedDriverId: z.string().nullable().optional(),
+  // The fixed employee-driver link cannot be edited through Vehicle Details.
+  assignedDriverId: z.unknown().optional(),
+}).superRefine((value, context) => {
+  if (value.assignedDriverId !== undefined) {
+    context.addIssue({ code: 'custom', path: ['assignedDriverId'], message: FIXED_DRIVER_MESSAGE });
+  }
 }).refine(data => Object.keys(data).length > 0, {
   message: 'At least one field must be provided for update',
 });

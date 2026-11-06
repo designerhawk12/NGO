@@ -4,8 +4,10 @@ import {
   uuidSchema,
   type AppUser,
   type AssignmentTransition,
+  type CancelPickup,
   type CreateAssignment,
   type CreatePickup,
+  type UpdatePickup,
 } from '@aaharaconnect/shared';
 import { HttpError } from '../../middleware/errorHandler';
 import { sendSuccess } from '../../utils/response';
@@ -119,6 +121,15 @@ export const updateAssignmentStatusHandler: RequestHandler = async (request, res
   }
 };
 
+export const getDriverJobsHandler: RequestHandler = async (_request, response, next) => {
+  try {
+    const actor = requireActor(response);
+    sendSuccess(response, await pickupService.getDriverJobs(actor.id));
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getVolunteerAssignmentsHandler: RequestHandler = async (_request, response, next) => {
   try {
     const actor = response.locals.appUser as AppUser | undefined;
@@ -131,6 +142,56 @@ export const getVolunteerAssignmentsHandler: RequestHandler = async (_request, r
 
     const page = await pickupService.getVolunteerAssignments(actor.id);
     sendSuccess(response, page);
+  } catch (error) {
+    next(error);
+  }
+};
+
+function parsePickupId(value: unknown): string {
+  const idResult = uuidSchema.safeParse(value);
+  if (!idResult.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Pickup ID must be a UUID.');
+  return idResult.data;
+}
+
+function requireActor(response: Parameters<RequestHandler>[1]): AppUser {
+  const actor = response.locals.appUser as AppUser | undefined;
+  if (!actor?.id) throw new HttpError(401, 'UNAUTHENTICATED', 'Authentication required.');
+  return actor;
+}
+
+export const getDriverOptionsHandler: RequestHandler = async (request, response, next) => {
+  try {
+    sendSuccess(response, await pickupService.getDriverOptionsForPickup(parsePickupId(request.params.id)));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getContainerOptionsHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const driverId = uuidSchema.safeParse(request.query.driverId);
+    if (!driverId.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Choose a driver (driverId) before planning containers.');
+    sendSuccess(response, await pickupService.getContainerOptionsForPickup(parsePickupId(request.params.id), driverId.data));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePickupHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const pickupId = parsePickupId(request.params.id);
+    const input = response.locals.validatedBody as UpdatePickup;
+    sendSuccess(response, await pickupService.updatePickup(pickupId, input, requireActor(response)));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelPickupHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const pickupId = parsePickupId(request.params.id);
+    const input = response.locals.validatedBody as CancelPickup;
+    sendSuccess(response, await pickupService.cancelPickup(pickupId, input, requireActor(response)));
   } catch (error) {
     next(error);
   }

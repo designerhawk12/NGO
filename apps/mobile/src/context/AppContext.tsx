@@ -32,10 +32,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setVolunteerApplicationStatus(user.volunteerApplicationStatus === 'DENIED' ? 'DENIED' : 'PENDING');
         return;
       }
-      if (user?.role === 'DONOR' || user?.role === 'VOLUNTEER') {
+      // The role always comes from the server; an NGO employee driver restores to the Driver screens.
+      if (user?.role === 'DONOR' || user?.role === 'VOLUNTEER' || user?.role === 'DRIVER') {
         setVolunteerApplicationStatus(null);
         setMode('live');
-        setRole(user.role === 'DONOR' ? 'donor' : 'volunteer');
+        setRole(user.role === 'DONOR' ? 'donor' : user.role === 'DRIVER' ? 'driver' : 'volunteer');
       }
     }).catch(() => {});
     return () => { active = false; };
@@ -73,7 +74,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     volunteerApplicationStatus, setVolunteerApplicationStatus,
     login: (next: Exclude<Role, null>) => { demoChosen.current = true; setVolunteerApplicationStatus(null); void signOut(); setMode('demo'); setRole(next); },
     loginAuthenticated: (next: Exclude<Role, null>) => { demoChosen.current = false; setVolunteerApplicationStatus(null); setMode('live'); setRole(next); },
-    logout: () => { demoChosen.current = false; setVolunteerApplicationStatus(null); setMode(null); setRole(null); void signOut(); },
+    logout: () => { demoChosen.current = true; setVolunteerApplicationStatus(null); setMode(null); setRole(null); void signOut(); },
     assignments: mode === 'live' && role === 'volunteer' ? [] : assignments, updateAssignment,
     slots: mode === 'live' && role === 'volunteer' ? [] : slots, saveSlot, deleteSlot,
     volunteer, saveVolunteer, donor, saveDonor, requests: mode === 'live' && role === 'donor' ? [] : requests, submitRequest, cancelRequest, notify };

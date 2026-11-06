@@ -14,6 +14,10 @@ vi.mock('../db/pool', () => ({
   withTransaction: async (run: (client: { query: typeof query }) => Promise<unknown>) => run({ query }),
 }));
 
+vi.mock('../modules/distribution/service', () => ({
+  requireActiveCenterAddress: async () => ({ id: 'c0000000-0000-4000-8000-000000000001', address: 'Central Food Hub, Bengaluru' }),
+}));
+
 import { app } from '../app';
 import { cancelForFoodRequest } from '../modules/pickups/service';
 
@@ -51,8 +55,16 @@ const validPickupPayload = {
   foodRequestId: 'f0000000-0000-4000-8000-000000000001',
   windowStartsAt: '2030-10-10T10:00:00.000Z',
   windowEndsAt: '2030-10-10T12:00:00.000Z',
+  distributionCenterId: 'c0000000-0000-4000-8000-000000000001',
   deliveryAddress: 'Central Food Hub, Bengaluru',
 };
+
+async function withClock<T>(instant: string, run: () => Promise<T>): Promise<T> {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(instant));
+  try { return await run(); }
+  finally { vi.useRealTimers(); }
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -357,6 +369,66 @@ describe('Pickups API (PR1)', () => {
     });
   });
 
+  describe('Strict pickup timing boundaries', () => {
+    function mockScheduling(readyAt: string, pickupDeadline: string) {
+      query.mockImplementation(async (sql: string, params?: unknown[]) => {
+        if (sql.includes('FROM app.food_requests')) return { rows: [{
+          id: validPickupPayload.foodRequestId, status: 'SUBMITTED', safety_review: 'APPROVED',
+          ready_at: new Date(readyAt), pickup_deadline: new Date(pickupDeadline),
+        }] };
+        if (sql.includes('FROM app.pickups')) return { rows: [] };
+        if (sql.includes('INSERT INTO app.pickups')) return { rows: [{
+          id: 'c0000000-0000-4000-8000-000000000001',
+          food_request_id: validPickupPayload.foodRequestId,
+          window_starts_at: new Date(String(params?.[1])),
+          window_ends_at: new Date(String(params?.[2])),
+          delivery_address: validPickupPayload.deliveryAddress,
+          status: 'PLANNED', version: 0, created_at: new Date(),
+        }] };
+        return { rows: [] };
+      });
+    }
+
+    it.each([
+      ['2030-10-10T09:00:00.000Z', 'at the current instant'],
+      ['2030-10-10T08:59:59.999Z', 'before the current instant'],
+    ])('rejects a pickup starting %s (%s) without writing', async (startAt) => {
+      await withClock('2030-10-10T09:00:00.000Z', async () => {
+        mockScheduling('2030-10-10T08:00:00.000Z', '2030-10-10T12:00:00.000Z');
+        const result = await request(app).post('/api/v1/pickups').set('Authorization', 'Bearer token')
+          .send({ ...validPickupPayload, windowStartsAt: startAt });
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('future');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.pickups'))).toBe(false);
+      });
+    });
+
+    it('accepts exact food readiness and deadline boundaries across IST and UTC offsets', async () => {
+      await withClock('2030-10-10T09:00:00.000Z', async () => {
+        mockScheduling('2030-10-10T10:00:00.000Z', '2030-10-10T12:00:00.000Z');
+        const result = await request(app).post('/api/v1/pickups').set('Authorization', 'Bearer token')
+          .send({ ...validPickupPayload,
+            windowStartsAt: '2030-10-10T15:30:00+05:30',
+            windowEndsAt: '2030-10-10T17:30:00+05:30',
+          });
+        expect(result.status).toBe(201);
+        expect(result.body.data.windowStartsAt).toBe('2030-10-10T10:00:00.000Z');
+        expect(result.body.data.windowEndsAt).toBe('2030-10-10T12:00:00.000Z');
+      });
+    });
+
+    it('rejects a donor deadline at the current instant before any pickup insert', async () => {
+      await withClock('2030-10-10T09:00:00.000Z', async () => {
+        mockScheduling('2030-10-10T08:00:00.000Z', '2030-10-10T09:00:00.000Z');
+        const result = await request(app).post('/api/v1/pickups').set('Authorization', 'Bearer token')
+          .send(validPickupPayload);
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('Do not extend or reuse this request');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.pickups'))).toBe(false);
+      });
+    });
+  });
+
   describe('Successful Creation & Retrieval', () => {
     it('creates a pickup and initial status event returning 201 with PLANNED status', async () => {
       const pickupId = 'c0000000-0000-4000-8000-000000000001';
@@ -531,12 +603,14 @@ const testPersonDriver = '10000000-0000-4000-8000-000000000001';
 const testPersonVol1 = '10000000-0000-4000-8000-000000000002';
 const testPersonVol2 = '10000000-0000-4000-8000-000000000003';
 const testAssignmentId = '70000000-0000-4000-8000-000000000001';
+const testVesselId = '90000000-0000-4000-8000-000000000001';
 
 const validAssignmentPayload = {
   teamId: null,
   volunteerIds: [testVolunteerId1],
   driverId: testDriverId,
   vehicleId: testVehicleId,
+  vesselIds: [testVesselId],
   role: 'Pickup Volunteer',
   windowStartsAt: '2030-10-30T10:00:00.000Z',
   windowEndsAt: '2030-10-30T12:00:00.000Z',
@@ -553,6 +627,9 @@ function setupDefaultAssignmentDb(overrides: {
   volunteerAvailable?: boolean;
   volunteerUnavailable?: boolean;
   dbError?: { code: string; message?: string };
+  foodItems?: Record<string, unknown>[];
+  vessels?: null;
+  vessel?: Record<string, unknown>;
 } = {}) {
   query.mockImplementation(async (sql: string, params: unknown[]) => {
     if (overrides.dbError) {
@@ -599,9 +676,41 @@ function setupDefaultAssignmentDb(overrides: {
           pickup_deadline: new Date('2030-10-30T14:00:00.000Z'),
           ready_at: new Date('2030-10-30T09:00:00.000Z'),
           estimated_weight_kg: 20,
+          handling_requirements: '',
           ...overrides.foodRequest,
         }],
       };
+    }
+    if (sql.includes('FROM app.food_items')) {
+      return { rows: overrides.foodItems ?? [{ food_type: 'Rice', quantity: 20, unit: 'KG', handling_requirements: '', estimated_weight_kg: null }] };
+    }
+    if (sql.includes('FROM app.vessels')) {
+      if (overrides.vessels === null) return { rows: [] };
+      return {
+        rows: [{
+          id: testVesselId,
+          vessel_code: 'HB-001',
+          name: 'Hot box',
+          vessel_type: 'HOT_BOX',
+          material: 'STAINLESS_STEEL',
+          capacity_value: 40,
+          capacity_unit: 'KG',
+          temperature_suitability: 'HOT',
+          food_grade_certified: true,
+          has_tight_lid: true,
+          status: 'AVAILABLE',
+          cleaning_status: 'CLEAN',
+          maintenance_condition: 'GOOD',
+          inspection_result: 'PASSED',
+          ...overrides.vessel,
+        }],
+      };
+    }
+    if (sql.includes('INSERT INTO app.vessel_issuances')) {
+      return { rows: [{ id: '91000000-0000-4000-8000-000000000001', issued_at: new Date('2030-10-01T00:00:00.000Z') }] };
+    }
+    if (sql.includes('SELECT id FROM app.pickups WHERE id = $1')) {
+      return { rows: [{ id: testPickupId }] };
     }
     if (sql.includes('FROM app.drivers')) {
       if (overrides.driver === null) return { rows: [] };
@@ -612,6 +721,8 @@ function setupDefaultAssignmentDb(overrides: {
           licence_number: 'DL12345678',
           licence_expires_on: new Date('2031-01-01'),
           status: 'ACTIVE',
+          driver_type: 'EMPLOYEE',
+          fixed_vehicle_id: testVehicleId,
           ...overrides.driver,
         }],
       };
@@ -1009,8 +1120,8 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
       expect(res.body.error.message).toContain('UNSAFE');
     });
 
-    it('returns 409 RESOURCE_CONFLICT when vehicle capacity is less than estimated load', async () => {
-      setupDefaultAssignmentDb({ vehicle: { capacity_kg: 10 } }); // load is 20 kg
+    it('returns 409 VEHICLE_CAPACITY_INSUFFICIENT when vehicle capacity is less than the stored food load', async () => {
+      setupDefaultAssignmentDb({ vehicle: { capacity_kg: 10 } }); // stored food load is 20 kg
 
       const res = await request(app)
         .post(`/api/v1/pickups/${testPickupId}/assignments`)
@@ -1019,7 +1130,7 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
         .send(validAssignmentPayload);
 
       expect(res.status).toBe(409);
-      expect(res.body.error.code).toBe('RESOURCE_CONFLICT');
+      expect(res.body.error.code).toBe('VEHICLE_CAPACITY_INSUFFICIENT');
       expect(res.body.error.message).toContain('capacity');
     });
 
@@ -1156,6 +1267,69 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
     });
   });
 
+  describe('Strict new assignment timing', () => {
+    it('rejects a started persisted pickup before reserving resources', async () => {
+      await withClock('2030-10-30T09:00:00.000Z', async () => {
+        setupDefaultAssignmentDb();
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'started-pickup')
+          .send(validAssignmentPayload);
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('Reschedule the pickup');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.assignments'))).toBe(false);
+      });
+    });
+
+    it('rejects an assignment starting at the current instant without a partial write', async () => {
+      await withClock('2030-10-30T08:30:00.000Z', async () => {
+        setupDefaultAssignmentDb();
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'started-assignment')
+          .send({ ...validAssignmentPayload, windowStartsAt: '2030-10-30T08:30:00.000Z' });
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('Reschedule the pickup');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.assignments'))).toBe(false);
+      });
+    });
+
+    it('requires the requested assignment window to stay inside the persisted pickup window', async () => {
+      await withClock('2030-10-30T08:00:00.000Z', async () => {
+        setupDefaultAssignmentDb();
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'outside-pickup')
+          .send({ ...validAssignmentPayload, windowEndsAt: '2030-10-30T13:00:00.001Z' });
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('scheduled pickup window');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.assignments'))).toBe(false);
+      });
+    });
+
+    it('allows exact readiness and deadline boundaries when the persisted window also fits', async () => {
+      await withClock('2030-10-30T08:00:00.000Z', async () => {
+        setupDefaultAssignmentDb({
+          pickup: { window_starts_at: new Date('2030-10-30T10:00:00.000Z'), window_ends_at: new Date('2030-10-30T12:00:00.000Z') },
+          foodRequest: { ready_at: new Date('2030-10-30T10:00:00.000Z'), pickup_deadline: new Date('2030-10-30T12:00:00.000Z') },
+        });
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'exact-bounds')
+          .send(validAssignmentPayload);
+        expect(result.status).toBe(201);
+      });
+    });
+
+    it('blocks a new assignment when the donor deadline has expired', async () => {
+      await withClock('2030-10-30T08:00:00.000Z', async () => {
+        setupDefaultAssignmentDb({ foodRequest: { pickup_deadline: new Date('2030-10-30T08:00:00.000Z') } });
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'expired-food')
+          .send(validAssignmentPayload);
+        expect(result.status).toBe(409);
+        expect(result.body.error.message).toContain('submit a new request');
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.assignments'))).toBe(false);
+      });
+    });
+  });
+
   describe('Idempotency Replay & Conflict', () => {
     it('returns stored assignment on idempotent replay with same key and same hash', async () => {
       const { computeRequestHash } = await import('../modules/pickups/service');
@@ -1182,6 +1356,25 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
       // Should NOT insert a new assignment
       const insertCalls = query.mock.calls.filter(([sql]) => sql.includes('INSERT INTO app.assignments'));
       expect(insertCalls).toHaveLength(0);
+    });
+
+    it('replays a committed assignment after its pickup window has elapsed', async () => {
+      await withClock('2030-11-01T08:00:00.000Z', async () => {
+        const { computeRequestHash } = await import('../modules/pickups/service');
+        setupDefaultAssignmentDb({
+          pickup: { status: 'ASSIGNED' },
+          idempotency: {
+            key: 'key-1', request_hash: computeRequestHash(testPickupId, validAssignmentPayload),
+            assignment_id: testAssignmentId,
+          },
+        });
+        const result = await request(app).post(`/api/v1/pickups/${testPickupId}/assignments`)
+          .set('Authorization', 'Bearer token').set('Idempotency-Key', 'key-1')
+          .send(validAssignmentPayload);
+        expect(result.status).toBe(200);
+        expect(result.body.data.id).toBe(testAssignmentId);
+        expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO app.assignments'))).toBe(false);
+      });
     });
 
     it('returns 409 RESOURCE_CONFLICT when reusing idempotency key with different payload', async () => {
@@ -1432,14 +1625,25 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
         expect(res.body.error.code).toBe('FORBIDDEN');
       });
 
-      it('rejects VOLUNTEER attempting ADMIN-only action DELIVER with 403 FORBIDDEN', async () => {
+      it('rejects an unassigned VOLUNTEER attempting DELIVER', async () => {
         findUser.mockResolvedValue(volunteer);
+        mockDbForTransition({ assignmentStatus: 'FOOD_COLLECTED', assignmentVersion: 4, isAssigned: false });
         const res = await request(app)
           .patch(`/api/v1/assignments/${pr3AssignmentId}/status`)
           .set('Authorization', 'Bearer token')
-          .send({ action: 'DELIVER', expectedVersion: 0 });
+          .send({ action: 'DELIVER', expectedVersion: 4 });
         expect(res.status).toBe(403);
         expect(res.body.error.code).toBe('FORBIDDEN');
+        expect(query.mock.calls.some(([sql]) => sql.includes('UPDATE app.assignments'))).toBe(false);
+      });
+
+      it('rejects a DONOR attempting DELIVER', async () => {
+        findUser.mockResolvedValue(donor);
+        const res = await request(app)
+          .patch(`/api/v1/assignments/${pr3AssignmentId}/status`)
+          .set('Authorization', 'Bearer token')
+          .send({ action: 'DELIVER', expectedVersion: 4 });
+        expect(res.status).toBe(403);
       });
 
       it('rejects VOLUNTEER attempting ADMIN-only action CANCEL with 403 FORBIDDEN', async () => {
@@ -1585,6 +1789,17 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
         expect(pickupUpdate).toBeDefined();
       });
 
+      it('allows an already active assignment to progress after its original pickup window', async () => {
+        await withClock('2030-11-01T08:00:00.000Z', async () => {
+          findUser.mockResolvedValue(volunteer);
+          mockDbForTransition({ assignmentStatus: 'ACCEPTED', assignmentVersion: 1, pickupStatus: 'ASSIGNED', isAssigned: true });
+          const result = await request(app).patch(`/api/v1/assignments/${pr3AssignmentId}/status`)
+            .set('Authorization', 'Bearer token').send({ action: 'START', expectedVersion: 1 });
+          expect(result.status).toBe(200);
+          expect(result.body.data.status).toBe('EN_ROUTE');
+        });
+      });
+
       it('assigned VOLUNTEER can ARRIVE: EN_ROUTE -> ARRIVED_AT_DONOR, mirrors pickup', async () => {
         findUser.mockResolvedValue(volunteer);
         mockDbForTransition({ assignmentStatus: 'EN_ROUTE', assignmentVersion: 2, pickupStatus: 'EN_ROUTE', isAssigned: true });
@@ -1613,6 +1828,19 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
 
         const pickupUpdate = query.mock.calls.find(([sql, params]) => sql.includes('UPDATE app.pickups') && params?.[0] === 'FOOD_COLLECTED');
         expect(pickupUpdate).toBeDefined();
+      });
+
+      it('assigned VOLUNTEER can DELIVER and releases reservations', async () => {
+        findUser.mockResolvedValue(volunteer);
+        mockDbForTransition({ assignmentStatus: 'FOOD_COLLECTED', assignmentVersion: 4, pickupStatus: 'FOOD_COLLECTED', isAssigned: true });
+        const res = await request(app)
+          .patch(`/api/v1/assignments/${pr3AssignmentId}/status`)
+          .set('Authorization', 'Bearer token')
+          .send({ action: 'DELIVER', expectedVersion: 4 });
+        expect(res.status).toBe(200);
+        expect(res.body.data.status).toBe('DELIVERED');
+        expect(query.mock.calls.some(([sql, params]) => sql.includes('UPDATE app.pickups') && params?.[0] === 'DELIVERED')).toBe(true);
+        expect(query.mock.calls.some(([sql]) => sql.includes('UPDATE app.resource_reservations'))).toBe(true);
       });
 
       it('ADMIN can DELIVER: FOOD_COLLECTED -> DELIVERED, mirrors pickup, releases reservations', async () => {
@@ -1854,6 +2082,9 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
                 status: 'ACCEPTED',
                 version: 1,
                 created_at: new Date('2026-10-01T12:00:00Z'),
+                pickup_address: 'Volunteer assigned pickup hall',
+                window_starts_at: new Date('2026-10-02T12:00:00Z'),
+                window_ends_at: new Date('2026-10-02T13:00:00Z'),
                 volunteer_ids: [pr3VolunteerId],
               }],
             };
@@ -1873,8 +2104,32 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
           pickupId: pr3PickupId,
           status: 'ACCEPTED',
           volunteerIds: [pr3VolunteerId],
+          pickupAddress: 'Volunteer assigned pickup hall',
+          windowStartsAt: '2026-10-02T12:00:00.000Z',
         });
+        const listingSql = query.mock.calls.find(([sql]) => sql.includes('FROM app.assignments a'))?.[0] as string;
+        expect(listingSql).toContain('WHERE p.app_user_id = $1');
+        expect(listingSql).toContain('JOIN app.food_requests fr');
         expect(res.body.data.nextCursor).toBeNull();
+      });
+
+      it('returns delivered history with its real terminal event time for the assigned volunteer', async () => {
+        findUser.mockResolvedValue(volunteer);
+        query.mockImplementation(async (sql: string) => {
+          if (sql.includes('FROM app.assignments a') && sql.includes('WHERE p.app_user_id = $1')) return { rows: [{
+            id: pr3AssignmentId, pickup_id: pr3PickupId, team_id: null, driver_id: pr3DriverId,
+            vehicle_id: pr3VehicleId, role: 'Pickup Crew', status: 'DELIVERED', version: 5,
+            created_at: new Date('2026-10-01T10:00:00Z'), terminal_at: new Date('2026-10-01T15:00:00Z'),
+            pickup_address: 'Assigned Hall', window_starts_at: new Date('2026-10-01T12:00:00Z'),
+            window_ends_at: new Date('2026-10-01T13:00:00Z'), volunteer_ids: [pr3VolunteerId],
+          }] };
+          return { rows: [] };
+        });
+        const res = await request(app).get('/api/v1/assignments/me').set('Authorization', 'Bearer token');
+        expect(res.status).toBe(200);
+        expect(res.body.data.items[0]).toMatchObject({ status: 'DELIVERED', pickupAddress: 'Assigned Hall', completedAt: '2026-10-01T15:00:00.000Z' });
+        const sql = query.mock.calls.find(([text]) => text.includes('FROM app.assignments a'))?.[0] as string;
+        expect(sql).toContain("e.to_status IN ('DELIVERED', 'REJECTED', 'CANCELLED', 'FAILED')");
       });
 
       it('returns empty items array when volunteer has no assignments', async () => {

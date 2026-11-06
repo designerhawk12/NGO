@@ -25,6 +25,7 @@ export type FoodRequestRow = {
   notes: string | null;
   status: 'SUBMITTED' | 'CANCELLED';
   created_at: Date;
+  cancelled_at: Date | null;
 };
 
 export type FoodItemRow = {
@@ -34,6 +35,8 @@ export type FoodItemRow = {
   quantity: string | number;
   unit: 'MEALS' | 'KG' | 'LITRES' | 'PACKAGES';
   handling_requirements: string;
+  estimated_meals?: string | number | null;
+  estimated_weight_kg?: string | number | null;
 };
 
 export type DonorRow = {
@@ -49,6 +52,8 @@ export type FoodItemDetail = {
   quantity: number;
   unit: 'MEALS' | 'KG' | 'LITRES' | 'PACKAGES';
   handlingRequirements: string;
+  estimatedMeals?: number;
+  estimatedWeightKg?: number;
 };
 
 export type FoodItemSummaryCompat = {

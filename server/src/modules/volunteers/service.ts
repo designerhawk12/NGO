@@ -13,11 +13,12 @@ import type { PoolClient } from 'pg';
 import { withTransaction } from '../../db/pool';
 import { getSupabaseUserEmail, inviteSupabaseUserByEmail } from '../../auth/supabase';
 import { HttpError } from '../../middleware/errorHandler';
+import { getDriverDetailsForPerson, type DriverDetails } from '../vehicles/driverProfiles';
 import * as volunteerRepository from './repository';
 import type { VolunteerProfileRow } from './repository';
 import type { AvailabilityRow } from './repository';
+import { consumeVolunteerRegistrationRateLimit } from './registrationRateLimit';
 import type {
-  CreateAdminVolunteerInput,
   CreateSelfRegistrationInput,
   CreateTeamInput,
   ListApplicationsQuery,
@@ -191,6 +192,13 @@ export async function getAdminVolunteer(actor: AppUser, id: string): Promise<Vol
   return toVolunteer(row);
 }
 
+export async function getAdminVolunteerDriverDetails(actor: AppUser, id: string): Promise<DriverDetails | null> {
+  requireAdmin(actor);
+  const volunteer = await volunteerRepository.findVolunteerById(id);
+  if (!volunteer) throw new HttpError(404, 'NOT_FOUND', 'Volunteer not found.');
+  return getDriverDetailsForPerson(volunteer.person_id);
+}
+
 function throwAdminVolunteerConflict(field: 'registrationCode' | 'phoneE164'): never {
   throw new HttpError(409, field === 'registrationCode' ? 'REGISTRATION_CODE_ALREADY_EXISTS' : 'PHONE_ALREADY_EXISTS',
     field === 'registrationCode' ? 'Registration code is already in use.' : 'Phone number is already in use.');
@@ -203,29 +211,27 @@ function handleAdminVolunteerWriteError(error: unknown): never {
   throw error;
 }
 
-export async function createAdminVolunteer(actor: AppUser, input: CreateAdminVolunteerInput): Promise<Volunteer> {
+// Ordinary Volunteers now join only through mobile registration followed by Admin approval.
+// The former Admin "Add Volunteer" invitation endpoint is retired: it never creates Auth
+// identities or Volunteer rows any more. Existing invited Volunteers are unaffected.
+export function createAdminVolunteer(actor: AppUser): never {
   requireAdmin(actor);
-  const conflict = await volunteerRepository.findAdminVolunteerConflict(input.registrationCode, input.phoneE164);
-  if (conflict) throwAdminVolunteerConflict(conflict);
-
-  const invited = await inviteSupabaseUserByEmail(input.email, input.name);
-  try {
-    const row = await withTransaction(client => volunteerRepository.insertInvitedVolunteer(invited.authUserId, input, client));
-    return toVolunteer(row);
-  } catch (error) {
-    // An external Auth invitation cannot join the PostgreSQL transaction.
-    // Never delete an Auth identity here; report a repairable partial failure.
-    console.error(JSON.stringify({ level: 'error', subsystem: 'VolunteerProvisioning', code: 'INVITE_RECOVERY_REQUIRED' }));
-    throw new HttpError(503, 'INVITE_RECOVERY_REQUIRED', 'Volunteer provisioning needs administrator review before retrying.');
-  }
+  throw new HttpError(
+    410,
+    'ADMIN_VOLUNTEER_CREATION_RETIRED',
+    'Volunteers register in the AaharaConnect mobile app and are approved under Volunteer applications. NGO drivers are added from Assign Driver.'
+  );
 }
 
 function registrationConflict(): HttpError {
   return new HttpError(409, 'VOLUNTEER_REGISTRATION_CONFLICT', 'An account or volunteer record already uses these details.');
 }
 
-export async function registerVolunteer(input: CreateSelfRegistrationInput): Promise<VolunteerRegistrationResult> {
-  const conflict = await volunteerRepository.findAdminVolunteerConflict(input.registrationCode, input.phoneE164);
+export async function registerVolunteer(input: CreateSelfRegistrationInput, clientIp: string): Promise<VolunteerRegistrationResult> {
+  if (!await consumeVolunteerRegistrationRateLimit(clientIp, input.email)) {
+    throw new HttpError(429, 'INVITE_RATE_LIMITED', 'Volunteer registration limit reached. Please wait before trying again.');
+  }
+  const conflict = await volunteerRepository.findAdminVolunteerConflict(null, input.phoneE164);
   if (conflict) throw registrationConflict();
 
   let invited: Awaited<ReturnType<typeof inviteSupabaseUserByEmail>>;
@@ -237,7 +243,13 @@ export async function registerVolunteer(input: CreateSelfRegistrationInput): Pro
   }
 
   try {
-    await withTransaction(client => volunteerRepository.insertSelfRegisteredVolunteer(invited.authUserId, input, client));
+    const applicationInput = {
+      email: input.email,
+      name: input.name,
+      phoneE164: input.phoneE164,
+      skills: input.skills,
+    };
+    await withTransaction(client => volunteerRepository.insertSelfRegisteredVolunteer(invited.authUserId, applicationInput, client));
   } catch {
     // The Auth invitation is an external side effect and cannot be rolled back
     // with the PostgreSQL transaction. Keep the identity and require review.
@@ -247,7 +259,7 @@ export async function registerVolunteer(input: CreateSelfRegistrationInput): Pro
 
   return {
     status: 'PENDING',
-    message: 'Application submitted. Check your email to set your password. Volunteer access begins after administrator approval.',
+    message: 'Application submitted successfully. Your Volunteer account is awaiting administrator approval.',
   };
 }
 
@@ -308,7 +320,16 @@ export async function updateAdminVolunteer(actor: AppUser, id: string, input: Up
         );
         if (conflict) throwAdminVolunteerConflict(conflict);
       }
-      return volunteerRepository.updateAdminVolunteerRows(current, input, client);
+      // Skills describe crew work only. They never create or change driver records: NGO drivers
+      // are employees registered from Assign Driver.
+      const volunteerChanged = (input.name !== undefined && input.name !== current.name)
+        || (input.phoneE164 !== undefined && input.phoneE164 !== current.phone_e164)
+        || (input.registrationCode !== undefined && input.registrationCode !== current.registration_code)
+        || (input.status !== undefined && input.status !== current.status)
+        || (input.skills !== undefined && (input.skills.length !== current.skills.length
+          || input.skills.some((skill, index) => skill !== current.skills[index])));
+      return volunteerChanged
+        ? await volunteerRepository.updateAdminVolunteerRows(current, input, client) : current;
     });
     return toVolunteer(row);
   } catch (error) { handleAdminVolunteerWriteError(error); }
@@ -380,4 +401,22 @@ export async function updateAdminTeam(actor: AppUser, id: string, input: UpdateT
       return toTeam(row);
     });
   } catch (error) { handleTeamWriteError(error); }
+}
+
+export async function deleteAdminTeam(actor: AppUser, id: string): Promise<{ id: string; deleted: true }> {
+  requireAdmin(actor);
+  return withTransaction(async client => {
+    const locked = await volunteerRepository.findTeamForUpdate(id, client);
+    if (!locked) throw new HttpError(404, 'NOT_FOUND', 'Team not found.');
+    const assignmentCount = await volunteerRepository.countAssignmentsForTeam(id, client);
+    if (assignmentCount > 0) {
+      throw new HttpError(409, 'RESOURCE_CONFLICT', 'This team is linked to pickup assignments. Reassign or close those assignments before deleting the team.');
+    }
+    // Remove only membership links. Operational assignments are checked above
+    // and are never cascaded or deleted.
+    await volunteerRepository.deleteTeamMemberships(id, client);
+    const deleted = await volunteerRepository.deleteTeam(id, client);
+    if (!deleted) throw new HttpError(409, 'RESOURCE_CONFLICT', 'The team changed while it was being deleted. Refresh and try again.');
+    return { id, deleted: true };
+  });
 }

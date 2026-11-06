@@ -62,7 +62,7 @@ pickupTrackingRoutes.post(
           ON p.id = v.person_id
         WHERE a.pickup_id = $1
           AND p.app_user_id = $2
-          AND a.status NOT IN ('REJECTED', 'CANCELLED', 'FAILED')
+          AND a.status NOT IN ('REJECTED', 'CANCELLED', 'FAILED', 'DELIVERED')
         LIMIT 1
         `,
         [pickupId.data, appUser.id]
@@ -163,7 +163,7 @@ vehicleTrackingRoutes.post(
         WHERE a.pickup_id = $1
           AND a.vehicle_id = $2
           AND p.app_user_id = $3
-          AND a.status NOT IN ('REJECTED', 'CANCELLED', 'FAILED')
+          AND a.status NOT IN ('REJECTED', 'CANCELLED', 'FAILED', 'DELIVERED')
         LIMIT 1
         `,
         [body.pickupId, vehicleId.data, appUser.id]
