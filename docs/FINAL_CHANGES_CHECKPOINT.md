@@ -36,3 +36,12 @@ Server with Postgres 17 (all migrations): 460 passed, 1 todo (44 files). Mobile:
 - Photo SQL (replace and read previous path) verified against real Postgres. Storage calls still untested against real Supabase: needs a signed-in staging session.
 - EAS `production` env (read-only check): API `https://ngo-eight-umber.vercel.app/api/v1`, Supabase `pyzyxgpcfwpcqyqrihuo`, only a publishable key; no secrets in the mobile source.
 - Hosted workflow tests are waiting for a staging Admin sign-in (see the report).
+
+## Hosted staging results (2026-11-07, staging website `dpl_7WXo9CybWE3YdjLtUGy2EaHp48AH`, Admin signed in by the user)
+Passed on staging, verified in the browser and in the staging database:
+- Distribution Center add, edit and archive (UI + DB). Edit changed the center but the existing pickup kept its original address; archived center no longer in the dropdown.
+- Pickup & Logistics: dropdown lists active centers; scheduling stored `distribution_center_id` and the address snapshot; the pickup still showed its original address after the center was edited and archived.
+- Pickup edit (notes, version 1) and cancel ("Delete"): pickup CANCELLED, food request stays SUBMITTED.
+- Food & Donors compact table renders (initials avatar when no photo).
+Not tested on staging: Volunteer approve/deny (no pending applications on staging), driver/vehicle/container assignment (no staging drivers or vessels; covered only by local PostgreSQL integration tests), real profile-photo upload (needs a signed-in session token; reading it was blocked), donor-app flows (need a new APK).
+Synthetic staging records left in place: center `ZZ-TEST Indiranagar Centre` (archived), donor `ZZ-TEST Donor`, food request `ZZ-TEST Royal Hall`, one CANCELLED pickup.
