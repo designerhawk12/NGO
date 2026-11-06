@@ -84,12 +84,14 @@ export default function DistributionCenters({ notify }: { notify?: (message: str
             </tr>)}
           </tbody></table></div>}
       </section>
-      {editing && <Modal title={editing === 'new' ? 'Add Distribution Center' : 'Edit Distribution Center'} onClose={() => setEditing(null)}>
-        <form className="form-grid" onSubmit={save}>
-          <label className="field field-full">Name (optional)<input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} maxLength={120} placeholder="e.g. Indiranagar Centre"/></label>
-          <label className="field field-full">Address <span aria-hidden="true">*</span><textarea value={form.address} onChange={event => setForm({ ...form, address: event.target.value })} maxLength={500} rows={3} required/></label>
-          {error && <p role="alert" className="field-error field-full">{error}</p>}
-          <div className="dialog-actions field-full"><button type="button" className="button button-secondary" onClick={() => setEditing(null)}>Cancel</button><button type="submit" className="button button-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button></div>
+      {editing && <Modal title={editing === 'new' ? 'Add Distribution Center' : 'Edit Distribution Center'} subtitle="Pickups are delivered to the active centers you add here." onClose={() => setEditing(null)}>
+        <form className="dialog-form" onSubmit={save} noValidate>
+          <div className="form-grid">
+            <label className="field field-full"><span>Name (optional)</span><input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} maxLength={120} placeholder="e.g. Indiranagar Centre"/></label>
+            <label className="field field-full"><span>Address <span aria-hidden="true">*</span></span><textarea className="center-address-input" value={form.address} onChange={event => setForm({ ...form, address: event.target.value })} maxLength={500} rows={3} placeholder="Building, street, area, city and PIN code"/></label>
+          </div>
+          {error && <p role="alert" className="field-error">{error}</p>}
+          <div className="dialog-footer"><button type="button" className="button button-secondary" onClick={() => setEditing(null)}>Cancel</button><button type="submit" className="button button-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button></div>
         </form>
       </Modal>}
     </>

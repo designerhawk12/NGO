@@ -934,6 +934,8 @@ const kannada: Record<string, string> = {
   'Safety review pending': 'ಸುರಕ್ಷತಾ ಪರಿಶೀಲನೆ ಬಾಕಿ ಇದೆ',
   'e.g. Indiranagar Centre': 'ಉದಾ. ಇಂದಿರಾನಗರ ಕೇಂದ್ರ',
   'first, then schedule the pickup.': 'ಮೊದಲು ಸೇರಿಸಿ, ನಂತರ ಸಂಗ್ರಹಣೆಯನ್ನು ನಿಗದಿಪಡಿಸಿ.',
+  'Building, street, area, city and PIN code': 'ಕಟ್ಟಡ, ಬೀದಿ, ಪ್ರದೇಶ, ನಗರ ಮತ್ತು ಪಿನ್ ಕೋಡ್',
+  'Pickups are delivered to the active centers you add here.': 'ಸಂಗ್ರಹಣೆಗಳನ್ನು ನೀವು ಇಲ್ಲಿ ಸೇರಿಸುವ ಸಕ್ರಿಯ ಕೇಂದ್ರಗಳಿಗೆ ತಲುಪಿಸಲಾಗುತ್ತದೆ.',
   // Driver app sign-in (migration 013)
   'Ask an administrator for a new invitation.': 'ಹೊಸ ಆಹ್ವಾನಕ್ಕಾಗಿ ನಿರ್ವಾಹಕರನ್ನು ಸಂಪರ್ಕಿಸಿ.',
   'Finish setting up your AaharaConnect account. You will use this password in the AaharaConnect mobile app (Login as Volunteer / Driver).': 'ನಿಮ್ಮ AaharaConnect ಖಾತೆಯ ಸಿದ್ಧತೆಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಿ. ಈ ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು AaharaConnect ಮೊಬೈಲ್ ಆ್ಯಪ್‌ನಲ್ಲಿ ಬಳಸುತ್ತೀರಿ (ಸ್ವಯಂಸೇವಕ / ಚಾಲಕರಾಗಿ ಪ್ರವೇಶಿಸಿ).',

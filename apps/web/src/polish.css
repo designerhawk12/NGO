@@ -343,3 +343,11 @@ h1,h2,h3 { letter-spacing:-.025em; }
 .donor-request-table .inline-assign { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
 .donor-request-table .inline-assign select { max-width: 150px; font-size: 12px; }
 .donor-request-table .actions-cell { white-space: nowrap; }
+
+/* Distribution Center dialog: textarea matches the other inputs; inline errors and quiet text are readable. */
+.field textarea.center-address-input { width: 100%; min-height: 96px; border: 1px solid #dfe9e0; border-radius: 7px; padding: 10px 12px; color: #2f4d39; font-size: 14px; font-family: inherit; line-height: 1.45; resize: vertical; outline: 0; background: #fff; box-sizing: border-box; }
+.field textarea.center-address-input:focus { border-color: #72add5; box-shadow: 0 0 0 3px #72add526; }
+.field textarea.center-address-input::placeholder { color: #b1bcb3; }
+.field-error { margin-top: 12px; color: #b42318; font-size: 13px; line-height: 1.4; }
+.dialog-form .field { min-width: 0; }
+@media (max-width: 640px) { .dialog-form .form-grid { grid-template-columns: 1fr; } }
