@@ -43,7 +43,7 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
         foodRequestId: food.rows[0].id,
         windowStartsAt: start.toISOString(),
         windowEndsAt: end.toISOString(),
-        deliveryAddress: 'Central Food Bank Hub',
+        distributionCenterId: (await client.query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Central Food Bank Hub'])).rows[0].id,
       }, user.rows[0].id, defaultFoodPort, client);
 
       expect(created.status).toBe('PLANNED');
@@ -58,7 +58,7 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
         foodRequestId: food.rows[0].id,
         windowStartsAt: start.toISOString(),
         windowEndsAt: end.toISOString(),
-        deliveryAddress: 'Another Hub',
+        distributionCenterId: (await client.query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Another Hub'])).rows[0].id,
       }, user.rows[0].id, defaultFoodPort, client)).rejects.toMatchObject({
         status: 409,
         code: 'RESOURCE_CONFLICT',
@@ -140,7 +140,7 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
         foodRequestId: food.id,
         windowStartsAt: start.toISOString(),
         windowEndsAt: end.toISOString(),
-        deliveryAddress: 'Central Food Bank Hub',
+        distributionCenterId: (await client.query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Central Food Bank Hub'])).rows[0].id,
       }, adminUser.id, defaultFoodPort, client);
 
       const assignmentResult = await createAssignment(
@@ -318,7 +318,7 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
         foodRequestId: food.id,
         windowStartsAt: start.toISOString(),
         windowEndsAt: end.toISOString(),
-        deliveryAddress: 'Central Food Bank Hub',
+        distributionCenterId: (await client.query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Central Food Bank Hub'])).rows[0].id,
       }, adminUser.id, defaultFoodPort, client);
 
       const assignmentResult = await createAssignment(

@@ -1,4 +1,4 @@
-import { Bell, Boxes, Car, ChevronDown, IdCard, LayoutDashboard, Leaf, Menu, PackageCheck, PackageOpen, Settings, Truck, Users, UsersRound, X } from 'lucide-react'
+import { Bell, Boxes, Building2, Car, ChevronDown, IdCard, LayoutDashboard, Leaf, Menu, PackageCheck, PackageOpen, Settings, Truck, Users, UsersRound, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import type { Page } from '../../types'
 import { Avatar } from '../common/UI'
@@ -16,6 +16,7 @@ const nav: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id:'vehicles', label:'Vehicle Details', icon:Truck },
   { id:'drivers', label:'Assign Driver', icon:IdCard },
   { id:'vessels', label:'Vessels', icon:Boxes },
+  { id:'distribution', label:'Distribution Center', icon:Building2 },
 ]
 function updateTitle(status: string, assignmentStatus?: string | null): string {
   const state = assignmentStatus ?? status
@@ -29,7 +30,7 @@ function updateTitle(status: string, assignmentStatus?: string | null): string {
   return titles[state] ?? `Pickup status: ${state.replaceAll('_', ' ').toLowerCase()}`
 }
 
-const titles: Record<Page,string> = { dashboard:'Volunteer Management', volunteers:'Volunteers', teams:'Volunteer Teams', food:'Food & Donors', assignments:'Assignments', pickups:'Pickup & Logistics', tracking:'Vehicle Tracking', vehicles:'Vehicle Details & Fleet', drivers:'Assign Driver', vessels:'Vessels & Food Containers', settings:'Settings' }
+const titles: Record<Page,string> = { dashboard:'Volunteer Management', volunteers:'Volunteers', teams:'Volunteer Teams', food:'Food & Donors', assignments:'Assignments', pickups:'Pickup & Logistics', tracking:'Vehicle Tracking', vehicles:'Vehicle Details & Fleet', drivers:'Assign Driver', vessels:'Vessels & Food Containers', distribution:'Distribution Center', settings:'Settings' }
 
 export function Layout({ page, onPage, language, onLanguageChange, children }: { page: Page; onPage: (page: Page) => void; language: Language; onLanguageChange: (language: Language) => void; children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)

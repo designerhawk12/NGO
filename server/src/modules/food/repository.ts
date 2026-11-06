@@ -124,7 +124,7 @@ export async function createFoodRequest(
         data.sourceType,
         data.pickupAddress,
         data.preparedAt,
-        data.readyAt,
+        data.readyAt ?? data.preparedAt,
         data.pickupDeadline,
         data.estimatedWeightKg,
         data.handlingRequirements,

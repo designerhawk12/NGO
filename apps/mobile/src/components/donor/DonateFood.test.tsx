@@ -6,6 +6,7 @@ import { normalizeIndianPhone, selectedTimeToIso, validateDonationTimes } from '
 
 const { state } = vi.hoisted(() => ({ state: { mode: 'live' as 'live' | 'demo' } }));
 vi.mock('expo-router', () => ({ router: { push: vi.fn() } }));
+vi.mock('expo-location', () => ({ requestForegroundPermissionsAsync: vi.fn(), getCurrentPositionAsync: vi.fn(), reverseGeocodeAsync: vi.fn(), Accuracy: { Balanced: 3 } }));
 vi.mock('@react-native-community/datetimepicker', () => ({ default: () => null, DateTimePickerAndroid: { open: vi.fn() } }));
 vi.mock('../../api/foodRequests', () => ({ createFoodRequest: vi.fn() }));
 vi.mock('react-native', () => ({
@@ -37,7 +38,10 @@ describe('donor request mode boundary', () => {
     expect(html).toContain('Food prepared');
     expect(html).toContain('Pickup deadline');
     expect(html).toContain('Handling requirements');
-    expect(html).toContain('How many different food items are you donating?');
+    expect(html).toContain('Select quantity of food items');
+    expect(html).toContain('Detect My Location');
+    expect(html).not.toContain('Food ready');
+    expect(html).not.toContain('Less');
     expect(html).toContain('Food Item 1');
     expect(html).toMatch(/<button>Submit pickup request<\/button>/);
   });
@@ -65,12 +69,10 @@ describe('donor input normalization', () => {
   });
   it('accepts midnight rollover and explains invalid ordering or expired deadlines', () => {
     const prepared = '2026-12-31T18:00:00.000Z';
-    const ready = '2026-12-31T19:00:00.000Z';
     const deadline = '2027-01-01T01:00:00.000Z';
     const now = new Date('2026-12-31T12:00:00.000Z');
-    expect(validateDonationTimes(prepared, ready, deadline, now)).toBeNull();
-    expect(validateDonationTimes(ready, prepared, deadline, now)).toContain('Food ready');
-    expect(validateDonationTimes(prepared, deadline, ready, now)).toContain('Pickup deadline');
-    expect(validateDonationTimes(prepared, ready, deadline, new Date('2027-01-02T00:00:00Z'))).toContain('future');
+    expect(validateDonationTimes(prepared, deadline, now)).toBeNull();
+    expect(validateDonationTimes(deadline, prepared, now)).toContain('earlier');
+    expect(validateDonationTimes(prepared, deadline, new Date('2027-01-02T00:00:00Z'))).toContain('future');
   });
 });

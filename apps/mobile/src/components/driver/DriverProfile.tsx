@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type { DriverSelfProfile } from '@aaharaconnect/shared';
-import { View } from 'react-native';
+
 import { router } from 'expo-router';
 import { getOwnDriverProfile } from '../../api/driver';
-import { Button, Card, Header, Icon, InfoRow, LanguageSwitcher, Screen, T } from '../common/UI';
+import ProfilePhoto from '../common/ProfilePhoto';
+import { Button, Card, Header, InfoRow, LanguageSwitcher, Screen, T } from '../common/UI';
 import { C } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 
@@ -29,7 +30,7 @@ export default function DriverProfile() {
       : error || !profile ? <Card><T color={C.red}>{error ?? 'No driver profile found.'}</T><Button title="Retry" variant="outline" onPress={() => void refresh()} style={{ marginTop: 12 }} /></Card>
         : <>
           <Card style={{ alignItems: 'center', marginBottom: 18, paddingVertical: 23 }}>
-            <View style={{ width: 66, height: 66, borderRadius: 22, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}><Icon name="truck" size={33} /></View>
+            <ProfilePhoto iconName="truck" />
             <T size={22} weight="800" color={C.ink} translate={false}>{profile.name}</T>
             <T color={C.muted}>NGO Driver</T>
           </Card>

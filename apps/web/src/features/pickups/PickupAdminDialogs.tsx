@@ -5,6 +5,7 @@ import { Modal } from '../../components/common/UI'
 import { cancelPickup, updatePickup } from './api'
 import { localDateTimeInputToUtcIso, toLocalDateTimeInputValue } from './dateTime'
 import type { Pickup } from './types'
+import DistributionCenterSelect from '../distribution/DistributionCenterSelect'
 
 function pickupWriteError(cause: unknown): string {
   if (!(cause instanceof ApiClientError)) return 'Could not save the pickup. Try again.'
@@ -27,7 +28,8 @@ export function EditPickupDialog({ pickup, onClose, onSaved }: { pickup: Pickup;
   const scheduleLocked = pickup.status !== 'PLANNED'
   const [startsAt, setStartsAt] = useState(() => toLocalDateTimeInputValue(pickup.windowStartsAt))
   const [endsAt, setEndsAt] = useState(() => toLocalDateTimeInputValue(pickup.windowEndsAt))
-  const [deliveryAddress, setDeliveryAddress] = useState(pickup.deliveryAddress)
+  const deliveryAddress = pickup.deliveryAddress
+  const [centerId, setCenterId] = useState('')
   const [notes, setNotes] = useState(pickup.operationalNotes ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -43,12 +45,11 @@ export function EditPickupDialog({ pickup, onClose, onSaved }: { pickup: Pickup;
       if (!startIso || !endIso) { setError('Enter the pickup start and end date and time.'); return }
       if (Date.parse(endIso) <= Date.parse(startIso)) { setError('The pickup window must end after it starts.'); return }
       if (Date.parse(startIso) <= Date.now()) { setError('The new pickup window must start in the future.'); return }
-      if (!deliveryAddress.trim()) { setError('Enter the delivery location.'); return }
       if (startIso !== new Date(pickup.windowStartsAt).toISOString() || endIso !== new Date(pickup.windowEndsAt).toISOString()) {
         input.windowStartsAt = startIso
         input.windowEndsAt = endIso
       }
-      if (deliveryAddress.trim() !== pickup.deliveryAddress) input.deliveryAddress = deliveryAddress.trim()
+      if (centerId) input.distributionCenterId = centerId
     }
     if (notes.trim() !== (pickup.operationalNotes ?? '')) input.operationalNotes = notes.trim() || null
     if (Object.keys(input).length === 1) { setError('Nothing has changed.'); return }
@@ -67,7 +68,7 @@ export function EditPickupDialog({ pickup, onClose, onSaved }: { pickup: Pickup;
       <div className="form-grid">
         <label className="field">Pickup start <span aria-hidden="true">*</span><input type="datetime-local" value={startsAt} onChange={event => setStartsAt(event.target.value)} disabled={scheduleLocked} required/></label>
         <label className="field">Pickup end <span aria-hidden="true">*</span><input type="datetime-local" value={endsAt} onChange={event => setEndsAt(event.target.value)} disabled={scheduleLocked} required/></label>
-        <label className="field field-full">Delivery location <span aria-hidden="true">*</span><input value={deliveryAddress} onChange={event => setDeliveryAddress(event.target.value)} maxLength={500} disabled={scheduleLocked} required/></label>
+        <label className="field field-full">Delivery location (Distribution Center)<DistributionCenterSelect value={centerId} onChange={id => setCenterId(id)} disabled={scheduleLocked} keepCurrentLabel={`Keep current: ${deliveryAddress}`}/></label>
         <label className="field field-full">Operational notes<textarea className="notes-input" value={notes} onChange={event => setNotes(event.target.value)} maxLength={1000} rows={3} placeholder="e.g. Use the service entrance"/><small>The time must stay within the donor’s ready time and pickup deadline.</small></label>
       </div>
       {error && <p className="settings-auth-message" role="alert">{error}</p>}

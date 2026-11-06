@@ -115,7 +115,7 @@ async function registerDriver(vehicleId: string | undefined, overrides: Record<s
 
 async function createPickup(foodRequestId: string, startsAt: Date, endsAt: Date) {
   return request(app).post('/api/v1/pickups').set(auth)
-    .send({ foodRequestId, windowStartsAt: startsAt.toISOString(), windowEndsAt: endsAt.toISOString(), deliveryAddress: 'NGO hub' });
+    .send({ foodRequestId, windowStartsAt: startsAt.toISOString(), windowEndsAt: endsAt.toISOString(), distributionCenterId: (await q<{ id: string }>("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['NGO hub']))[0].id });
 }
 
 beforeAll(async () => {
@@ -402,7 +402,7 @@ describe.skipIf(!enabled)('Assign Driver: zero-record flow and the fixed driver-
       const newStart = future(300);
       const newEnd = future(360);
       const edit = await request(app).patch(`/api/v1/pickups/${secondPickupId}`).set(auth)
-        .send({ expectedVersion: before.version, windowStartsAt: newStart.toISOString(), windowEndsAt: newEnd.toISOString(), deliveryAddress: 'Second hub' });
+        .send({ expectedVersion: before.version, windowStartsAt: newStart.toISOString(), windowEndsAt: newEnd.toISOString(), distributionCenterId: (await q<{ id: string }>("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Second hub']))[0].id });
       expect(edit.status).toBe(200);
       const reloaded = (await request(app).get(`/api/v1/pickups/${secondPickupId}`).set(auth)).body.data;
       expect(new Date(reloaded.windowStartsAt).getTime()).toBe(newStart.getTime());

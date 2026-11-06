@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import type { PoolClient } from 'pg';
 import { withTransaction } from '../../db/pool';
 import { HttpError } from '../../middleware/errorHandler';
+import { requireActiveCenterAddress } from '../distribution/service';
 import {
   assessVehicleCapacity,
   validateVesselSelection,
@@ -305,6 +306,10 @@ export async function createPickup(
   foodPort: FoodPort = defaultFoodPort,
   client?: PoolClient
 ): Promise<PickupDetail> {
+  // The delivery destination must be a registered Distribution Center; refuse early, before any lookup.
+  if (!input.distributionCenterId) {
+    throw new HttpError(400, 'DISTRIBUTION_CENTER_REQUIRED', 'Select a Distribution Center for the delivery destination.');
+  }
   // Precondition via FoodPort: food request status SUBMITTED and safety_review=APPROVED
   const foodRequest = await foodPort.getFoodRequest(input.foodRequestId, client);
   if (!foodRequest) {
@@ -353,7 +358,8 @@ export async function createPickup(
   }
 
   const run = async (txClient: PoolClient): Promise<PickupDetail> => {
-    const row = await pickupRepository.createPickup(input, actorUserId, txClient);
+    const center = await requireActiveCenterAddress(input.distributionCenterId, txClient);
+    const row = await pickupRepository.createPickup({ ...input, deliveryAddress: center.address, distributionCenterId: center.id }, actorUserId, txClient);
     return toPickupDto(row);
   };
 
@@ -889,7 +895,8 @@ export async function updatePickup(
     if (pickup.version !== input.expectedVersion) {
       throw new HttpError(409, 'VERSION_CONFLICT', 'This pickup was changed by someone else. Reload the list and try again.');
     }
-    const changesSchedule = input.windowStartsAt !== undefined || input.deliveryAddress !== undefined;
+    const changesSchedule = input.windowStartsAt !== undefined || input.deliveryAddress !== undefined || input.distributionCenterId !== undefined;
+    const center = input.distributionCenterId === undefined ? null : await requireActiveCenterAddress(input.distributionCenterId, tx);
     if (pickup.status === 'ASSIGNED') {
       if (changesSchedule) {
         throw new HttpError(409, 'PICKUP_SCHEDULE_LOCKED', 'This pickup already has an assigned crew and vehicle. Remove the pickup or cancel its assignment before changing the time or delivery location; only notes can be edited now.');
@@ -928,7 +935,8 @@ export async function updatePickup(
       previous: pickup,
       windowStartsAt,
       windowEndsAt,
-      deliveryAddress: input.deliveryAddress ?? pickup.delivery_address,
+      deliveryAddress: center?.address ?? input.deliveryAddress ?? pickup.delivery_address,
+      distributionCenterId: center?.id,
       operationalNotes: input.operationalNotes === undefined
         ? pickup.operational_notes ?? null
         : (input.operationalNotes?.trim() || null),

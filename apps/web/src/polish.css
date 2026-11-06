@@ -330,3 +330,16 @@ h1,h2,h3 { letter-spacing:-.025em; }
 
 /* Admin assignments: driver acknowledgement under the crew status */
 .driver-acceptance { display: block; margin-top: 4px; color: #475569; font-size: 12px; }
+
+/* Profile photos (Donor, Volunteer, Driver) share the initials avatar footprint. */
+.avatar-photo { padding: 0; overflow: hidden; background: #e8efe9; }
+.avatar-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Compact Food Donors request table */
+.donor-request-table td { vertical-align: middle; font-size: 13px; }
+.donor-request-table .clamp-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.donor-request-table .block-small { display: block; color: #64748b; font-size: 12px; }
+.donor-request-table .warn-text { color: #b45309; }
+.donor-request-table .inline-assign { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+.donor-request-table .inline-assign select { max-width: 150px; font-size: 12px; }
+.donor-request-table .actions-cell { white-space: nowrap; }

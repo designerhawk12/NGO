@@ -8,7 +8,7 @@ export type VerifiedIdentity = { authUserId: string; email: string; displayName?
 
 let adminClient: ReturnType<typeof createClient> | undefined;
 
-function getSupabaseAdminClient() {
+export function getSupabaseAdminClient() {
   if (!env.supabaseUrl || !env.supabaseSecretKey) {
     throw new HttpError(
       503,

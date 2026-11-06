@@ -81,7 +81,7 @@ async function schedulePickupWithFood(kg: number, startsInMinutes: number) {
   await q("INSERT INTO app.food_items(food_request_id, food_type, quantity, unit) VALUES ($1, 'Vegetable biryani', $2, 'KG')", [foodRequestId, kg]);
   const pickup = await request(app).post('/api/v1/pickups').set(as(adminAuth)).send({
     foodRequestId, windowStartsAt: future(startsInMinutes).toISOString(), windowEndsAt: future(startsInMinutes + 120).toISOString(),
-    deliveryAddress: 'AaharaConnect Distribution Center, Indiranagar',
+    distributionCenterId: (await q("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['AaharaConnect Distribution Center, Indiranagar']))[0].id,
   });
   expect(pickup.status).toBe(201);
   return pickup.body.data as { id: string; windowStartsAt: string; windowEndsAt: string };

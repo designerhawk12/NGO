@@ -429,7 +429,7 @@ describe.skipIf(!enabled)('Pickup assignment HTTP + PostgreSQL integration', () 
           foodRequestId,
           windowStartsAt: startsAt.toISOString(),
           windowEndsAt: endsAt.toISOString(),
-          deliveryAddress: 'Test distribution hub',
+          distributionCenterId: (await getPool().query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Test distribution hub'])).rows[0].id,
         });
       expect(pickupResponse.status).toBe(201);
       pickupId = pickupResponse.body.data.id;
@@ -515,7 +515,7 @@ describe.skipIf(!enabled)('Pickup assignment HTTP + PostgreSQL integration', () 
           foodRequestId,
           windowStartsAt: startsAt.toISOString(),
           windowEndsAt: endsAt.toISOString(),
-          deliveryAddress: 'Test distribution hub',
+          distributionCenterId: (await getPool().query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Test distribution hub'])).rows[0].id,
         });
       expect(duplicatePickup.status).toBe(409);
       const pickupCount = await getPool().query(

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { IdCard, Lock, Mail, Pencil, Plus, RefreshCw, Truck } from 'lucide-react'
 import type { DriverVehicleOption, EmployeeDriver } from '@aaharaconnect/shared'
 import { ApiClientError } from '../api/client'
-import { EmptyState, formatDate, Modal, StatusBadge } from '../components/common/UI'
+import { useProfilePhotos } from '../features/photos/useProfilePhotos'
+import { Avatar, EmptyState, formatDate, Modal, StatusBadge } from '../components/common/UI'
 import { createEmployeeDriver, inviteDriverToApp, listDriverVehicleOptions, listDrivers, updateEmployeeDriver } from '../features/drivers/api'
 
 type Props = {
@@ -69,6 +70,8 @@ function vehicleSummary(vehicle: { registrationNumber: string; kind: string; cap
 export default function AssignDriver({ notify, onOpenVehicles }: Props) {
   const [drivers, setDrivers] = useState<EmployeeDriver[]>([])
   const [vehicleOptions, setVehicleOptions] = useState<DriverVehicleOption[]>([])
+  const photoIds = useMemo(() => drivers.map(driver => driver.driverId), [drivers])
+  const photos = useProfilePhotos('DRIVER', photoIds)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [mode, setMode] = useState<'create' | 'edit' | null>(null)
@@ -170,7 +173,7 @@ export default function AssignDriver({ notify, onOpenVehicles }: Props) {
         : error && drivers.length === 0 ? <EmptyState title="Could not load drivers" description="Check your administrator session and API connection, then retry." action={<button className="button button-secondary" onClick={() => void load()}>Retry</button>}/>
           : employees.length === 0 ? <EmptyState title="No drivers registered yet" description="Register a vehicle in Vehicle Details first, then add the NGO employee who drives it." action={<button className="button button-primary" onClick={openCreate}><Plus size={16}/> Add Driver</button>}/>
             : <div className="table-scroll"><table className="data-table driver-table"><thead><tr><th>Driver</th><th>Contact</th><th>Driving licence</th><th>Assigned vehicle</th><th>Status</th><th>Actions</th></tr></thead><tbody>{employees.map(driver => <tr key={driver.driverId}>
-              <td><span className="person-cell"><span><strong>{driver.name}</strong><small>{driver.employeeCode ? `Employee ID ${driver.employeeCode}` : 'No employee ID'}</small></span></span></td>
+              <td><span className="person-cell"><Avatar name={driver.name} src={photos[driver.driverId]}/><span><strong>{driver.name}</strong><small>{driver.employeeCode ? `Employee ID ${driver.employeeCode}` : 'No employee ID'}</small></span></span></td>
               <td><div className="time-cell"><strong>{formatPhone(driver.phone)}</strong>{driver.loginEmail && <small>{driver.loginEmail}</small>}<small>{driver.hasAppLogin ? 'App sign-in: invited' : 'No app sign-in yet'}</small></div></td>
               <td><div className="time-cell"><strong>{driver.licenceNumber}</strong><small>{driver.licenceExpired ? 'Expired' : 'Valid until'} {formatDate(driver.licenceExpiresOn)}</small></div></td>
               <td>{driver.vehicle ? <div className="time-cell"><strong><Truck size={14} aria-hidden="true"/> {driver.vehicle.registrationNumber}</strong><small>{vehicleSummary(driver.vehicle)}</small><small>Vehicle status: {driver.vehicle.status.toLowerCase()}</small></div> : <span className="quiet-text">No vehicle linked</span>}</td>

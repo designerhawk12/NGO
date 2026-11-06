@@ -39,7 +39,7 @@ export interface CreatePickupInput {
   foodRequestId: string
   windowStartsAt: string
   windowEndsAt: string
-  deliveryAddress: string
+  distributionCenterId: string
 }
 
 export interface ContainerPlan {

@@ -40,17 +40,17 @@ export function decodeCursor(cursor: string): { createdAt: Date; id: string } | 
 }
 
 export async function createPickup(
-  data: CreatePickup,
+  data: Omit<CreatePickup, 'deliveryAddress' | 'distributionCenterId'> & { deliveryAddress: string; distributionCenterId?: string | null },
   actorUserId?: string,
   client?: PoolClient
 ): Promise<PickupRow> {
   const db = client ?? getPool();
   try {
     const result = await db.query<PickupRow>(
-      `INSERT INTO app.pickups (food_request_id, window_starts_at, window_ends_at, delivery_address, status, version)
-       VALUES ($1, $2, $3, $4, 'PLANNED', 0)
+      `INSERT INTO app.pickups (food_request_id, window_starts_at, window_ends_at, delivery_address, distribution_center_id, status, version)
+       VALUES ($1, $2, $3, $4, $5, 'PLANNED', 0)
        RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes`,
-      [data.foodRequestId, data.windowStartsAt, data.windowEndsAt, data.deliveryAddress]
+      [data.foodRequestId, data.windowStartsAt, data.windowEndsAt, data.deliveryAddress, data.distributionCenterId ?? null]
     );
     const pickup = result.rows[0];
 
@@ -650,6 +650,7 @@ export async function updatePickupSchedule(
     windowStartsAt: Date;
     windowEndsAt: Date;
     deliveryAddress: string;
+    distributionCenterId?: string;
     operationalNotes: string | null;
   },
   client: PoolClient
@@ -658,10 +659,11 @@ export async function updatePickupSchedule(
     const result = await client.query<PickupRow>(
       `UPDATE app.pickups
        SET window_starts_at = $2, window_ends_at = $3, delivery_address = $4, operational_notes = $5,
+           distribution_center_id = COALESCE($6, distribution_center_id),
            version = version + 1
        WHERE id = $1
        RETURNING id, food_request_id, window_starts_at, window_ends_at, delivery_address, status, version, created_at, operational_notes`,
-      [params.pickupId, params.windowStartsAt, params.windowEndsAt, params.deliveryAddress, params.operationalNotes]
+      [params.pickupId, params.windowStartsAt, params.windowEndsAt, params.deliveryAddress, params.operationalNotes, params.distributionCenterId ?? null]
     );
     await client.query(
       `INSERT INTO app.pickup_schedule_changes (

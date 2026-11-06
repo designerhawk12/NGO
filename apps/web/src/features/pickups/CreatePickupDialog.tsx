@@ -7,6 +7,7 @@ import { createPickup, reviewFoodSafety } from './api'
 import { localDateTimeInputToUtcIso, toLocalDateTimeInputValue } from './dateTime'
 import { saveDemoPickup, useFoodRequests } from './hooks'
 import type { Pickup } from './types'
+import DistributionCenterSelect from '../distribution/DistributionCenterSelect'
 
 interface Props {
   onClose: () => void
@@ -65,9 +66,8 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
     [selectedRequest]
   )
 
-  const [deliveryAddress, setDeliveryAddress] = useState(
-    'AaharaConnect Distribution Center, Indiranagar'
-  )
+  const [deliveryAddress, setDeliveryAddress] = useState('AaharaConnect Distribution Center, Indiranagar')
+  const [centerId, setCenterId] = useState('')
   const [windowStartsAt, setWindowStartsAt] = useState(() => {
     return toLocalDateTimeInputValue(new Date(Date.now() + 3600000))
   })
@@ -113,7 +113,7 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!foodRequestId || !deliveryAddress.trim()) {
+    if (!foodRequestId || !deliveryAddress.trim() || (isLiveAdmin() && !centerId)) {
       notify('Please fill in all required fields.', 'error')
       return
     }
@@ -155,7 +155,7 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
       if (isLiveAdmin()) {
         const created = await createPickup({
           foodRequestId,
-          deliveryAddress: deliveryAddress.trim(),
+          distributionCenterId: centerId,
           windowStartsAt: startsAt,
           windowEndsAt: endsAt,
         })
@@ -503,14 +503,10 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
         </div>
 
         <label className="field">
-          <span>Delivery Address</span>
-          <input
-            type="text"
-            value={deliveryAddress}
-            onChange={e => setDeliveryAddress(e.target.value)}
-            placeholder="Enter destination address"
-            required
-          />
+          <span>Delivery destination (Distribution Center)</span>
+          {isLiveAdmin()
+            ? <DistributionCenterSelect value={centerId} onChange={(id, center) => { setCenterId(id); setDeliveryAddress(center?.address ?? '') }} />
+            : <input type="text" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Enter destination address" required />}
         </label>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '0.75rem' }}>

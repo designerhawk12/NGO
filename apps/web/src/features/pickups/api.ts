@@ -166,6 +166,7 @@ export async function updatePickup(
     windowStartsAt?: string
     windowEndsAt?: string
     deliveryAddress?: string
+    distributionCenterId?: string
     operationalNotes?: string | null
   }
 ): Promise<Pickup> {

@@ -5,7 +5,7 @@ export const assignmentStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'EN_ROUTE',
 export const driverAcceptanceSchema = z.enum(['NOT_REQUIRED', 'PENDING', 'ACCEPTED', 'DECLINED']);
 export const pickupStatusSchema = z.enum(['PLANNED', 'ASSIGNED', 'EN_ROUTE', 'ARRIVED_AT_DONOR', 'FOOD_COLLECTED', 'DELIVERED', 'CANCELLED', 'FAILED']);
 export const containerPlanInputSchema = z.object({ containerType: z.string().min(1).max(100), count: z.number().int().positive(), estimatedLoadKg: z.number().nonnegative().nullable() });
-export const createPickupSchema = z.object({ foodRequestId: uuidSchema, windowStartsAt: utcDateTimeSchema, windowEndsAt: utcDateTimeSchema, deliveryAddress: z.string().min(1).max(500) }).refine(value => new Date(value.windowStartsAt) < new Date(value.windowEndsAt), { path: ['windowEndsAt'], message: 'End must follow start.' });
+export const createPickupSchema = z.object({ foodRequestId: uuidSchema, windowStartsAt: utcDateTimeSchema, windowEndsAt: utcDateTimeSchema, deliveryAddress: z.string().min(1).max(500).optional(), distributionCenterId: uuidSchema.optional() }).refine(value => new Date(value.windowStartsAt) < new Date(value.windowEndsAt), { path: ['windowEndsAt'], message: 'End must follow start.' });
 export const createAssignmentSchema = z.object({ teamId: uuidSchema.nullable(), volunteerIds: z.array(uuidSchema).min(1), driverId: uuidSchema, vehicleId: uuidSchema.optional(), vesselIds: z.array(uuidSchema).optional(), role: z.string().min(1).max(100), windowStartsAt: utcDateTimeSchema, windowEndsAt: utcDateTimeSchema, containers: z.array(containerPlanInputSchema) }).superRefine((value, context) => {
   if (new Date(value.windowStartsAt) >= new Date(value.windowEndsAt)) context.addIssue({ code: 'custom', path: ['windowEndsAt'], message: 'End must follow start.' });
   if (new Set(value.volunteerIds).size !== value.volunteerIds.length) context.addIssue({ code: 'custom', path: ['volunteerIds'], message: 'Volunteer IDs must be unique.' });
@@ -45,6 +45,7 @@ export const updatePickupSchema = z.strictObject({
   windowStartsAt: utcDateTimeSchema.optional(),
   windowEndsAt: utcDateTimeSchema.optional(),
   deliveryAddress: z.string().trim().min(1).max(500).optional(),
+  distributionCenterId: uuidSchema.optional(),
   operationalNotes: z.string().trim().max(1000).nullable().optional(),
 }).superRefine((value, context) => {
   if ((value.windowStartsAt === undefined) !== (value.windowEndsAt === undefined)) {
@@ -53,7 +54,7 @@ export const updatePickupSchema = z.strictObject({
   if (value.windowStartsAt && value.windowEndsAt && new Date(value.windowStartsAt) >= new Date(value.windowEndsAt)) {
     context.addIssue({ code: 'custom', path: ['windowEndsAt'], message: 'End must follow start.' });
   }
-  if (value.windowStartsAt === undefined && value.deliveryAddress === undefined && value.operationalNotes === undefined) {
+  if (value.windowStartsAt === undefined && value.deliveryAddress === undefined && value.distributionCenterId === undefined && value.operationalNotes === undefined) {
     context.addIssue({ code: 'custom', path: [], message: 'Provide at least one pickup field to update.' });
   }
 });

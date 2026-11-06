@@ -20,6 +20,8 @@ export interface EquipmentRequirement {
 
 export interface DonorPickupRequest {
   id: string
+  donorId?: string
+  preparedAt?: string
   donorName: string
   pickupAddress: string
   contactName?: string
@@ -298,6 +300,8 @@ export async function fetchAllDonorRequests(
 
           result.push({
             id: item.id,
+            donorId: item.donorId,
+            preparedAt: item.preparedAt,
             donorName: item.sourceName || item.donorName || 'Food Donor',
             pickupAddress: item.pickupAddress || item.location || 'Bengaluru',
             contactName: item.contactName,

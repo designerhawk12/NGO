@@ -14,6 +14,10 @@ vi.mock('../db/pool', () => ({
   withTransaction: async (run: (client: { query: typeof query }) => Promise<unknown>) => run({ query }),
 }));
 
+vi.mock('../modules/distribution/service', () => ({
+  requireActiveCenterAddress: async () => ({ id: 'c0000000-0000-4000-8000-000000000001', address: 'Central Food Hub, Bengaluru' }),
+}));
+
 import { app } from '../app';
 import { cancelForFoodRequest } from '../modules/pickups/service';
 
@@ -51,6 +55,7 @@ const validPickupPayload = {
   foodRequestId: 'f0000000-0000-4000-8000-000000000001',
   windowStartsAt: '2030-10-10T10:00:00.000Z',
   windowEndsAt: '2030-10-10T12:00:00.000Z',
+  distributionCenterId: 'c0000000-0000-4000-8000-000000000001',
   deliveryAddress: 'Central Food Hub, Bengaluru',
 };
 

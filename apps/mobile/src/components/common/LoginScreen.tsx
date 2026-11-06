@@ -99,8 +99,11 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
       setRegistrationResult(result); setRegistration(emptyRegistration); setSelectedSkills([]); setOtherSkill('');
     } catch (cause) {
       const messages: Record<string, string> = {
-        VOLUNTEER_REGISTRATION_CONFLICT: 'An account or volunteer record already uses these details.',
-        INVITE_RATE_LIMITED: 'Invitation email limit reached. Please wait before trying again.',
+        REGISTRATION_DISABLED: 'Volunteer registration is temporarily unavailable. Please try again later or contact the NGO.',
+        VOLUNTEER_REGISTRATION_CONFLICT: 'An account already uses these details. If you already registered as a Donor, use a different email address for your Volunteer application.',
+        VOLUNTEER_ALREADY_EXISTS: 'An account already uses these details. If you already registered as a Donor, use a different email address for your Volunteer application.',
+        VALIDATION_ERROR: 'Check your name, email and phone number and try again.',
+        INVITE_RATE_LIMITED: 'Too many attempts. Please wait a while before trying again.',
         INVITE_EMAIL_NOT_AUTHORIZED: 'This email cannot receive invitations with the current email settings. Contact an administrator.',
         INVITE_SERVICE_UNAVAILABLE: 'The invitation service is temporarily unavailable. Try again shortly.',
         INVITE_CONFIGURATION_ERROR: 'Invitation configuration needs administrator attention.',
@@ -108,7 +111,9 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         NETWORK_ERROR: 'Could not reach the API. Check your connection and try again.',
       };
       setRegistrationError(cause instanceof ApiClientError
-        ? messages[cause.code] ?? 'Could not submit your application. Check your details and try again.'
+        ? messages[cause.code] ?? (cause.status === 429 ? messages.INVITE_RATE_LIMITED
+          : cause.status >= 500 ? 'The service had a problem. Please try again shortly.'
+            : 'Could not submit your application. Check your details and try again.')
         : 'Could not submit your application. Check your connection and try again.');
     } finally {
       registrationSubmitting.current = false; setRegistrationBusy(false);

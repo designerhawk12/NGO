@@ -12,6 +12,7 @@ import Vehicles from './pages/Vehicles'
 import FoodDonor from './pages/FoodDonor'
 import Vessels from './pages/Vessels'
 import AssignDriver from './pages/AssignDriver'
+import DistributionCenters from './pages/DistributionCenters'
 import LiveDashboard from './pages/LiveDashboard'
 import { useRenderedLanguage, type Language } from './lib/i18n'
 import { restoreAdminSession } from './api/auth'
@@ -29,7 +30,7 @@ export default function App() {
       const directHash = window.location.hash.replace(/^#\/?(workspace\/?)?/, '').split('?')[0]
       const p = searchP || hashQuery || directHash
       if (p === 'assignments') return 'pickups'
-      if (p === 'food' || p === 'pickups' || p === 'volunteers' || p === 'teams' || p === 'tracking' || p === 'vehicles' || p === 'drivers' || p === 'vessels' || p === 'settings') {
+      if (p === 'food' || p === 'pickups' || p === 'volunteers' || p === 'teams' || p === 'tracking' || p === 'vehicles' || p === 'drivers' || p === 'vessels' || p === 'distribution' || p === 'settings') {
         return p as Page
       }
     }
@@ -123,6 +124,7 @@ export default function App() {
     {page === 'vehicles' && <Vehicles vehicles={vehicles} setVehicles={setVehicles} maintenanceRecords={maintenanceRecords} setMaintenanceRecords={setMaintenanceRecords} drivers={initialDrivers} assignments={assignments} events={events} notify={notify}/>}
     {page === 'drivers' && <AssignDriver notify={notify} onOpenVehicles={() => setPage('vehicles')}/>}
     {page === 'vessels' && <Vessels vehicles={vehicles} notify={notify} />}
+    {page === 'distribution' && <DistributionCenters notify={notify} />}
     {page === 'settings' && <Settings notifications={showSuccessNotifications} onNotificationsChange={setShowSuccessNotifications} onAdminSignIn={() => setPage('dashboard')}/>}
     {assignmentOpen && <CreateAssignmentDialog volunteers={volunteers} teams={teams} assignments={assignments} initialVolunteerId={initialVolunteerId} onClose={() => setAssignmentOpen(false)} onCreate={createAssignment} notify={notify}/>}
     </>}

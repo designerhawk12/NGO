@@ -23,7 +23,7 @@ function RequestCard({ item }: { item: DonorFoodRequest }) {
       <Badge value={outcome(item)} />
     </View>
     <T color={C.muted} translate={false}>{item.items.map(food => food.foodType).join(', ')}</T>
-    <T color={C.muted} translate={false}>{new Date(item.readyAt).toLocaleString()}</T>
+    <T color={C.muted} translate={false}>{new Date(item.preparedAt).toLocaleString()}</T>
     <Button title="View request" variant="outline"
       onPress={() => router.push({ pathname: '/donor/request/[id]', params: { id: item.id } })}
       style={{ marginTop: 12 }} />
