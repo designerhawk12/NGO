@@ -4,6 +4,7 @@ import type { FleetLocation } from '@aaharaconnect/shared'
 import 'leaflet/dist/leaflet.css'
 import { apiRequest } from '../api/client'
 import { getAdminAccessToken } from '../api/auth'
+import { selectTrackedVehicle, updateTrackingMap, type TrackingFocus } from './trackingMapFocus'
 
 export default function VehicleTracking() {
   const [fleet, setFleet] = useState<FleetLocation[]>([])
@@ -13,6 +14,7 @@ export default function VehicleTracking() {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<LeafletMap | null>(null)
   const marker = useRef<Marker | null>(null)
+  const focus = useRef<TrackingFocus>({ selected: '', focused: false })
   const [mapReady, setMapReady] = useState(false)
   const vehicle = fleet.find(item => item.id === selected)
   useEffect(() => {
@@ -25,7 +27,7 @@ export default function VehicleTracking() {
         const result = await apiRequest<{ items: FleetLocation[] }>('vehicles/tracking', { headers: { Authorization: `Bearer ${token}` } })
         if (disposed) return
         setFleet(result.items); setError(''); setNow(Date.now())
-        setSelected(current => result.items.some(item => item.id === current) ? current : result.items[0]?.id ?? '')
+        setSelected(current => selectTrackedVehicle(result.items,current))
       } catch (cause) {
         if (!disposed) { setError(cause instanceof Error ? cause.message : 'Location updates unavailable.'); setNow(Date.now()) }
       } finally { if (!disposed) timer = setTimeout(() => void load(), 15_000) }
@@ -46,10 +48,7 @@ export default function VehicleTracking() {
   }, [])
   useEffect(() => {
     if (!mapReady || !map.current || !marker.current) return
-    if (vehicle?.latitude == null || vehicle.longitude == null) { marker.current.remove(); return }
-    const point: [number, number] = [vehicle.latitude, vehicle.longitude]
-    marker.current.setLatLng(point).addTo(map.current)
-    map.current.setView(point, map.current.getZoom())
+    focus.current = updateTrackingMap(map.current, marker.current, focus.current, selected, vehicle?.latitude, vehicle?.longitude)
   }, [vehicle?.latitude, vehicle?.longitude, selected, mapReady])
   const age = vehicle?.recordedAt ? Math.max(0, now - Date.parse(vehicle.recordedAt)) : Infinity
   const status = !vehicle?.sharing || age >= 300_000 ? 'Offline' : age >= 120_000 ? 'Stale' : 'Recent'

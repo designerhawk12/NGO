@@ -321,6 +321,10 @@ The user corrected earlier backup claims: Free plan, no managed backups/PITR/ret
 
 Final predeployment regression: **67 files,584 tests passed,1 existing TODO**,24.78s on a fresh synthetic database prepared by the canonical001–015 runner. Next: release commit → explicitly linked staging-only deployments → verified stable aliases/new code → staging-only public-alias access arrangement → hosted synthetic API/Auth/private-document/photo/Driver/GPS/outbox tests. Do not call the old opaque deployments as proof of the new settings. No Production project/data was accessed. No new APK or live notification has been sent yet.
 
+## Manual acceptance follow-up — 2026-11-10
+
+See `STAGING_ACCEPTANCE_FIXES.md` for the prioritized registration/photo/map repair. Registration remains deliberately disabled on both deployed staging hosts pending verified email delivery; no flag, SMTP setting or secret changed. Photo normalization uses the SDK57 native JPEG encoder with a600KB output cap; map focus is17 on first fix/selection, not every refresh.169 distinct focused local tests and affected builds/lint/smoke pass. Hosted synthetic photos pass upload/preview/replacement/persistence/private denial for all three roles. Replacement APK/staging-web release details and physical limitations are maintained in that report. Production, existing accounts/migrations, real WhatsApp and public APK distribution remain untouched.
+
 ## Staging login follow-up — 2026-11-09
 
 See `STAGING_LOGIN_REPAIR.md` for exact affected-account findings, regression and staging-only repair evidence. `admin_test@gmail.com` is absent from staging Auth; no Admin was created/reset to match it. Existing current credentials pass Auth and `/me`. A separate demonstrated legacy Donor portal bug hard-coded another Auth project; the repair uses Vite environment configuration and isolates cached tokens/service-worker traffic. Production and existing database/account data remain untouched. Discover the repair source commit with `git log -- apps/web/donor/index.html`.

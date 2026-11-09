@@ -110,7 +110,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
       setRegistrationResult(result); setRegistration(emptyRegistration); setSelectedSkills([]); setOtherSkill(''); setIdentityProof(null); submissionId.current = undefined;
     } catch (cause) {
       const messages: Record<string, string> = {
-        REGISTRATION_DISABLED: 'Volunteer registration is temporarily unavailable. Please try again later or contact the NGO.',
+        REGISTRATION_DISABLED: 'Public Volunteer registration is disabled while invitation email delivery is being verified. Contact the NGO for help. Retrying will not submit an application.',
         VOLUNTEER_REGISTRATION_CONFLICT: 'An account already uses these details. If you already registered as a Donor, use a different email address for your Volunteer application.',
         VOLUNTEER_ALREADY_EXISTS: 'An account already uses these details. If you already registered as a Donor, use a different email address for your Volunteer application.',
         VALIDATION_ERROR: 'Check your name, email and phone number and try again.',

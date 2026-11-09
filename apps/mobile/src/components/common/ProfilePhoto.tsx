@@ -5,6 +5,7 @@ import { ApiClientError } from '../../api/client';
 import { getOwnProfilePhotoUrl, photoErrorMessage, uploadOwnProfilePhoto } from '../../api/profilePhoto';
 import { C } from '../../constants/theme';
 import { Button, Icon, T } from './UI';
+import { normalizeProfilePhoto, type NormalizedProfilePhoto } from './normalizeProfilePhoto';
 
 type Props = { iconName: string };
 
@@ -15,7 +16,7 @@ type Props = { iconName: string };
  */
 export default function ProfilePhoto({ iconName }: Props) {
   const [uri, setUri] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ uri: string; base64: string; contentType: 'image/jpeg' | 'image/png' | 'image/webp' } | null>(null);
+  const [preview, setPreview] = useState<NormalizedProfilePhoto | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [broken, setBroken] = useState(false);
@@ -27,16 +28,22 @@ export default function ProfilePhoto({ iconName }: Props) {
   }, []);
 
   const choose = useCallback(async () => {
+    if (busy) return;
     setMessage(null);
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true, exif: false,
-    });
-    if (result.canceled || !result.assets[0]?.base64) return;
-    const asset = result.assets[0];
-    const mime = (asset.mimeType ?? 'image/jpeg').toLowerCase();
-    if (mime !== 'image/jpeg' && mime !== 'image/png' && mime !== 'image/webp') { setMessage(photoErrorMessage('PHOTO_TYPE_UNSUPPORTED')); return; }
-    setPreview({ uri: asset.uri, base64: asset.base64!, contentType: mime });
-  }, []);
+    setBusy(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 1, base64: false, exif: false,
+      });
+      if (result.canceled || !result.assets[0]?.uri) return;
+      setPreview(await normalizeProfilePhoto(result.assets[0].uri));
+      setBroken(false);
+    } catch (cause) {
+      setMessage(cause instanceof Error && cause.message === 'PHOTO_TOO_LARGE'
+        ? photoErrorMessage('PHOTO_TOO_LARGE')
+        : 'This photo could not be converted. Choose another image or export it as JPEG.');
+    } finally { setBusy(false); }
+  }, [busy]);
 
   const save = useCallback(async () => {
     if (!preview || busy) return;
@@ -45,7 +52,7 @@ export default function ProfilePhoto({ iconName }: Props) {
       const url = await uploadOwnProfilePhoto({ contentType: preview.contentType, dataBase64: preview.base64 });
       setUri(url ?? preview.uri); setBroken(false); setPreview(null); setMessage('Profile photo saved.');
     } catch (cause) {
-      setMessage(photoErrorMessage(cause instanceof ApiClientError ? (cause.status === 400 ? 'PHOTO_TOO_LARGE' : cause.code) : undefined));
+      setMessage(photoErrorMessage(cause instanceof ApiClientError ? cause.code : undefined));
     } finally { setBusy(false); }
   }, [busy, preview]);
 
@@ -61,7 +68,7 @@ export default function ProfilePhoto({ iconName }: Props) {
         <Button title="Save photo" onPress={() => void save()} loading={busy} disabled={busy} />
         <Button title="Cancel" variant="outline" onPress={() => { setPreview(null); setMessage(null); }} disabled={busy} />
       </View>
-      : <Button title={uri ? 'Change Profile Photo' : 'Add Profile Photo'} variant="outline" onPress={() => void choose()} />}
+      : <Button title={uri ? 'Change Profile Photo' : 'Add Profile Photo'} variant="outline" onPress={() => void choose()} loading={busy} disabled={busy} />}
     {message && <T size={13} color={message === 'Profile photo saved.' ? C.green : C.red} style={{ marginTop: 6, textAlign: 'center' }}>{message}</T>}
   </View>;
 }
