@@ -14,7 +14,10 @@ export const requireAuth: RequestHandler = async (request, response, next) => {
     const appUser = await findOrCreateAppUser(identity.authUserId, identity.displayName);
     response.locals.appUser = appUser;
     const isCurrentUserStatusRead = request.baseUrl === '/api/v1' && request.path === '/me';
-    if (appUser.role === 'VOLUNTEER' && (appUser.volunteerApplicationStatus === 'PENDING' || appUser.volunteerApplicationStatus === 'DENIED') && !isCurrentUserStatusRead) {
+    // Narrow onboarding exception: identity service still verifies this user's pending application.
+    const isOwnPendingIdentityWrite = appUser.volunteerApplicationStatus === 'PENDING'
+      && request.method === 'PUT' && request.baseUrl === '/api/v1/volunteers' && request.path === '/me/identity';
+    if (appUser.role === 'VOLUNTEER' && (appUser.volunteerApplicationStatus === 'PENDING' || appUser.volunteerApplicationStatus === 'DENIED') && !isCurrentUserStatusRead && !isOwnPendingIdentityWrite) {
       if (appUser.volunteerApplicationStatus === 'DENIED') {
         throw new HttpError(403, 'VOLUNTEER_APPLICATION_DENIED', 'The volunteer application was not approved.');
       }

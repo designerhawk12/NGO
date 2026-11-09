@@ -17,6 +17,7 @@ vi.mock('../src/auth/supabase', () => ({
 import { app } from '../src/app';
 import { HttpError } from '../src/middleware/errorHandler';
 import { closePool, getPool } from '../src/db/pool';
+import { seedLegacyApprovedApplication } from './legacyVolunteerApplication';
 
 const testUrl = process.env.TEST_DATABASE_URL;
 let testDatabaseName = '';
@@ -87,13 +88,13 @@ async function schedulePickupWithFood(kg: number, startsInMinutes: number) {
   return pickup.body.data as { id: string; windowStartsAt: string; windowEndsAt: string };
 }
 
-async function assign(pickup: { id: string; windowStartsAt: string; windowEndsAt: string }, driverId: string, key: string) {
+async function assign(pickup: { id: string; windowStartsAt: string; windowEndsAt: string }, driverId: string, key: string, volunteerIds = [volunteerId]) {
   const vessel = (await q<{ id: string }>(`
     INSERT INTO app.vessels(vessel_code, name, vessel_type, material, capacity_value, capacity_unit, temperature_suitability)
     VALUES ($1, 'Food crate', 'CRATE', 'FOOD_GRADE_PLASTIC', 50, 'KG', 'AMBIENT') RETURNING id`, [`DA-${tag}-${randomUUID().slice(0, 6)}`]))[0].id;
   created.vessels.push(vessel);
   return request(app).post(`/api/v1/pickups/${pickup.id}/assignments`).set(as(adminAuth)).set('Idempotency-Key', key).send({
-    teamId: null, volunteerIds: [volunteerId], driverId, vesselIds: [vessel], role: 'Pickup crew',
+    teamId: null, volunteerIds, driverId, vesselIds: [vessel], role: 'Pickup crew',
     windowStartsAt: pickup.windowStartsAt, windowEndsAt: pickup.windowEndsAt,
     containers: [{ containerType: 'Food crate', count: 1, estimatedLoadKg: 20 }],
   });
@@ -119,7 +120,7 @@ beforeAll(async () => {
   created.people.push(volunteerPerson);
   volunteerId = (await q<{ id: string }>("INSERT INTO app.volunteers(person_id, registration_code, skills) VALUES ($1, $2, ARRAY['Packing']) RETURNING id", [volunteerPerson, `VOL-${randomUUID()}`]))[0].id;
   created.volunteers.push(volunteerId);
-  await q("INSERT INTO app.volunteer_applications(volunteer_id, status, reviewed_at, reviewed_by) VALUES ($1, 'APPROVED', now(), $2)", [volunteerId, adminId]);
+  await seedLegacyApprovedApplication(getPool(),volunteerId,adminId);
   await q("INSERT INTO app.volunteer_availability(volunteer_id, starts_at, ends_at, state) VALUES ($1, now(), now() + interval '2 days', 'AVAILABLE')", [volunteerId]);
 });
 
@@ -132,6 +133,8 @@ afterAll(async () => {
     const pickups = (await client.query<{ id: string }>('SELECT id FROM app.pickups WHERE food_request_id = ANY($1::uuid[])', [created.foodRequests])).rows.map(row => row.id);
     const assignments = (await client.query<{ id: string }>('SELECT id FROM app.assignments WHERE pickup_id = ANY($1::uuid[])', [pickups])).rows.map(row => row.id);
     const driverLogins = (await client.query<{ app_user_id: string }>('SELECT app_user_id FROM app.people WHERE id = ANY($1::uuid[]) AND app_user_id IS NOT NULL', [created.people])).rows.map(row => row.app_user_id);
+    await client.query('DELETE FROM app.vehicle_locations WHERE pickup_id=ANY($1::uuid[])',[pickups]);
+    await client.query('DELETE FROM app.vehicle_tracking_consents WHERE pickup_id=ANY($1::uuid[])',[pickups]);
     for (const sql of [
       'DELETE FROM app.idempotency_keys WHERE assignment_id = ANY($1::uuid[])',
       'DELETE FROM app.assignment_status_events WHERE assignment_id = ANY($1::uuid[])',
@@ -306,4 +309,63 @@ describe.skipIf(!enabled)('NGO employee driver sign-in, jobs and trip workflow',
     expect(own.status).toBe(200);
     expect(own.body.data.items.some((item: { id: string }) => item.id === assignmentId)).toBe(true);
   });
+
+  it('completes a driver-only pickup without members, with driver/vehicle reservations and private jobs', async () => {
+    const pickup = await schedulePickupWithFood(15, 650);
+    const response = await assign(pickup, driverA, `driver-only-${tag}`, []);
+    expect(response.status).toBe(201);
+    const id = response.body.data.id;
+    expect(response.body.data.volunteerIds).toEqual([]);
+    expect((await driverJobs(driverAAuth)).find((item: { assignmentId: string }) => item.assignmentId === id).crew).toEqual([]);
+    expect((await driverJobs(driverBAuth)).some((item: { assignmentId: string }) => item.assignmentId === id)).toBe(false);
+    const active = await q<{ count: number }>("SELECT count(*)::int AS count FROM app.resource_reservations WHERE assignment_id=$1 AND state='ACTIVE'",[id]);
+    expect(active[0].count).toBe(2);
+    expect((await transition(volunteerAuth,id,'ACCEPT',await versionOf(id))).status).toBe(403);
+    expect((await transition(driverBAuth,id,'DELIVER',await versionOf(id))).status).toBe(403);
+    for (const action of ['ACCEPT','START','ARRIVE','COLLECT','DELIVER']) {
+      const result = await transition(driverAAuth,id,action,await versionOf(id));
+      expect(result.status, action).toBe(200);
+    }
+    expect((await driverJobs(driverAAuth)).find((item: { assignmentId: string }) => item.assignmentId === id).status).toBe('DELIVERED');
+    expect((await request(app).get(`/api/v1/pickups/${pickup.id}`).set(as(adminAuth))).body.data.status).toBe('DELIVERED');
+    expect((await q<{count:number}>("SELECT count(*)::int AS count FROM app.resource_reservations WHERE assignment_id=$1 AND state='ACTIVE'",[id]))[0].count).toBe(0);
+  });
+
+  it.skipIf(process.env.FINAL_PILOT_SCHEMA_TEST !== 'true')('reports five concurrent vehicles with private GPS, fresh markers, stopping and bounded polling', async () => {
+    const fleet: {vehicleId:string;driverId:string;authId:string;pickupId:string;assignmentId:string;startedAt?:string}[]=[];
+    for(let index=0;index<5;index++){
+      const vehicleId=await registerVehicle(`G${index}`);
+      const email=`gps-${randomUUID()}@example.test`;const driver=await registerDriver(vehicleId,email);expect(driver.status).toBe(201);
+      const authId=invited[email];const pickup=await schedulePickupWithFood(10,30);
+      const assigned=await assign(pickup,driver.body.data.driverId,`gps-${randomUUID()}`,[]);expect(assigned.status).toBe(201);
+      const assignmentId=assigned.body.data.id;expect((await transition(authId,assignmentId,'ACCEPT',await versionOf(assignmentId))).status).toBe(200);
+      fleet.push({vehicleId,driverId:driver.body.data.driverId,authId,pickupId:pickup.id,assignmentId});
+    }
+    vi.stubEnv('DRIVER_TRACKING_REQUIRED','true');
+    try{
+      expect((await transition(fleet[0].authId,fleet[0].assignmentId,'START',await versionOf(fleet[0].assignmentId))).body.error.code).toBe('GPS_SHARING_REQUIRED');
+      for(const item of fleet){const consent=await request(app).post(`/api/v1/pickups/${item.pickupId}/tracking-consent`).set(as(item.authId)).send({pickupId:item.pickupId,consent:true});expect(consent.status).toBe(200);item.startedAt=consent.body.data.startedAt;}
+      const latencies:number[]=[];
+      const report=async(item:typeof fleet[number],index:number)=>{
+        const start=performance.now();const result=await request(app).post(`/api/v1/vehicles/${item.vehicleId}/locations`).set(as(item.authId)).send({pickupId:item.pickupId,latitude:12.9+index*0.01,longitude:77.5,accuracyMeters:15,speedMps:4,recordedAt:new Date(Date.now()-(index===0?20_000:0)).toISOString(),sessionStartedAt:item.startedAt});latencies.push(performance.now()-start);expect(result.status,JSON.stringify(result.body)).toBe(200);
+      };
+      await Promise.all(fleet.map(report));
+      const list=await request(app).get('/api/v1/vehicles/tracking').set(as(adminAuth));expect(list.status).toBe(200);
+      for(const [index,item] of fleet.entries())expect(list.body.data.items.find((row:{id:string})=>row.id===item.vehicleId)).toMatchObject({latitude:12.9+index*0.01,sharing:true,speedMps:4});
+      const spoof=await request(app).post(`/api/v1/vehicles/${fleet[1].vehicleId}/locations`).set(as(fleet[0].authId)).send({pickupId:fleet[1].pickupId,latitude:10,longitude:10,recordedAt:new Date().toISOString()});expect(spoof.status).toBe(403);
+      for(let batch=0;batch<4;batch++)await Promise.all(Array.from({length:5},async()=>{const start=performance.now();expect((await request(app).get('/api/v1/vehicles/tracking').set(as(adminAuth))).status).toBe(200);latencies.push(performance.now()-start);}));
+      const reassigned=fleet[3];
+      expect((await transition(reassigned.authId,reassigned.assignmentId,'REJECT',await versionOf(reassigned.assignmentId),'Reassign synthetic duty')).status).toBe(200);
+      const samePickup=(await request(app).get(`/api/v1/pickups/${reassigned.pickupId}`).set(as(adminAuth))).body.data;
+      const replacement=await assign(samePickup,reassigned.driverId,`gps-reassign-${randomUUID()}`,[]);expect(replacement.status).toBe(201);
+      const replacementId=replacement.body.data.id;expect((await transition(reassigned.authId,replacementId,'ACCEPT',await versionOf(replacementId))).status).toBe(200);
+      expect((await transition(reassigned.authId,replacementId,'START',await versionOf(replacementId))).body.error.code).toBe('GPS_SHARING_REQUIRED');
+      const first=fleet[0];for(const action of ['START','ARRIVE','COLLECT','DELIVER'])expect((await transition(first.authId,first.assignmentId,action,await versionOf(first.assignmentId))).status).toBe(200);
+      expect((await request(app).post(`/api/v1/vehicles/${first.vehicleId}/locations`).set(as(first.authId)).send({pickupId:first.pickupId,latitude:13,longitude:77,recordedAt:new Date().toISOString()})).status).toBe(403);
+      const second=fleet[1];expect((await request(app).delete(`/api/v1/pickups/${second.pickupId}/tracking-consent`).set(as(second.authId))).status).toBe(204);
+      expect((await request(app).post(`/api/v1/vehicles/${second.vehicleId}/locations`).set(as(second.authId)).send({pickupId:second.pickupId,latitude:13,longitude:77,recordedAt:new Date().toISOString()})).status).toBe(403);
+      const after=await request(app).get('/api/v1/vehicles/tracking').set(as(adminAuth));for(const item of [first,second])expect(after.body.data.items.find((row:{id:string})=>row.id===item.vehicleId).sharing).toBe(false);
+      latencies.sort((a,b)=>a-b);console.info('FINAL_PILOT_LOCAL_METRICS '+JSON.stringify({requests:latencies.length,vehicles:5,errors:0,p50Ms:Math.round(latencies[Math.floor(latencies.length/2)]),p95Ms:Math.round(latencies[Math.ceil(latencies.length*.95)-1]),maxMs:Math.round(latencies.at(-1)!)}));
+    }finally{vi.unstubAllEnvs();}
+  }, 30_000);
 });

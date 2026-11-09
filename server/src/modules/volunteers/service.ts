@@ -18,6 +18,8 @@ import * as volunteerRepository from './repository';
 import type { VolunteerProfileRow } from './repository';
 import type { AvailabilityRow } from './repository';
 import { consumeVolunteerRegistrationRateLimit } from './registrationRateLimit';
+import { identityEnabled, registerWithIdentity } from './identity';
+import { enqueue } from '../notifications/service';
 import type {
   CreateSelfRegistrationInput,
   CreateTeamInput,
@@ -228,6 +230,7 @@ function registrationConflict(): HttpError {
 }
 
 export async function registerVolunteer(input: CreateSelfRegistrationInput, clientIp: string): Promise<VolunteerRegistrationResult> {
+  if (identityEnabled() || input.identityProof) return registerWithIdentity(input, clientIp);
   if (!await consumeVolunteerRegistrationRateLimit(clientIp, input.email)) {
     throw new HttpError(429, 'INVITE_RATE_LIMITED', 'Volunteer registration limit reached. Please wait before trying again.');
   }
@@ -249,7 +252,10 @@ export async function registerVolunteer(input: CreateSelfRegistrationInput, clie
       phoneE164: input.phoneE164,
       skills: input.skills,
     };
-    await withTransaction(client => volunteerRepository.insertSelfRegisteredVolunteer(invited.authUserId, applicationInput, client));
+    await withTransaction(async client => {
+      const created = await volunteerRepository.insertSelfRegisteredVolunteer(invited.authUserId, applicationInput, client);
+      await enqueue(client, 'volunteer_application', created.id, []);
+    });
   } catch {
     // The Auth invitation is an external side effect and cannot be rolled back
     // with the PostgreSQL transaction. Keep the identity and require review.
@@ -289,6 +295,7 @@ export async function decideVolunteerApplication(
   decision: VolunteerApprovalDecision
 ): Promise<{ volunteerId: string; status: 'APPROVED' | 'DENIED' }> {
   requireAdmin(actor);
+  if(identityEnabled() && decision.status==='DENIED' && !decision.reason)throw new HttpError(400,'VALIDATION_ERROR','Provide a reason for denying the application.');
   return withTransaction(async client => {
     const application = await volunteerRepository.findVolunteerApplicationForUpdate(volunteerId, client);
     if (!application) throw new HttpError(404, 'NOT_FOUND', 'Volunteer application not found.');
@@ -298,10 +305,17 @@ export async function decideVolunteerApplication(
     if (application.status !== 'PENDING') {
       throw new HttpError(409, 'RESOURCE_CONFLICT', 'This volunteer application has already been reviewed.');
     }
+    if (decision.status === 'APPROVED' && identityEnabled()) {
+      const proof = await client.query(`SELECT a.identity_required, d.status FROM app.volunteer_applications a LEFT JOIN app.volunteer_identity_documents d ON d.volunteer_id=a.volunteer_id WHERE a.volunteer_id=$1`, [volunteerId]);
+      if (proof.rows[0]?.identity_required && proof.rows[0]?.status !== 'VERIFIED') {
+        throw new HttpError(409, 'IDENTITY_VERIFICATION_REQUIRED', 'Manually verify the identity proof before approving this application.');
+      }
+    }
     const updated = await volunteerRepository.setVolunteerApplicationDecision(
       volunteerId, decision.status, actor.id, client
     );
     if (!updated) throw new HttpError(409, 'RESOURCE_CONFLICT', 'This volunteer application has already been reviewed.');
+    if(identityEnabled() && decision.status==='DENIED')await client.query("INSERT INTO app.identity_review_events(volunteer_id,actor_user_id,action,reason) VALUES($1,$2,'APPLICATION_DENIED',$3)",[volunteerId,actor.id,decision.reason]);
     return { volunteerId: updated.volunteer_id, status: updated.status as 'APPROVED' | 'DENIED' };
   });
 }

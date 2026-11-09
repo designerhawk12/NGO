@@ -1,5 +1,7 @@
 import { createHash } from 'crypto';
 import type { PoolClient } from 'pg';
+import { requireSharingForStart } from '../tracking/service';
+import { enqueueForPeople } from '../notifications/service';
 import { withTransaction } from '../../db/pool';
 import { HttpError } from '../../middleware/errorHandler';
 import { requireActiveCenterAddress } from '../distribution/service';
@@ -290,6 +292,9 @@ export async function createAssignment(
       vehicleId: vehicle.id,
       actorUserId,
     }, txClient);
+
+    await enqueueForPeople(txClient, 'driver_assignment', assignmentRow.id, [driver.personId], input.windowStartsAt);
+    await enqueueForPeople(txClient, 'volunteer_assignment', assignmentRow.id, volunteerPersonIds, input.windowStartsAt);
 
     return {
       assignment: toAssignmentDto(assignmentRow, input.volunteerIds),
@@ -602,9 +607,16 @@ export async function transitionAssignmentStatus(
         throw new HttpError(409, 'INVALID_TRANSITION',
           driverAcceptance === 'ACCEPTED' ? 'You have already accepted this job.' : `This job can no longer be accepted (status ${assignment.status}).`);
       }
-      const accepted = await pickupRepository.setDriverAcceptance({
+      const crew = await pickupRepository.getAssignmentVolunteerIds(assignmentId, txClient);
+      let accepted = await pickupRepository.setDriverAcceptance({
         assignmentId, acceptance: 'ACCEPTED', status: assignment.status, actorUserId: actor.id, reason: 'Driver accepted the job',
       }, txClient);
+      if (crew.length === 0 && assignment.status === 'PENDING') {
+        accepted = await pickupRepository.updateAssignmentStatus({
+          assignmentId, fromStatus: 'PENDING', toStatus: 'ACCEPTED', actorUserId: actor.id,
+          reason: 'Driver-only pickup accepted; no Volunteer acceptance required',
+        }, txClient);
+      }
       return toAssignmentDto(accepted, await pickupRepository.getAssignmentVolunteerIds(assignmentId, txClient));
     }
     // A driver declining before the trip starts returns the pickup to planning for reassignment.
@@ -633,12 +645,15 @@ export async function transitionAssignmentStatus(
     if (input.action === 'START' && (driverAcceptance === 'PENDING' || driverAcceptance === 'DECLINED')) {
       throw new HttpError(409, 'DRIVER_NOT_ACCEPTED', 'Waiting for the NGO driver to accept this job before the trip can start.');
     }
-    if (actor.role === 'DRIVER' && input.action === 'START' && assignment.status === 'PENDING') {
+    const driverOnlyStart = actor.role === 'DRIVER' && input.action === 'START' && assignment.status === 'PENDING'
+      && (await pickupRepository.getAssignmentVolunteerIds(assignmentId, txClient)).length === 0;
+    if (input.action === 'START') await requireSharingForStart(assignment.pickup_id, assignment.vehicle_id, assignment.id, txClient);
+    if (actor.role === 'DRIVER' && input.action === 'START' && assignment.status === 'PENDING' && !driverOnlyStart) {
       throw new HttpError(409, 'CREW_NOT_ACCEPTED', 'Waiting for a crew volunteer to accept this job before the trip can start.');
     }
 
     const rule = TRANSITIONS[input.action];
-    if (!rule.allowedFrom.includes(assignment.status)) {
+    if (!rule.allowedFrom.includes(assignment.status) && !driverOnlyStart) {
       throw new HttpError(
         409,
         'INVALID_TRANSITION',

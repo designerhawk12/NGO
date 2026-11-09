@@ -6,6 +6,7 @@ import { normalizeIndianPhone, selectedTimeToIso, validateDonationTimes } from '
 
 const { state } = vi.hoisted(() => ({ state: { mode: 'live' as 'live' | 'demo' } }));
 vi.mock('expo-router', () => ({ router: { push: vi.fn() } }));
+vi.mock('expo-crypto', () => ({ randomUUID: () => 'a0000000-0000-4000-8000-000000000001' }));
 vi.mock('expo-location', () => ({ requestForegroundPermissionsAsync: vi.fn(), getCurrentPositionAsync: vi.fn(), reverseGeocodeAsync: vi.fn(), Accuracy: { Balanced: 3 } }));
 vi.mock('@react-native-community/datetimepicker', () => ({ default: () => null, DateTimePickerAndroid: { open: vi.fn() } }));
 vi.mock('../../api/foodRequests', () => ({ createFoodRequest: vi.fn() }));

@@ -5,6 +5,7 @@ export const quantityUnitSchema = z.enum(['MEALS', 'KG', 'LITRES', 'PACKAGES']);
 export const safetyReviewSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED']);
 export const foodItemInputSchema = z.object({ foodType: z.string().min(1).max(160), quantity: z.number().positive(), unit: quantityUnitSchema, handlingRequirements: z.string().max(2000), estimatedMeals: z.number().positive().optional(), estimatedWeightKg: z.number().positive().optional() });
 const foodRequestFields = z.object({
+  submissionId: uuidSchema.optional(),
   sourceName: z.string().min(1).max(200), sourceType: z.string().min(1).max(80), pickupAddress: z.string().min(1).max(500),
   preparedAt: utcDateTimeSchema, readyAt: utcDateTimeSchema.optional(), pickupDeadline: utcDateTimeSchema,
   contactName: z.string().min(1).max(160), contactPhoneE164: phoneE164Schema,

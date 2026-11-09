@@ -13,6 +13,7 @@ vi.mock('../src/auth/supabase', () => ({
 }))
 import { app } from '../src/app'
 import { closePool, getPool } from '../src/db/pool'
+import { seedLegacyApprovedApplication } from './legacyVolunteerApplication'
 
 const testUrl = process.env.TEST_DATABASE_URL
 let testDatabaseName = ''
@@ -57,10 +58,7 @@ describe.skipIf(!enabled)('ADMIN volunteer edit persistence (Volunteers join thr
           "INSERT INTO app.volunteers(person_id, registration_code, skills) VALUES ($1, $2, ARRAY['Packing']) RETURNING id", [personId, volunteerCode]
         )).rows[0].id
         volunteerIds.push(volunteerId)
-        await getPool().query(
-          "INSERT INTO app.volunteer_applications(volunteer_id, status, reviewed_at, reviewed_by) VALUES ($1, 'APPROVED', now(), $2)",
-          [volunteerId, appUserIds[0]]
-        )
+        await seedLegacyApprovedApplication(getPool(),volunteerId,appUserIds[0])
       }
 
       const retired = await request(app).post('/api/v1/volunteers').set('Authorization', 'Bearer integration-token')

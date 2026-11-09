@@ -1,4 +1,8 @@
 import { Router } from 'express';
+import { z } from 'zod';
+import { identityProofSchema, uuidSchema } from '@aaharaconnect/shared';
+import { identityForAdmin, reviewIdentity, replaceOwnIdentity } from './identity';
+import { sendSuccess } from '../../utils/response';
 import { isPublicVolunteerRegistrationEnabled } from '../../config/env';
 import { requireAuth } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/authorize';
@@ -38,6 +42,21 @@ import {
 export const volunteerRoutes = Router();
 const selfProfileRoutes = Router();
 const teamRoutes = Router();
+
+selfProfileRoutes.get('/:id/identity', requireAuth, requireRole('ADMIN'), async (req, res, next) => {
+  try { res.setHeader('Cache-Control', 'no-store'); sendSuccess(res, await identityForAdmin(uuidSchema.parse(req.params.id))); }
+  catch (error) { next(error); }
+});
+selfProfileRoutes.post('/:id/identity/review', requireAuth, requireRole('ADMIN'), validateBody(z.strictObject({ status: z.enum(['VERIFIED','REJECTED']), reason: z.string().trim().min(1).max(500) })), async (req, res, next) => {
+  try { sendSuccess(res, await reviewIdentity(uuidSchema.parse(req.params.id), res.locals.appUser.id, res.locals.validatedBody.status, res.locals.validatedBody.reason)); }
+  catch (error) { next(error); }
+});
+selfProfileRoutes.put('/me/identity', requireAuth, validateBody(identityProofSchema), async (_req, res, next) => {
+  try {
+    if (res.locals.appUser.role !== 'VOLUNTEER') throw new HttpError(403, 'FORBIDDEN', 'A Volunteer account is required.');
+    sendSuccess(res, await replaceOwnIdentity(res.locals.appUser.id, res.locals.validatedBody));
+  } catch (error) { next(error); }
+});
 
 selfProfileRoutes.get('/me', requireAuth, requireRole('VOLUNTEER'), getOwnProfileHandler);
 selfProfileRoutes.post('/register', (_request, _response, next) => {

@@ -10,6 +10,9 @@ import { isLiveAuthConfigured, registerDonorWithEmailConfirmation, signInWithEma
 import { registerVolunteer } from '../../api/volunteers';
 import { normalizeIndianPhone } from '../../api/volunteerRegistrationInput';
 import { ApiClientError } from '../../api/client';
+import IdentityProofPicker, { type IdentityProofDraft } from './IdentityProofPicker';
+import * as Crypto from 'expo-crypto';
+import ReplaceIdentity from './ReplaceIdentity';
 
 type RegistrationForm = { email: string; name: string; phone: string };
 const emptyRegistration: RegistrationForm = { email: '', name: '', phone: '' };
@@ -32,6 +35,8 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
   const [donorConfirmPassword, setDonorConfirmPassword] = useState('');
   const [donorRegistrationResult, setDonorRegistrationResult] = useState(false);
   const registrationSubmitting = useRef(false);
+  const [identityProof, setIdentityProof] = useState<IdentityProofDraft | null>(null);
+  const submissionId = useRef<string | undefined>(undefined);
   const submitLive = async () => {
     if (!isLiveAuthConfigured()) { app.notify('Live sign-in is not configured.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) { app.notify('Use your email address to sign in.'); return; }
@@ -77,11 +82,17 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
       setRegistrationError('Enter one relevant skill (up to 100 characters).'); return;
     }
     const skills = [...selectedSkills.filter(skill => skill !== 'Other'), ...(other ? [other] : [])];
+    if (!identityProof?.consent || (identityProof.documentType === 'MASKED_AADHAAR' && !identityProof.maskedAadhaarConfirmed)) {
+      setRegistrationError('Select identity proof and confirm processing consent. Mask the first eight Aadhaar digits if using Aadhaar.'); return;
+    }
+    // Reuse this submission ID for retries; never log or send the document outside the API.
+    if (!submissionId.current) submissionId.current = Crypto.randomUUID();
     const parsed = volunteerRegistrationInputSchema.safeParse({
       email: registration.email,
       name: registration.name,
       phoneE164: normalizedPhone.phoneE164,
       skills,
+      identityProof, submissionId: submissionId.current,
     });
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
@@ -96,7 +107,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
     registrationSubmitting.current = true; setRegistrationBusy(true); setRegistrationError(null);
     try {
       const result = await registerVolunteer(parsed.data);
-      setRegistrationResult(result); setRegistration(emptyRegistration); setSelectedSkills([]); setOtherSkill('');
+      setRegistrationResult(result); setRegistration(emptyRegistration); setSelectedSkills([]); setOtherSkill(''); setIdentityProof(null); submissionId.current = undefined;
     } catch (cause) {
       const messages: Record<string, string> = {
         REGISTRATION_DISABLED: 'Volunteer registration is temporarily unavailable. Please try again later or contact the NGO.',
@@ -167,6 +178,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
           <T size={13} color={C.muted} style={{ marginBottom: 6 }}>Enter a 10-digit Indian mobile number; +91 is added automatically.</T>
           <Field label="Indian phone number (+91)" value={registration.phone} onChangeText={phone => setRegistration({ ...registration, phone })} keyboardType="phone-pad" placeholder="9876543210" autoComplete="tel" required />
           <T weight="600" color={C.ink} style={{ marginBottom: 8 }}>Skills and interests</T>
+          <IdentityProofPicker value={identityProof} onChange={proof => { setIdentityProof(proof); submissionId.current = undefined; }} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
             {volunteerSkillOptions.map(skill => {
               const selected = selectedSkills.includes(skill);
@@ -191,6 +203,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         <T color={C.muted} style={{ marginTop: 5 }}>
           {app.volunteerApplicationStatus === 'DENIED' ? 'Your account remains available, but Volunteer features are disabled. Contact the NGO administrator for help.' : 'Your application is under review. Volunteer features will open after an Admin approves you.'}
         </T>
+        {app.volunteerApplicationStatus === 'PENDING' && <ReplaceIdentity />}
       </Card>}
       <Card style={{ padding: 22 }}><View style={{ width: 54, height: 54, borderRadius: 15, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}><Icon name={role === 'volunteer' ? 'team' : 'food'} size={28} /></View>
         <Field label="Email address" value={identifier} onChangeText={setIdentifier} autoCapitalize="none" keyboardType="email-address" />

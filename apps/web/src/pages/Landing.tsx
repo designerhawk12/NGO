@@ -1,9 +1,9 @@
-import { ArrowRight, HandHeart, Menu, Users, X } from 'lucide-react'
+import { ArrowRight, Menu, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { useRenderedLanguage, type Language } from '../lib/i18n'
 import './landing.css'
+import AndroidDownload from '../components/common/AndroidDownload'
 
-const donorUrl = `${import.meta.env.BASE_URL}donor/index.html`
 const logoUrl = `${import.meta.env.BASE_URL}donor/icon-192.png`
 const workspaceUrl = '#/workspace'
 
@@ -20,17 +20,17 @@ export default function Landing() {
         <a href="#" onClick={() => setMenuOpen(false)}>Home</a>
         <a href={workspaceUrl}>NGO admin</a>
         <div className="language-switch" role="group" aria-label="Language"><button type="button" className={language === 'en' ? 'active' : ''} aria-pressed={language === 'en'} onClick={() => changeLanguage('en')}>English</button><span aria-hidden="true">|</span><button type="button" className={language === 'kn' ? 'active' : ''} aria-pressed={language === 'kn'} onClick={() => changeLanguage('kn')}>ಕನ್ನಡ</button></div>
-        <a className="landing-cta" href={donorUrl}>Join as food donor</a>
+        <a className="landing-cta" href={workspaceUrl}>Open Admin Dashboard</a>
       </nav>
     </header>
     <main>
       <section className="landing-hero">
         <h1>Good food from your event can feed someone tonight.</h1>
         <p>Akshaya Ahar connects function halls and event hosts with volunteers who collect surplus food and deliver it to people in need.</p>
-        <div className="landing-actions"><a className="landing-cta large" href={donorUrl}>Join as food donor <ArrowRight size={18}/></a><a className="landing-link" href={workspaceUrl}>Open admin dashboard</a></div>
+        <div className="landing-actions"><a className="landing-cta large" href={workspaceUrl}>Open Admin Dashboard <ArrowRight size={18}/></a><a className="landing-link" href="#install-app">Install the Mobile App</a></div>
       </section>
       <section className="landing-cards">
-        <article className="landing-card"><div className="landing-card-icon donor"><HandHeart size={24}/></div><h2>Food donor</h2><p>Tell us what food is left and where. The pickup team collects it from the hall.</p><a className="landing-cta" href={donorUrl}>Join as food donor</a></article>
+        <AndroidDownload />
         <article className="landing-card"><div className="landing-card-icon"><Users size={24}/></div><h2>NGO administration</h2><p>Manage volunteers, teams and pickup assignments for the NGO.</p><a className="landing-secondary" href={workspaceUrl}>Open admin dashboard</a></article>
       </section>
     </main>

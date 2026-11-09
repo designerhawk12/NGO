@@ -4,6 +4,7 @@ import Landing from './pages/Landing'
 import AcceptInvite from './pages/AcceptInvite'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
+import AppLinkLanding from './pages/AppLinkLanding'
 import type { InviteAuth } from './api/invite'
 
 const WORKSPACE_HASH = '#/workspace'
@@ -24,6 +25,7 @@ export default function Root({ inviteAuth }: { inviteAuth?: InviteAuth } = {}) {
   if (window.location.pathname.replace(/\/$/, '') === '/accept-invite') return <AcceptInvite auth={inviteAuth} />
   if (window.location.pathname.replace(/\/$/, '') === '/forgot-password') return <ForgotPassword />
   if (window.location.pathname.replace(/\/$/, '') === '/reset-password') return <ResetPassword />
+  if (window.location.pathname.startsWith('/open/')) return <AppLinkLanding />
   return isWorkspace ? <App /> : <Landing />
 }
 

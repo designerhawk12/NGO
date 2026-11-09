@@ -37,7 +37,9 @@ export const isClosedJob = (job: DriverJob) => terminal.has(job.status);
 export function nextDriverStep(job: DriverJob): { action: DriverAction; label: string } | { waiting: string } | null {
   if (isClosedJob(job)) return null;
   if (job.driverAcceptance === 'PENDING') return { action: 'ACCEPT', label: 'Accept assignment' };
-  if (job.status === 'PENDING') return { waiting: 'Waiting for a crew volunteer to accept.' };
+  if (job.status === 'PENDING') return job.crew.length > 0
+    ? { waiting: 'Waiting for a crew volunteer to accept.' }
+    : { action: 'START', label: 'Start journey to pickup' };
   if (job.status === 'ACCEPTED') return { action: 'START', label: 'Start journey to pickup' };
   if (job.status === 'EN_ROUTE') return { action: 'ARRIVE', label: 'Check in at pickup' };
   if (job.status === 'ARRIVED_AT_DONOR') return { action: 'COLLECT', label: 'Confirm food collected' };

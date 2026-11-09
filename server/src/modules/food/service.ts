@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import { createHash } from 'node:crypto';
 import { withTransaction } from '../../db/pool';
 import { HttpError } from '../../middleware/errorHandler';
 import type { AppUser, CreateFoodRequest } from '@aaharaconnect/shared';
@@ -8,6 +9,7 @@ import {
   getPickupByFoodRequestId,
 } from '../pickups/service';
 import * as foodRepository from './repository';
+import { enqueue } from '../notifications/service';
 import type {
   FoodItemRow,
   FoodRequestDetail,
@@ -72,6 +74,18 @@ export async function createFoodRequest(
   }
 
   const run = async (txClient: PoolClient): Promise<FoodRequestDetail> => {
+    const submission = data.submissionId && process.env.FOOD_REQUEST_IDEMPOTENCY_ENABLED === 'true' ? data.submissionId : null;
+    const hash = createHash('sha256').update(JSON.stringify(data)).digest('hex');
+    if (submission) {
+      await txClient.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`${appUser.id}:${submission}`]);
+      const replay=await txClient.query('SELECT request_hash,food_request_id FROM app.food_request_submissions WHERE app_user_id=$1 AND submission_id=$2',[appUser.id,submission]);
+      if(replay.rows[0]){
+        if(replay.rows[0].request_hash!==hash)throw new HttpError(409,'SUBMISSION_CONFLICT','Use a new submission ID after editing this donation.');
+        const existing=await foodRepository.findFoodRequestById(replay.rows[0].food_request_id,txClient);
+        if(!existing)throw new HttpError(409,'RESOURCE_CONFLICT','The previous submission needs administrator review.');
+        return toFoodRequestDto(existing,null);
+      }
+    }
     const donor = await foodRepository.findOrCreateDonorForAppUser(
       appUser.id,
       data.sourceName,
@@ -80,6 +94,8 @@ export async function createFoodRequest(
     );
 
     const created = await foodRepository.createFoodRequest(donor.id, data, txClient);
+    if(submission)await txClient.query('INSERT INTO app.food_request_submissions(app_user_id,submission_id,request_hash,food_request_id) VALUES($1,$2,$3,$4)',[appUser.id,submission,hash,created.id]);
+    await enqueue(txClient, 'donation_received', created.id, [appUser.id]);
     return toFoodRequestDto(created, null);
   };
 

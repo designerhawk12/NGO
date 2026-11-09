@@ -94,7 +94,11 @@ export async function inviteDriverToApp(driverId: string, email: string, client?
   return inviteExistingEmployeeDriver(driverId, email, client);
 }
 
-export async function getOwnDriverProfile(appUserId: string, client?: PoolClient) {
+export async function getOwnDriverProfile(appUserId: string, client?: PoolClient, lockForTracking = false) {
+  if(lockForTracking && client){
+    const locked=await client.query(`SELECT d.id FROM app.drivers d JOIN app.people p ON p.id=d.person_id JOIN app.vehicles v ON v.assigned_driver_id=d.id WHERE p.app_user_id=$1 AND d.driver_type='EMPLOYEE' AND d.status='ACTIVE' FOR SHARE OF d,v`,[appUserId]);
+    if(!locked.rows[0])throw new HttpError(403,'FORBIDDEN','An active employee Driver with a fixed vehicle is required.');
+  }
   const driver = await findDriverForAppUser(appUserId, client);
   if (!driver) throw new HttpError(404, 'DRIVER_PROFILE_NOT_FOUND', 'No NGO driver record is linked to this account. Contact the NGO administrator.');
   return {

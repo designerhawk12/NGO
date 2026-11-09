@@ -23,10 +23,10 @@ export const listAdminVolunteers = (accessToken: string) => readAll<Volunteer>('
 export const listAdminVolunteerApplications = (accessToken: string) =>
   readAll<VolunteerApplication>('volunteers/applications', accessToken)
 export const decideAdminVolunteerApplication = (
-  accessToken: string, volunteerId: string, status: VolunteerApprovalDecision['status']
+  accessToken: string, volunteerId: string, status: VolunteerApprovalDecision['status'], reason?: string
 ) => apiRequest<{ volunteerId: string; status: VolunteerApprovalDecision['status'] }>(
   `volunteers/${encodeURIComponent(volunteerId)}/approval`,
-  { method: 'PATCH', headers: bearer(accessToken), body: { status } },
+  { method: 'PATCH', headers: bearer(accessToken), body: { status, ...(reason ? { reason } : {}) } },
 )
 export const getAdminVolunteer = (accessToken: string, id: string) =>
   apiRequest<Volunteer>(`volunteers/${encodeURIComponent(id)}`, { headers: bearer(accessToken) })

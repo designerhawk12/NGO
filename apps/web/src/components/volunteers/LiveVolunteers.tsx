@@ -8,6 +8,7 @@ import {
 } from '../../features/volunteers/api'
 import { useProfilePhotos } from '../../features/photos/useProfilePhotos'
 import { Avatar, Drawer, EmptyState, Modal, StatusBadge, Toast } from '../common/UI'
+import IdentityReview from './IdentityReview'
 
 type VolunteerForm = {
   name: string
@@ -133,9 +134,11 @@ export default function LiveVolunteers({ token }: { token: string }) {
     if (reviewingId) return
     const action = status === 'APPROVED' ? 'approve' : 'deny'
     if (!window.confirm(`Are you sure you want to ${action} ${application.name}’s volunteer application?`)) return
+    const reason=status==='DENIED'?window.prompt('Reason for denying this application (do not include document numbers):')?.trim():undefined
+    if(status==='DENIED' && !reason)return
     setReviewingId(application.volunteerId)
     try {
-      await decideAdminVolunteerApplication(token, application.volunteerId, status)
+      await decideAdminVolunteerApplication(token, application.volunteerId, status, reason)
       setApplications(current => current.filter(item => item.volunteerId !== application.volunteerId))
       setFeedback({ message: status === 'APPROVED' ? 'Volunteer application approved.' : 'Volunteer application denied.', kind: 'success' })
       await loadApplications()
@@ -181,6 +184,7 @@ export default function LiveVolunteers({ token }: { token: string }) {
                   <div className="mt-3"><span className="text-xs text-slate-500">Skills</span><div className="skill-list mt-1">{application.skills.length ? application.skills.map(skill => <span className="skill-badge" key={skill}>{skill}</span>) : <span className="quiet-text">No skills listed.</span>}</div></div>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
+                  <IdentityReview volunteerId={application.volunteerId} token={token} />
                   <button className="button button-primary" onClick={() => void reviewApplication(application, 'APPROVED')} disabled={reviewingId !== null}><Check size={16}/>{reviewingId === application.volunteerId ? 'Saving…' : 'Approve'}</button>
                   <button className="button button-secondary" onClick={() => void reviewApplication(application, 'DENIED')} disabled={reviewingId !== null}><XCircle size={16}/>{reviewingId === application.volunteerId ? 'Saving…' : 'Deny'}</button>
                 </div>

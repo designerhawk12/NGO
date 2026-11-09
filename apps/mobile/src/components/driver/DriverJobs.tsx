@@ -6,6 +6,7 @@ import { currentDestination, isClosedJob, listDriverJobs, nextDriverStep, update
 import { pickupNavigationUrl, pickupSearchUrl } from '../volunteer/pickupNavigation';
 import { Badge, Button, Card, Empty, Header, Icon, InfoRow, Screen, Sheet, T } from '../common/UI';
 import { C } from '../../constants/theme';
+import { activeDriverTracking, requireDriverTracking, startDriverTracking, stopDriverTracking, trackingSession } from '../tracking/driverTracking';
 
 const declineReasons = ['Vehicle problem', 'Not available at this time', 'Too far from my location', 'Other reason'];
 const successText: Record<DriverAction, string> = {
@@ -27,7 +28,7 @@ const errorText: Record<string, string> = {
 
 const timeLabel = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 
-export default function DriverJobs({ historyOnly = false }: { historyOnly?: boolean }) {
+export default function DriverJobs({ historyOnly = false, assignmentId }: { historyOnly?: boolean; assignmentId?: string }) {
   const [jobs, setJobs] = useState<DriverJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,10 +37,17 @@ export default function DriverJobs({ historyOnly = false }: { historyOnly?: bool
   const [declining, setDeclining] = useState<DriverJob | null>(null);
   const [reason, setReason] = useState('');
   const acting = useRef(false);
+  const [sharingPickup, setSharingPickup] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
-    try { setJobs(await listDriverJobs()); }
+    try {
+      const updated = await listDriverJobs();
+      setJobs(updated);
+      const session = await trackingSession();
+      if (session && !updated.some(job => job.pickupId === session.pickupId && !isClosedJob(job))) await stopDriverTracking();
+      setSharingPickup((await activeDriverTracking())?.pickupId ?? null);
+    }
     catch (cause) {
       setJobs([]);
       setError(cause instanceof ApiClientError && cause.code === 'NETWORK_ERROR'
@@ -54,15 +62,33 @@ export default function DriverJobs({ historyOnly = false }: { historyOnly?: bool
     return () => { active = false; };
   }, [refresh]);
 
+  useEffect(() => {
+    const timer = setInterval(() => { void refresh(); }, 30_000);
+    return () => clearInterval(timer);
+  }, [refresh]);
+
+  const startSharing = (job: DriverJob) => Alert.alert('Share your phone GPS during NGO duty?',
+    'The NGO Admin can see the reported location of your fixed vehicle during this pickup. Android will ask for foreground and background location; choose Allow all the time in Settings so Google Maps can stay open. A persistent notification shows sharing. You can stop at any time. Android force-stop and battery restrictions can interrupt reports.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Start Location Sharing', onPress: () => {
+        void (async () => {
+          try { await startDriverTracking(job.pickupId); setSharingPickup(job.pickupId); setMessage({ text: 'Location Sharing Active', ok: true }); }
+          catch (cause) { setSharingPickup(null); setMessage({ text: cause instanceof Error ? cause.message : 'Could not start location sharing.', ok: false }); }
+        })();
+      } },
+    ]);
+
   const act = async (job: DriverJob, action: DriverAction, declineReason?: string) => {
     if (acting.current) return;
     acting.current = true; setBusyId(job.assignmentId); setMessage(null);
     try {
+      if (action === 'START') await requireDriverTracking(job.pickupId);
       await updateDriverJob(job, action, declineReason);
+      if (action === 'DELIVER' || action === 'REJECT') { await stopDriverTracking(); setSharingPickup(null); }
       setMessage({ text: successText[action], ok: true });
     } catch (cause) {
       const code = cause instanceof ApiClientError ? cause.code : '';
-      setMessage({ text: errorText[code] ?? (cause instanceof ApiClientError ? cause.message : 'Could not update the job. Try again.'), ok: false });
+      setMessage({ text: errorText[code] ?? (cause instanceof Error ? cause.message : 'Could not update the job. Try again.'), ok: false });
     } finally {
       acting.current = false; setBusyId(null);
       await refresh();
@@ -85,6 +111,8 @@ export default function DriverJobs({ historyOnly = false }: { historyOnly?: bool
     const destination = currentDestination(job);
     const url = destination ? pickupNavigationUrl(destination.address) : null;
     if (!destination || !url) { setMessage({ text: 'No destination address is recorded for this job. Contact the NGO administrator.', ok: false }); return; }
+    try { await requireDriverTracking(job.pickupId); }
+    catch (cause) { setMessage({ text: cause instanceof Error ? cause.message : 'Enable GPS sharing first.', ok: false }); return; }
     try { await Linking.openURL(url); }
     catch {
       try { await Linking.openURL(pickupSearchUrl(destination.address)!); }
@@ -92,7 +120,7 @@ export default function DriverJobs({ historyOnly = false }: { historyOnly?: bool
     }
   };
 
-  const visible = jobs.filter(job => historyOnly ? isClosedJob(job) : !isClosedJob(job));
+  const visible = jobs.filter(job => assignmentId ? job.assignmentId === assignmentId : historyOnly ? isClosedJob(job) : !isClosedJob(job));
 
   return <Screen>
     <Header title={historyOnly ? 'History' : 'My Jobs'} subtitle={historyOnly ? 'Your completed and closed jobs.' : 'Pickups assigned to you by the NGO.'} />
@@ -123,6 +151,15 @@ export default function DriverJobs({ historyOnly = false }: { historyOnly?: bool
             <InfoRow icon="truck" label="Your vehicle" value={`${job.vehicle.registrationNumber} · ${job.vehicle.kind} · ${job.vehicle.capacityKg} kg`} />
             {job.foodItems.length > 0 && <InfoRow icon="food" label="Food" value={job.foodItems.map(item => `${item.foodType} (${item.quantity} ${item.unit.toLowerCase()}${item.estimatedWeightKg ? `, ~${item.estimatedWeightKg} kg` : ''})`).join(', ')} />}
             {job.crew.length > 0 && <InfoRow icon="team" label="Crew" value={job.crew.map(member => member.name).join(', ')} />}
+            {job.crew.length === 0 && <T size={13} color={C.muted}>Driver-only pickup — no Volunteers assigned.</T>}
+            {!isClosedJob(job) && job.driverAcceptance === 'ACCEPTED' && <>
+              <T color={sharingPickup === job.pickupId ? C.green : C.muted}>{sharingPickup === job.pickupId ? 'Location Sharing Active' : 'Location Sharing Off'}</T>
+              <T size={12} color={C.muted} translate={false}>{job.vehicle.registrationNumber}</T>
+              <Button title={sharingPickup === job.pickupId ? 'Stop Sharing' : 'Turn On GPS / Start Location Sharing'} variant="outline" onPress={() => {
+                if (sharingPickup === job.pickupId) void stopDriverTracking().then(() => setSharingPickup(null));
+                else startSharing(job);
+              }} style={{ marginTop: 8 }} />
+            </>}
             {(job.contactName || job.contactPhone) && !isClosedJob(job) && <InfoRow icon="phone" label="Donor contact" value={[job.contactName, job.contactPhone].filter(Boolean).join(' · ')} />}
             {job.handlingRequirements && <InfoRow icon="shield" label="Handling" value={job.handlingRequirements} />}
             {job.operationalNotes && <InfoRow icon="edit" label="Notes" value={job.operationalNotes} />}

@@ -86,9 +86,12 @@ try {
   assert.ok(adminLinks.length >= 2)
   assert.ok(adminLinks.every(link => /admin/i.test(link.textContent)), 'Web workspace links must describe the admin app')
   assert.doesNotMatch(document.querySelector('.landing').textContent, /Open volunteer workspace/)
-  assert.ok(document.querySelector('.landing a[href$="donor/index.html"]'), 'Landing page should offer donor entry')
+  assert.equal(document.querySelector('.landing a[href$="donor/index.html"]'), null, 'Landing page must not promote donor joining')
+  assert.match(document.querySelector('.landing').textContent, /Install the Mobile App/)
+  assert.ok(document.querySelector('.landing-cta.large[href="#/workspace"]'), 'Admin dashboard must be the primary CTA')
+  assert.ok(document.querySelector('#install-app button[disabled]'), 'Unverified APK must not expose a broken download link')
 
-  const adminLink = document.querySelector('.landing-link')
+  const adminLink = document.querySelector('.landing-cta.large[href="#/workspace"]')
   assert.ok(adminLink, 'Expected admin dashboard link')
   const hashChanged = new Promise((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error('Admin link did not trigger hash navigation')), 2000)

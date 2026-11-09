@@ -10,6 +10,7 @@
     }
   },
   "routes": [
+    { "src": "^/\\.well-known/assetlinks\\.json$", "dest": "/api/index", "transforms": [{ "type": "request.headers", "op": "set", "target": { "key": "x-ac-original-api-path" }, "args": "v1/releases/android/assetlinks" }] },
     {
       "src": "^/api/v1/(.*)$",
       "dest": "/api/index",
@@ -26,6 +27,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/open/:kind/:id", "destination": "/index.html" },
     {
       "source": "/accept-invite",
       "destination": "/index.html"

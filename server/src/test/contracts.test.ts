@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { createAssignmentSchema, createFoodRequestSchema, createVehicleMaintenanceRecordSchema, vehicleSchema } from '@aaharaconnect/shared';
 
 describe('shared request contracts', () => {
+  it('allows driver-only assignments while requiring a valid driver and validating a supplied vehicle', () => {
+    const id = 'a0000000-0000-4000-8000-000000000001';
+    const input = { teamId: null, volunteerIds: [], driverId: id, role: 'Pickup', windowStartsAt: '2030-10-10T10:00:00Z', windowEndsAt: '2030-10-10T12:00:00Z', containers: [] };
+    expect(createAssignmentSchema.safeParse(input).success).toBe(true);
+    expect(createAssignmentSchema.safeParse({ ...input, driverId: undefined }).success).toBe(false);
+    expect(createAssignmentSchema.safeParse({ ...input, vehicleId: 'invalid' }).success).toBe(false);
+  });
   it('requires food handling facts and a positive quantity before donor submission', () => {
     const base = {
       sourceName: 'Community event', sourceType: 'Event', pickupAddress: 'Bengaluru',

@@ -22,7 +22,9 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.rajashishpatil10.aaharaconnect"
+      "blockedPermissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"],
+      "package": "com.rajashishpatil10.aaharaconnect",
+      "intentFilters": [{ "action": "VIEW", "autoVerify": true, "data": [{ "scheme": "https", "host": "ngo-eight-umber.vercel.app", "pathPrefix": "/open/" }], "category": ["BROWSABLE", "DEFAULT"] }]
     },
     "web": {
       "bundler": "metro",
@@ -44,8 +46,8 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "AaharaConnect uses your location once, when you tap Detect My Location, to fill in the food pickup address.",
-          "isAndroidBackgroundLocationEnabled": false,
-          "isAndroidForegroundServiceEnabled": false
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       [

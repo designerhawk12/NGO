@@ -8,3 +8,4 @@ export * from './contracts/vessels';
 export * from './contracts/drivers';
 export * from './contracts/logistics';
 export * from './contracts/distribution';
+export * from './contracts/tracking';

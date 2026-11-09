@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import * as Crypto from 'expo-crypto';
 import { router } from 'expo-router';
 import { Platform, Pressable, View } from 'react-native';
 import * as Location from 'expo-location';
@@ -52,6 +53,7 @@ function QuantityStepper({ label, value, onMinus, onPlus, minusDisabled, plusDis
 }
 
 export default function LiveDonate() {
+  const submissionRef = useRef<{body:string;id:string} | null>(null);
   const [sourceName, setSourceName] = useState('');
   const [sourceType, setSourceType] = useState('Event');
   const [address, setAddress] = useState<AddressParts>(emptyAddress());
@@ -146,7 +148,12 @@ export default function LiveDonate() {
     const parsed = createFoodRequestSchema.safeParse(input);
     if (!parsed.success) { const issue = parsed.error.issues[0]; setError(`${issue.path.join(' / ') || 'Request'}: ${issue.message}`); return; }
     setSubmitting(true);
-    try { const created = await createFoodRequest(parsed.data); router.push({ pathname: '/donor/success', params: { id: created.id } }); }
+    try {
+      const body=JSON.stringify(parsed.data);
+      if(submissionRef.current?.body!==body)submissionRef.current={body,id:Crypto.randomUUID()};
+      const created = await createFoodRequest({...parsed.data,submissionId:submissionRef.current!.id});
+      router.push({ pathname: '/donor/success', params: { id: created.id } });
+    }
     catch (cause) { setError(cause instanceof ApiClientError && cause.status === 401 ? 'Session expired. Sign in again.'
       : cause instanceof ApiClientError && cause.status === 400 ? 'The server rejected your request. Review each field.'
       : 'Could not submit your request. Check your connection and retry.'); }

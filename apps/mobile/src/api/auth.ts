@@ -95,6 +95,9 @@ export async function getCurrentAccessToken(): Promise<string> {
   return data.session.access_token;
 }
 
+let signOutCleanup: (() => Promise<void>) | undefined;
+export function setSignOutCleanup(cleanup: () => Promise<void>) { signOutCleanup = cleanup; }
 export async function signOut(): Promise<void> {
+  try { await signOutCleanup?.(); } catch { /* Sign-out must complete even if native cleanup is unavailable. */ }
   if (client) await client.auth.signOut();
 }

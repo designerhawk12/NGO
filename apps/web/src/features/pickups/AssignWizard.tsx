@@ -206,21 +206,20 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
   const plannedProblems = containerOptions && load ? containerProblems(load, chosenContainers, containerOptions.maxVessels) : []
 
   const canContinue = () => {
-    if (step === 0) return selectedVolunteerIds.length > 0
+    if (step === 0) return true
     if (step === 1) return Boolean(selectedDriver?.eligible)
     if (step === 2) return Boolean(containerOptions) && plannedProblems.length === 0
     return true
   }
 
   const canConfirmAssignment = !submitting
-    && selectedVolunteerIds.length > 0
     && Boolean(selectedDriver?.eligible)
     && plannedProblems.length === 0
     && chosenContainers.length > 0
     && (!live || (
-      Boolean(volunteerEligibility)
+      selectedVolunteerIds.length === 0 || (Boolean(volunteerEligibility)
       && !volunteerEligibilityError
-      && selectedVolunteerIds.every(id => volunteerEligibility?.volunteerIds.includes(id))
+      && selectedVolunteerIds.every(id => volunteerEligibility?.volunteerIds.includes(id)))
     ))
 
   const handleNext = () => {
@@ -320,6 +319,7 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
             <>
               <div className="wizard-title">
                 <h3>Select Volunteers</h3>
+                <p>Volunteers are optional for driver-only pickups.</p>
                 <p>Choose approved volunteers for packing, loading and food handling. The NGO driver is chosen in Step 2.</p>
               </div>
               {waitingTeam1 && volunteers.length === 0 ? (
@@ -677,7 +677,7 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
                 <section>
                   <h4>Crew & vehicle</h4>
                   <dl>
-                    <dt><Users size={13} /> Volunteers</dt><dd>{selectedVolunteerNames.length ? selectedVolunteerNames.join(', ') : `${selectedVolunteerIds.length} selected`}</dd>
+                    <dt><Users size={13} /> Volunteers</dt><dd>{selectedVolunteerNames.length ? selectedVolunteerNames.join(', ') : 'Driver-only pickup — no Volunteers assigned.'}</dd>
                     <dt><User size={13} /> NGO driver</dt><dd>{selectedDriver ? `${selectedDriver.name} · ${selectedDriver.phone}` : '—'}</dd>
                     <dt><Truck size={13} /> Driver’s vehicle</dt><dd>{selectedDriver ? `${selectedDriver.vehicle.registrationNumber} · ${selectedDriver.vehicle.kind}` : '—'}</dd>
                     <dt>Vehicle capacity</dt><dd>{selectedDriver ? `${selectedDriver.vehicle.capacityKg} kg` : '—'}</dd>

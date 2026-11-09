@@ -16,7 +16,7 @@ const volunteerActions: Partial<Record<Assignment['status'], { action: Assignmen
   FOOD_COLLECTED: { action: 'DELIVER', label: 'Confirm food delivered' },
 };
 
-export default function LiveAssignments({ historyOnly = false }: { historyOnly?: boolean }) {
+export default function LiveAssignments({ historyOnly = false, assignmentId }: { historyOnly?: boolean; assignmentId?: string }) {
   const [items, setItems] = useState<Assignment[]>([]);
   const [tab, setTab] = useState(historyOnly ? 'Past' : 'Active');
   const [loading, setLoading] = useState(true);
@@ -54,7 +54,7 @@ export default function LiveAssignments({ historyOnly = false }: { historyOnly?:
     } finally { setBusyId(null); }
   };
 
-  const visible = items.filter(item => tab === 'Active' ? !terminal.has(item.status) : terminal.has(item.status))
+  const visible = items.filter(item => assignmentId ? item.id === assignmentId : tab === 'Active' ? !terminal.has(item.status) : terminal.has(item.status))
     .sort((a, b) => tab === 'Past' ? Date.parse(b.completedAt ?? b.createdAt ?? '') - Date.parse(a.completedAt ?? a.createdAt ?? '') : 0);
   const navigate = async (address: string) => {
     const destination = pickupNavigationUrl(address);

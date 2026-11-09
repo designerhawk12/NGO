@@ -26,6 +26,7 @@ vi.mock('../src/auth/appUsers', () => ({
 
 import { app } from '../src/app';
 import { closePool, getPool } from '../src/db/pool';
+import { seedLegacyApprovedApplication } from './legacyVolunteerApplication';
 
 const testUrl = process.env.TEST_DATABASE_URL;
 let testDatabaseName = '';
@@ -58,7 +59,7 @@ async function createVolunteer(name: string, startsAt: Date, endsAt: Date): Prom
   created.people.push(personId);
   const volunteerId = (await q<{ id: string }>("INSERT INTO app.volunteers(person_id, registration_code, skills) VALUES ($1, $2, ARRAY['Packing']) RETURNING id", [personId, `VOL-${randomUUID()}`]))[0].id;
   created.volunteers.push(volunteerId);
-  await q("INSERT INTO app.volunteer_applications(volunteer_id, status, reviewed_at, reviewed_by) VALUES ($1, 'APPROVED', now(), $2)", [volunteerId, actor.id]);
+  await seedLegacyApprovedApplication(getPool(),volunteerId,actor.id);
   await q("INSERT INTO app.volunteer_availability(volunteer_id, starts_at, ends_at, state) VALUES ($1, $2, $3, 'AVAILABLE')", [volunteerId, startsAt, endsAt]);
   return volunteerId;
 }

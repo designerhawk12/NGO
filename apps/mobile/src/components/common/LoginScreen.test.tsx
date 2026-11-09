@@ -9,6 +9,8 @@ vi.mock('react-native', () => ({
   Linking: { openURL: vi.fn() },
 }));
 vi.mock('expo-router', () => ({ Redirect: () => null }));
+vi.mock('expo-crypto', () => ({ randomUUID: () => 'a0000000-0000-4000-8000-000000000001' }));
+vi.mock('expo-image-picker', () => ({ launchImageLibraryAsync: vi.fn() }));
 vi.mock('../../constants/theme', () => ({ C: { ink: '#111', muted: '#666', greenSoft: '#eee', red: '#f00' } }));
 vi.mock('../../context/AppContext', () => ({ useApp: () => ({ role: null, volunteerApplicationStatus: null, notify: vi.fn() }) }));
 vi.mock('../../api/auth', () => ({ isLiveAuthConfigured: () => true, signInWithEmail: vi.fn(), signOut: vi.fn() }));

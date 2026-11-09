@@ -21,7 +21,8 @@ describe('driver job workflow', () => {
   it('asks the driver to accept first, separately from the crew', () => {
     expect(nextDriverStep(job())).toEqual({ action: 'ACCEPT', label: 'Accept assignment' });
     expect(nextDriverStep(job({ status: 'ACCEPTED' }))).toEqual({ action: 'ACCEPT', label: 'Accept assignment' });
-    expect(nextDriverStep(job({ driverAcceptance: 'ACCEPTED' }))).toEqual({ waiting: 'Waiting for a crew volunteer to accept.' });
+    expect(nextDriverStep(job({ driverAcceptance: 'ACCEPTED', crew: [{ name: 'Crew member' }] }))).toEqual({ waiting: 'Waiting for a crew volunteer to accept.' });
+    expect(nextDriverStep(job({ driverAcceptance: 'ACCEPTED' }))).toMatchObject({ action: 'START' });
   });
 
   it('follows the existing status machine after acceptance and stops when closed', () => {
