@@ -180,4 +180,13 @@ async function supplement(){
   const outbox=await q('SELECT count(*)::int AS count FROM app.notification_outbox WHERE recipient_user_id=ANY($1::uuid[]) AND attempts>0',[Object.values(state.accounts).map(a=>a.userId)]);check('synthetic outbox has no send attempts',outbox[0].count===0);
   state.securitySupplementCompletedAt=new Date().toISOString();save();console.log(JSON.stringify({hosted_security_supplement_complete:true}));
 }
-(process.argv.includes('--security-supplement')?supplement():main()).catch(e=>{state.lastFailure={at:new Date().toISOString(),code:e.code||'HOSTED_CHECK_FAILED',message:/^Hosted assertion failed:/.test(e.message)?e.message:'Synthetic staging operation failed; inspect sanitized evidence'};save();console.log(JSON.stringify(state.lastFailure));process.exitCode=1;}).finally(()=>db.end());
+async function preparePhone(){
+  if(!state.securitySupplementCompletedAt)throw Error('Hosted security gate incomplete');
+  loadPublicKey();const pending=await volunteer('phone-pending');
+  await api('GET','/assignments/me',pending,undefined,403);
+  const png=await sharp({create:{width:128,height:64,channels:3,background:'#ffffff'}}).png().toBuffer();
+  fs.writeFileSync(path.join(base,'synthetic-identity-test-only.png'),png);
+  state.phoneFixtures={driverLabel:'driver0',pendingApplicantLabel:'phone-pending',activeAssignment:state.activeFleet[0].assignment,proofFile:'synthetic-identity-test-only.png'};save();
+  console.log(JSON.stringify({phone_fixtures_prepared:true,credential_values:'private local fixture only; not printed'}));
+}
+(process.argv.includes('--prepare-phone')?preparePhone():process.argv.includes('--security-supplement')?supplement():main()).catch(e=>{state.lastFailure={at:new Date().toISOString(),code:e.code||'HOSTED_CHECK_FAILED',message:/^Hosted assertion failed:/.test(e.message)?e.message:'Synthetic staging operation failed; inspect sanitized evidence'};save();console.log(JSON.stringify(state.lastFailure));process.exitCode=1;}).finally(()=>db.end());

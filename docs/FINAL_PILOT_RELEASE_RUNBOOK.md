@@ -1,6 +1,6 @@
 # Final pilot release runbook
 
-Status: local implementation; NOT release authorization. See `FINAL_NGO_PILOT_HANDOFF.md` for actual evidence. No real WhatsApp sending, hosted migration, deployment, EAS build or APK publication has been performed.
+Status: approved staging rollout and hosted verification completed; existing Android preview ready for physical testing. Migration 015, restricted runtime role, private buckets and both designated staging deployments are complete. 584 local tests and 130 hosted checks plus GPS/security supplement passed. Preview build `69224e2c-8e03-4ca0-836e-90108f6061b6` from `c6eea23` passed artifact inspection. See the newest handoff checkpoint and operator phone checklist; earlier gate-closed/proposed-migration text below is historical, not instructions to repeat rollout. No Pilot GO: physical Android and SMTP delivery remain unverified. Production, live WhatsApp and public APK publication remain untouched/disabled. Do not rebuild, redeploy or reapply migrations without a demonstrated defect and appropriate authorization.
 
 ## Review and environment gates
 
