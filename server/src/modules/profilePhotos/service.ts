@@ -16,11 +16,10 @@ export function detectImageType(bytes: Buffer): UploadProfilePhoto['contentType'
   return null;
 }
 
-let bucketReady = false;
 async function ensureBucket(): Promise<void> {
-  if (bucketReady) return;
   const storage = getSupabaseAdminClient().storage;
   const existing = await storage.getBucket(PROFILE_PHOTO_BUCKET);
+  if (existing.data?.public) throw new HttpError(503, 'PHOTO_STORAGE_UNAVAILABLE', 'Profile photo storage must be private.');
   if (existing.error || !existing.data) {
     const created = await storage.createBucket(PROFILE_PHOTO_BUCKET, {
       public: false, fileSizeLimit: PROFILE_PHOTO_MAX_BYTES, allowedMimeTypes: Object.keys(extensions),
@@ -28,13 +27,18 @@ async function ensureBucket(): Promise<void> {
     if (created.error && !/already exists|duplicate/i.test(created.error.message)) {
       throw new HttpError(503, 'PHOTO_STORAGE_UNAVAILABLE', 'Photo storage is unavailable. Try again shortly.');
     }
+    const verified = await storage.getBucket(PROFILE_PHOTO_BUCKET);
+    if (verified.error || !verified.data || verified.data.public) {
+      throw new HttpError(503, 'PHOTO_STORAGE_UNAVAILABLE', 'Private profile photo storage could not be verified.');
+    }
   }
-  bucketReady = true;
 }
 
 async function signedUrls(paths: string[]): Promise<Map<string, string>> {
   const result = new Map<string, string>();
   if (!paths.length) return result;
+  const bucket = await getSupabaseAdminClient().storage.getBucket(PROFILE_PHOTO_BUCKET);
+  if (bucket.error || !bucket.data || bucket.data.public) return result;
   const { data, error } = await getSupabaseAdminClient().storage.from(PROFILE_PHOTO_BUCKET).createSignedUrls(paths, SIGNED_URL_SECONDS);
   if (error || !data) return result; // A broken image must never break a page: callers fall back to the default avatar.
   for (const entry of data) if (entry.path && entry.signedUrl) result.set(entry.path, entry.signedUrl);
