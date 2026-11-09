@@ -321,6 +321,10 @@ The user corrected earlier backup claims: Free plan, no managed backups/PITR/ret
 
 Final predeployment regression: **67 files,584 tests passed,1 existing TODO**,24.78s on a fresh synthetic database prepared by the canonical001–015 runner. Next: release commit → explicitly linked staging-only deployments → verified stable aliases/new code → staging-only public-alias access arrangement → hosted synthetic API/Auth/private-document/photo/Driver/GPS/outbox tests. Do not call the old opaque deployments as proof of the new settings. No Production project/data was accessed. No new APK or live notification has been sent yet.
 
+## Staging login follow-up — 2026-11-09
+
+See `STAGING_LOGIN_REPAIR.md` for exact affected-account findings, regression and staging-only repair evidence. `admin_test@gmail.com` is absent from staging Auth; no Admin was created/reset to match it. Existing current credentials pass Auth and `/me`. A separate demonstrated legacy Donor portal bug hard-coded another Auth project; the repair uses Vite environment configuration and isolates cached tokens/service-worker traffic. Production and existing database/account data remain untouched. Discover the repair source commit with `git log -- apps/web/donor/index.html`.
+
 ## Final recovery checkpoint — 2026-11-09
 
 This section supersedes historical pending-build, backup-refusal and browser-unavailable statements below. Hosted source remains `f3e98ee6a44dccdccfc97692b9aa6b3f78d3d63e`; Android source is `c6eea2311e3692971e30bde5943b6d38966e982b` (subsequent harness/docs only, same application code). Discover this final evidence commit with `git log -1 -- docs/FINAL_NGO_PILOT_HANDOFF.md`.

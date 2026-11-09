@@ -78,7 +78,7 @@ function CoordinatorAuth({ onAdminSignIn }: { onAdminSignIn: () => void }) {
   }
 
   return <section className="panel settings-card"><div className="settings-icon"><ShieldCheck size={22}/></div>
-    <h2>Administrator account</h2><p>Connect a verified account to the shared API.</p>
+    <h2>Administrator account</h2><p>Use a current Admin account for this environment. Volunteer and Driver accounts use the mobile app; Donors can also use the Donor portal. Credentials from another environment do not grant access here.</p>
     {!configured ? <div className="settings-note"><Info size={17}/><span>Live sign in is not configured on this device.</span></div>
       : user ? <><div className="settings-row"><span>API role</span><strong>{user.role}</strong></div><button type="button" className="button button-secondary" disabled={busy} onClick={() => { void leave() }}>Sign out</button></>
         : <form className="settings-auth-form" onSubmit={event => { void submit(event) }}>
