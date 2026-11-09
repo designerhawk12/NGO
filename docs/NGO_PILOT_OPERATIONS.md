@@ -2,7 +2,17 @@
 
 This guide describes the implemented workflows. Use it on the approved staging/pilot environment only after the release gates in `FINAL_PILOT_RELEASE_RUNBOOK.md` pass. Final pilot clearance has not been granted.
 
-## Current staging and physical Android checklist — 2026-11-09
+## Acceptance fixes and replacement Android — 2026-11-10
+
+The photo-picker fix requires replacement preview build **776393e8-c33f-48c8-8a0c-fc1a25f65cbc**, source `3e89c26`: [build status](https://expo.dev/accounts/rajashishpatil10/projects/aaharaconnect-mobile/builds/776393e8-c33f-48c8-8a0c-fc1a25f65cbc). It is currently queued; do not start another build. The validated baseline APK below remains preserved, but cannot demonstrate the new photo fix. Wait for the replacement artifact and its inspection result, install it as an update with the same package/signing identity, and record the build ID (version number alone may match the baseline).
+
+Public staging Volunteer registration is now enabled **after** the authorized recipient confirmed both invitation/reset receipt, correct staging callbacks, password setup/reset and pending login. New applicants still require private proof and manual Admin identity verification; a live unverified-proof approval was denied409. Delivery is verified for that controlled recipient, not every email provider. Never send unsolicited bulk tests or treat a submitted proof as approved identity. No real WhatsApp or public APK distribution is enabled.
+
+For the replacement photo test, use `donor`, `volunteer` and `driver0` synthetic credentials from the private fixture described below. For each role choose JPEG, PNG/screenshot, WebP and HEIC/HEIF if the phone's decoder supports it; crop a recognisable corner and confirm orientation in preview, save, restart/sign in again, then replace. The app must submit normalized JPEG <=600KB. Unsupported/corrupt images must produce a handled conversion error; cancellation must leave the old photo intact. Record phone/Android version and format outcomes, without credentials or real identity documents. Backend upload/preview/replacement/persistence/private-access tests already passed; native gallery conversion remains to be verified on this binary.
+
+For map testing, use a current authorized synthetic Driver duty. If old fixture food/pickup windows expired, create a fresh synthetic food request and Driver-only pickup through the normal Admin flow rather than changing the phone clock, extending expired real food, or overwriting history. With a valid report, the initial selected vehicle should center at zoom17; selecting another vehicle with GPS should refocus. Manually pan/zoom and wait through two15-second refreshes: marker/status may update, viewport must remain where you put it. Switching through a no-GPS vehicle must safely hide its marker and returning to a valid one must refocus. Keep timestamp/accuracy/offline observations separate from mere sharing ON. Repeat background reporting with Maps open after the native dependency addition. No physical pass is claimed yet.
+
+## Baseline staging and physical Android checklist — 2026-11-09
 
 This section supersedes the older final-review checkpoint below. Staging web is https://aaharaconnect-ngo-staging.vercel.app; API is https://aaharaconnect-ngo-staging-api.vercel.app. Hosted API/security verification passed; physical Android and SMTP delivery have NOT passed. No Production or live WhatsApp use is authorized.
 
