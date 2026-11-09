@@ -29,8 +29,9 @@ async function main(){
     await request('GET','/assignments/driver','driver0');await request('GET','/assignments/me','volunteer');
     await request('GET','/volunteers/'+accounts.volunteer.volunteerId+'/identity','donor',undefined,403);
     const identity=await request('GET','/volunteers/'+accounts.volunteer.volunteerId+'/identity','admin');check('approved synthetic identity remains verified',identity.status==='VERIFIED');
-    await request('POST','/volunteers/register',null,{},403);
+    await request('POST','/volunteers/register',null,{},process.argv.includes('--registration-enabled')?400:403);
     await request('GET','/profile-photos/me',null,undefined,401);
+    if(!process.argv.includes('--checks-only')) {
     const image=await sharp({create:{width:320,height:240,channels:3,background:'#468864'}}).jpeg({quality:85}).toBuffer();
     for(const label of ['donor','volunteer','driver0']){
       // Reproduce the old picker bug: JPEG bytes accompanied by the original PNG MIME.
@@ -45,12 +46,17 @@ async function main(){
         const publicPath=pathname.replace('/object/sign/','/object/public/');check(label+' anonymous direct object denied '+replacement,!(await fetch(auth+publicPath)).ok);
       }
     }
+    } else for(const label of ['donor','volunteer','driver0']){
+      const saved=await request('GET','/profile-photos/me',label);check(label+' saved photo still renders after rollout',!!saved.photoUrl&&(await fetch(saved.photoUrl)).ok);
     }
+    }
+    if(!process.argv.includes('--checks-only')) {
     const now=Date.now(),submissionId=crypto.randomUUID();
     const donation={submissionId,sourceName:'Synthetic acceptance regression '+submissionId.slice(0,8),sourceType:'Event',pickupAddress:'Synthetic staging pickup address, Bengaluru',preparedAt:new Date(now-60000).toISOString(),readyAt:new Date(now).toISOString(),pickupDeadline:new Date(now+3600000).toISOString(),contactName:'Synthetic acceptance donor',contactPhoneE164:'+15555550123',donorSafetyDeclaration:true,items:[{foodType:'Synthetic test rice',quantity:1,unit:'KG'}]};
     donation.handlingRequirements='Synthetic record only';donation.estimatedWeightKg=1;donation.items[0].handlingRequirements='Synthetic record only';
     const created=await request('POST','/food-requests','donor',donation,201);const replay=await request('POST','/food-requests','donor',donation,[200,201]);check('donation replay preserved request identity',created.id===replay.id);
     fs.writeFileSync(path.join(base,'acceptance-fixes-hosted-results.json'),JSON.stringify({at:new Date().toISOString(),project:'tughgqggsndtraaymtvf',checks},null,2));
+    }
   }finally{for(const client of clients)await client.auth.signOut({scope:'local'});}
 }
 main().catch(()=>{console.error('Synthetic staging regression failed; credentials and private URLs suppressed.');process.exitCode=1;});
