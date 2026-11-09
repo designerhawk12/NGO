@@ -1,5 +1,5 @@
--- PROPOSAL ONLY: confirm both hosted ledgers/checksums and final sequence number
--- with the integration maintainer before moving into db/migrations. Not auto-applied.
+-- Final pilot: staging ledger001-014 and recovery rehearsal verified before rollout.
+-- Apply with the existing runner only after target/recovery/runtime-access gates pass.
 -- Additive; existing approved/pending applications are grandfathered explicitly.
 ALTER TABLE app.vehicle_locations ADD COLUMN accuracy_meters double precision CHECK(accuracy_meters BETWEEN 0 AND 200), ADD COLUMN speed_mps double precision CHECK(speed_mps BETWEEN 0 AND 100);
 CREATE TABLE app.tracking_geocode_cache(cell text PRIMARY KEY,locality text NOT NULL,expires_at timestamptz NOT NULL);
