@@ -75,7 +75,7 @@ NO-GO: requested privacy/security workflows and release verification remain inco
 | Git diff whitespace | Pass |
 | GitHub PR 26 read-only inspection | Open draft, unmerged; remote head `b7b321cca94b318e29e0ae8ced1e136db1ebfd3e` |
 
-Reviewed SQL proposal SHA-256: `7FB9A46146C65DEF7C5332D61F0BB1AD1EAD51DC986D370A7D67ACF5032C47F2`. This supersedes the initial implementation checksum after the explicit GPS RLS/revoke hardening below. Version number 015 remains provisional until hosted ledger review.
+Current SQL proposal SHA-256: `F7A12DADDAA62654A548899C9E4E6254FA1B6B566F54A4C03282009EA82C6A89`. This supersedes the earlier GPS-hardening checksum after adding the explicit restricted API permission group. Staging ledger001–014 has now been verified; recheck before applying015. Proposal remains outside the runner and unapplied remotely.
 
 Tests used loopback PostgreSQL and synthetic records. Supabase Auth/invitations/Storage and Meta sending were mocked where used. Physical GPS, image pickers, signed real Storage previews, real SMTP/WhatsApp delivery, App Link verification, Vercel runtime, backup restore and APK bytes were **not** verified. No actual final APK version/build/checksum is available.
 
@@ -268,3 +268,41 @@ After the user's reconnection confirmation, Codex project-details read for **sta
 ### Continued independent Android configuration review — 2026-11-09
 
 On the user's continuation, the staging project-details read remained denied with the same -32600 permission error; no SQL, Storage or deployment mutation was attempted. Independently inspected the **EAS preview** environment with sensitive values captured only in memory and sanitized before output: `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is an actual **`sb_publishable_` key**, not a server secret or masked value. API, Auth project and web origin all remain the exact staging URLs listed above. This supersedes the earlier unverified-key-type limitation. No key bytes were logged or saved; no EAS build started. It confirms configured key type, not key functionality or the contents of an unbuilt APK. No source implementation changed and no tests were rerun. The outstanding prerequisite remains repairing Codex connector authorization; repeated reconnection alone has not resolved it. Local checkpoint824e4ce records the prior confirmed integration push; this continuation preserves the independent configuration finding for the next session.
+
+## Execution recovery checkpoint — 2026-11-09, implementation6ac84fc
+
+Latest user authorizes staging repair/deployment and one preview APK only after isolation/recovery/security gates pass. They subsequently **declined creation/restoration of a backup**; that decision controls recovery operations. No remote write, deployment or build has occurred. Earlier Codex connector-denial statements are historical: the new Supabase MCP is functional and staging ledger001–014 names/checksums and actual schema were verified read-only.
+
+### Newly completed
+
+- Used the exact user-supplied private file `C:/Users/desig/AppData/Local/AahaaraConnect-Staging/staging.env`. Its DB endpoint and pooler username explicitly identify staging `tughgqggsndtraaymtvf`. A real TLS-verified read using that file returned database/user/session_user `postgres`, schema usage/create true, bypassRLS true, ledger count14. This establishes the supplied migration connection, not the opaque deployed Vercel connection.
+- User added a server secret to that private file. Read-only staging `/storage/v1/bucket` and `/auth/v1/admin/users` returned200; bucket inventory remains empty. Secret bytes and user records were neither printed nor committed. User confirms **SMTP unavailable**; no email was sent.
+- Existing old-checkout credentials identified Production and were not used for a connection. No Production API/database was contacted.
+- Docker engine was started. Created only `aahara-recovery-final-20261109`, PostgreSQL17 on `127.0.0.1:55440`, with synthetic `_test` databases. Baseline001–014 ran through the established runner; full proposed015 applied locally, including a second fresh-schema validation. No staging snapshot was created or restored; the local `aahara_restore` database is empty and was created with the container before backup refusal.
+- Proposal015 now creates `aaharaconnect_api`, a **NOLOGIN** permission group with no administrative attributes or BYPASSRLS. Finite application-table grants exclude the migration ledger and schema creation; audit histories do not receive UPDATE/DELETE; DELETE is limited to existing API cleanup/resource operations. Policies explicitly target this trusted Express group on protected tables. No membership or policy is granted to public Auth client roles. A separate securely provisioned runtime LOGIN with INHERIT must receive this group before Vercel cutover; the migration login remains separate. Actual hosted `postgres` has CREATEROLE, so role provisioning is technically available after the gate. No remote runtime role exists yet.
+- Private-photo bug fixed: an existing public bucket is rejected on upload, privacy is rechecked, creation races are verified, and signed previews are withheld if bucket privacy is unknown/public. Added3 regression tests. Existing photo formats, routes and one-hour preview lifetime remain.
+
+Implementation commit: `6ac84fc104a9a8c1af7aaca86a7595a3146edeb8`. Changed files: proposed015, profilePhotos/service.ts, new profilePhotoPrivacy.test.ts and runtimePermissions.integration.test.ts. No unrelated interface redesign or feature rewrite.
+
+### Actual verification this execution
+
+| Check | Result |
+| --- | --- |
+| Mobile lint, mobile TypeScript, shared/server build, web TypeScript/build | PASS; web retains main-bundle size warning |
+| Integrated suite before the new permission/photo repairs | **65 files passed, 578 tests passed, 1 existing TODO**,25.09s, local synthetic PostgreSQL + mocked Auth/Storage/Meta |
+| Fresh revised015 + runtime/identity/Driver/private-photo suite | **4 files,25 tests passed**; actual PostgreSQL RLS and denied ledger/DDL/TRUNCATE/audit modification tested |
+| Focused mock/mobile/API suite |48 passed +1 sandbox loopback EACCES; rerunning the affected file with loopback permission passed all6 tests (no application assertion failure) |
+| Server typecheck after photo fix | PASS |
+| Web smoke and Kannada translation audit | PASS, command exit0; existing Vite shutdown build-cancel message remains |
+| Fresh built web credential-marker scan |3 JS assets scanned; no literal long server-secret/DB-URL/private-key candidates; not an APK or comprehensive secret audit |
+| Git whitespace | PASS |
+
+The initial synthetic database setup used CREATE DATABASE in a multi-statement batch, which PostgreSQL rejected; issuing database creation separately corrected the local harness. No hosted operation was involved. Tests are not evidence of hosted Storage, SMTP, Auth delivery, background GPS or phone success.
+
+### Gates still closed
+
+The supported Vercel decrypted read still returns opaque values for both designated staging projects. Therefore do not infer that deployed hosting matches the supplied private file. After recovery readiness is established, use a verified staging-only replacement procedure: separate restricted runtime DB credential, verified CA, staging Supabase URL/public key/server secret, staging CORS and exact `/accept-invite` redirect, with correct target assignments. Keep the branch no-auto-deploy guard and explicitly select the two reviewed staging project IDs.
+
+Automatic approval review rejected the proposed private app-schema dump/local restore command before process creation because it retained the earlier prohibition. The user was asked explicitly and chose **Do not create or restore the backup**. No backup exists from this task and restore readiness is not proven. Existing Dashboard backup inventory/recovery evidence and Auth URL Configuration are the only pending manual evidence request; do not repeat credential requests or attempt browser automation (its URL-safety verification is unavailable). Keep every affected staging mutation blocked until an acceptable existing recovery checkpoint is established. The private app-only recovery proposal would not have included Auth or Storage bytes even if approved; never describe it as a full-project backup.
+
+Next safe execution after evidence: approve the current015 checksum/runtime permission plan → promote015 into the existing migration stream → provision separate restricted runtime login securely → apply once with the verified migration connection → replace only staging hosting variables → configure private photo/identity buckets → deploy both staging targets → hosted synthetic positive/negative/security journeys → one preview APK only after hosted/security pass. Sending, deletion, geocoding and public APK publication remain off. SMTP delivery and physical Android verification remain incomplete, not passed. No live WhatsApp/external notification sent and no paid service enabled.

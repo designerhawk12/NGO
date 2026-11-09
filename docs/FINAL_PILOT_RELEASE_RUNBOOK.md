@@ -4,6 +4,12 @@ Status: local implementation; NOT release authorization. See `FINAL_NGO_PILOT_HA
 
 ## Review and environment gates
 
+Current execution supplement (2026-11-09): Supabase MCP is now functional;001–014 are verified. The user-supplied private staging.env connection passed TLS/target/role checks, and its newly supplied server secret passed read-only staging Auth/Storage checks. SMTP is unavailable. The user explicitly declined creating/restoring a backup, so remote-write gates remain closed pending acceptable existing recovery evidence. Browser automation remains unavailable; do not bypass it. See the latest handoff execution checkpoint for actual tests and changes.
+
+Current proposed015 SHA-256: `F7A12DADDAA62654A548899C9E4E6254FA1B6B566F54A4C03282009EA82C6A89`. It adds the tested NOLOGIN `aaharaconnect_api` permission group and explicit RLS policies for trusted Express access. Before rollout, securely provision a separate non-owner/non-BYPASSRLS INHERIT runtime login and grant only this group; keep the verified `postgres` connection for migration administration. Test the actual runtime connection can use required RLS tables and cannot read the ledger/create tables/truncate/rewrite audit events. Do not deploy with migration credentials simply to bypass RLS. Role password and runtime connection belong only in private local/provider configuration, never SQL source or chat. No runtime membership is granted to anon/authenticated/authenticator/service_role.
+
+Required two private buckets and their previously documented MIME/size/access rules are unchanged. The photo service now refuses public/unverifiable buckets, including preview issuance; deployment must include that fix. All later production planning remains separately gated and is not authorized by this staging request.
+
 Affected owners: Volunteer, Food/Donor, Pickup/Logistics, Tracking, Vehicle Details, and integration maintainers. Shared DTOs, auth exception, dependency lockfile, Vercel routing, CI, native permissions and SQL require integration review. PR 26 stays open/unmerged.
 
 1. Confirm branch `integration/ngo-recovery`, starting commit `b7b321c`, and review all uncommitted changes. Preserve the pre-existing untracked `docs/STAGING_CHECKPOINT.md`.
