@@ -10,11 +10,13 @@ assert.ok(html.includes(authUrl), 'Donor HTML must receive the same staging envi
 assert.ok(!html.includes('oneiwcfdnqzcyfvxufhc'), 'No obsolete Auth project')
 assert.ok(!html.includes('admin_test@gmail.com'), 'No nonexistent suggested Admin')
 assert.ok(!html.includes('%VITE_'), 'No unresolved build configuration')
-const source = html.slice(html.indexOf('/* ===== Mode & API Configuration ===== */'), html.indexOf('/* ===== Model classes'))
+const source = html.match(/<script>([\s\S]*?)<\/script>/)[1]
 const token = (iss, exp = Math.floor(Date.now()/1000)+3600) => 'header.'+Buffer.from(JSON.stringify({iss,exp})).toString('base64url')+'.signature'
 for (const scenario of ['donor','admin','volunteer','bad-password','api-error']) {
   const dom = new JSDOM(html, {url:'https://aaharaconnect-ngo-staging.vercel.app/donor/',runScripts:'outside-only'})
   const w = dom.window
+  w.matchMedia = () => ({matches:false})
+  w.scrollTo = () => {}
   const calls = []
   w.toast = () => {}
   w.fetch = async (url, options) => {
@@ -24,6 +26,7 @@ for (const scenario of ['donor','admin','volunteer','bad-password','api-error'])
       : {ok:scenario!=='api-error',json:async()=>({data:{role:scenario==='volunteer'?'VOLUNTEER':scenario==='admin'?'ADMIN':'DONOR'}})}
   }
   w.eval(source)
+  await new Promise(resolve => setTimeout(resolve,0))
   w.document.getElementById('sbEmail').value = 'synthetic@example.test'
   w.document.getElementById('sbPass').value = 'synthetic-test-only'
   await w.document.getElementById('btnSbLogin').onclick()
@@ -33,6 +36,9 @@ for (const scenario of ['donor','admin','volunteer','bad-password','api-error'])
   assert.equal(!!w.localStorage.getItem('aaharaconnect-donor-token:'+authUrl),success)
   if(scenario!=='bad-password') assert.equal(calls[1].url,'https://aaharaconnect-ngo-staging-api.vercel.app/api/v1/me')
   if(success) {
+    assert.equal(w.document.getElementById('s-hall').hidden,false,'Live sign-in must advance beyond the login screen')
+    assert.equal(w.document.getElementById('sbPass').value,'','Clear the password after sign-in')
+    assert.equal(w.document.getElementById('contactPhone').value,'','Never invent a live contact phone')
     assert.equal(w.eval('getStoredToken()'),token(authUrl))
     w.document.getElementById('tokenInput').value=token('https://other.invalid/auth/v1')
     assert.equal(w.eval('getStoredToken()'),null,'Reject foreign environment tokens')

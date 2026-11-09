@@ -24,6 +24,8 @@ Moved the same Donor HTML to a Vite HTML entry at `apps/web/donor/index.html`, p
 
 Hosted post-repair evidence and exact deployment/commit are appended after deployment. No database, Auth account, migration, role, password, SMTP or WhatsApp configuration changes are part of the repair.
 
+Full-page follow-up: legacy live Auth previously populated a token but did not advance the screen. The repaired success handler now opens the existing pickup form, clears the password and requests actual contact name/phone (no invented contact data). Existing demo login fills these fields from its local model. Expanded mock tests execute the entire inline portal script and require successful Donor/Admin login to leave the Auth screen. The first full-page test exposed missing JSDOM `matchMedia`; adding browser stubs corrected the test harness. Full-page cases now pass. This demonstrated follow-up required a second staging-web-only deployment; no API or native change was needed.
+
 ## Preservation and eventual Production strategy
 
 Do not copy real accounts into staging or create `admin_test@gmail.com` as Admin simply to match a displayed name. Use the existing current staging accounts privately for pilot verification; any additional staging identity/role creation needs explicit scope and approval. Keep the orphan Donor and its request intact. Repairing it requires independently verified ownership, the intended Auth subject, a conflict check and an explicitly approved audited transaction preserving its application/donor IDs; email resemblance is insufficient.

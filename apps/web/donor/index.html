@@ -187,6 +187,8 @@ body.dev .tag{display:inline-block}
     <h1>Where is the food?</h1>
     <p class="lead" id="hello"></p>
     <div class="panel">
+      <label for="contactName">Contact name</label><input id="contactName" autocomplete="name">
+      <label for="contactPhone">Contact phone number</label><input id="contactPhone" inputmode="numeric" maxlength="10" autocomplete="tel-national" placeholder="10-digit mobile number">
       <label>Function hall name <span class="tag">hallName</span></label><input id="hName" placeholder="e.g. Sri Lakshmi Convention Hall">
       <label>Hall address <span class="tag">hallAddress</span></label><input id="hAddr" placeholder="e.g. 5th Block Koramangala, Bengaluru">
       <button class="ghost" id="btnGps" style="width:100%;margin-top:14px">Use my current location <span class="tag">fetchCurrentLocation()</span></button>
@@ -361,6 +363,9 @@ if (sbBtn) {
         document.getElementById('tokenStatus').textContent = `(Signed in: ${data.user?.email || email})`;
       }
       toast('Signed in to Supabase Live Account!');
+      donor = new FoodDonor(me.data.displayName || 'Food Donor', '', '');
+      document.getElementById('sbPass').value = '';
+      goHall();
     } catch (err) {
       if (errBox) errBox.textContent = err.message || 'Failed to sign in.';
     } finally {
@@ -515,7 +520,7 @@ $("btnLog").onclick = () => {
   if (!d) return $("lErr").textContent = "Phone number or password doesn't match. Register first if you're new.";
   $("lErr").textContent = ""; donor = d; toast("Logged in"); goHall();
 };
-function goHall(){ $("hello").textContent = "Hi " + donor.name + ", tell us which hall to pick the food up from."; show("s-hall"); }
+function goHall(){ $("contactName").value = donor.name; $("contactPhone").value = donor.phone; $("hello").textContent = "Hi " + donor.name + ", tell us which hall to pick the food up from."; show("s-hall"); }
 
 /* Hall + GPS */
 $("btnGps").onclick = async () => {
@@ -529,6 +534,9 @@ $("btnGps").onclick = async () => {
   $("btnGps").innerHTML = 'Use my current location <span class="tag">fetchCurrentLocation()</span>';
 };
 $("btnHall").onclick = () => {
+  const contactName = $("contactName").value.trim(), contactPhone = $("contactPhone").value.trim();
+  if (!contactName || !/^\d{10}$/.test(contactPhone)) return $("hErr").textContent = "Enter your contact name and 10-digit phone number.";
+  donor.name = contactName; donor.phone = contactPhone;
   const hn = $("hName").value.trim(), ha = $("hAddr").value.trim();
   const la = parseFloat($("lat").value), lo = parseFloat($("lng").value);
   if (!hn || !ha) return $("hErr").textContent = "Enter the hall name and address.";
