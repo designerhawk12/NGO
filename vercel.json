@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "integration/ngo-recovery": false
+    }
+  },
   "framework": "vite",
   "installCommand": "npm ci --include=dev",
   "buildCommand": "npm run build:web",

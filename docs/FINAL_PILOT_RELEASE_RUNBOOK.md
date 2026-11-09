@@ -89,6 +89,10 @@ Separate approvals: staging push/migration/deployment; Meta business setup; paid
 
 ## Final-review infrastructure inventory — 2026-11-09
 
+**Recovery correction:** the stable staging web alias currently redirects signed-out clients to Vercel login; the HTML200 previously observed was not a public homepage/API success. Web deployment is `eb966632b58c2ac3f9a2aee6e8f43351b6c29a46`; API deployment is `0d6e1d0ebdaf01ec2e7136c4b7376fa538e32224`. New release API routes are404 on the older API. See the appended recovery checkpoint in the handoff for exact current results. Keep protection unchanged until a reviewed staging-specific access/association plan is agreed. User independently reports ledger001–014 and no buckets; Codex's own read calls still deny access despite the approved Allow-read plugin setting, so migration/storage/deployment execution remains blocked.
+
+The recovery adds a branch-only automatic-deployment guard in `vercel.json`: `git.deploymentEnabled["integration/ngo-recovery"]=false`. This prevents Git push-triggered Vercel deployments for this branch, including Production-project Previews; other branches are unaffected. Use explicit verified staging project IDs for approved manual deployment. A combined local commit/push attempt was rejected before execution by automatic approval review; verify Git state and renewed push approval before proceeding. [Vercel documents the branch guard here](https://vercel.com/docs/project-configuration/git-configuration#git.deploymentenabled).
+
 Reviewed implementation commit: `4cc7430f8b4c0af6634a13df8966fc9d61246926`; documentation preservation commit is discoverable with `git log -- docs/FINAL_PILOT_RELEASE_RUNBOOK.md`. Neither commit has been pushed. Proposal SHA-256: `7FB9A46146C65DEF7C5332D61F0BB1AD1EAD51DC986D370A7D67ACF5032C47F2`, number still provisional.
 
 Read-only checks only; environment values/settings and deployments were not changed. Vercel scope is `equinox10`, organization `team_lRAI0kP7NNOxCUPBitJQ3d95`.
