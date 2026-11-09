@@ -7,6 +7,11 @@ describe('vehicle map focus', () => {
     expect(selectTrackedVehicle(fleet,'')).toBe('B');expect(selectTrackedVehicle(fleet,'A')).toBe('A')
     expect(selectTrackedVehicle([], 'gone')).toBe('')
   })
+  it('follows the first arriving GPS fix when the initial no-GPS selection was automatic',()=>{
+    const fleet=[{id:'A',latitude:null,longitude:null},{id:'B',latitude:12,longitude:77}] as never
+    expect(selectTrackedVehicle(fleet,'A',false)).toBe('B')
+    expect(selectTrackedVehicle(fleet,'A',true)).toBe('A')
+  })
   it('waits for the first valid fix then focuses at street zoom',()=>{
     const {map,marker}=setup();let s={selected:'',focused:false}
     s=updateTrackingMap(map,marker as never,s,'A',null,null);expect(map.setView).not.toHaveBeenCalled()

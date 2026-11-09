@@ -15,6 +15,7 @@ export default function VehicleTracking() {
   const map = useRef<LeafletMap | null>(null)
   const marker = useRef<Marker | null>(null)
   const focus = useRef<TrackingFocus>({ selected: '', focused: false })
+  const manualSelection = useRef(false)
   const [mapReady, setMapReady] = useState(false)
   const vehicle = fleet.find(item => item.id === selected)
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function VehicleTracking() {
         const result = await apiRequest<{ items: FleetLocation[] }>('vehicles/tracking', { headers: { Authorization: `Bearer ${token}` } })
         if (disposed) return
         setFleet(result.items); setError(''); setNow(Date.now())
-        setSelected(current => selectTrackedVehicle(result.items,current))
+        setSelected(current => selectTrackedVehicle(result.items,current,manualSelection.current || focus.current.focused))
       } catch (cause) {
         if (!disposed) { setError(cause instanceof Error ? cause.message : 'Location updates unavailable.'); setNow(Date.now()) }
       } finally { if (!disposed) timer = setTimeout(() => void load(), 15_000) }
@@ -57,7 +58,7 @@ export default function VehicleTracking() {
     <p>Driver phone reports during authorized NGO duty. Phone GPS does not independently prove vehicle position.</p>
     {error && <p role="alert">{error} Previously received positions may be out of date.</p>}
     <label htmlFor="tracked-vehicle">Vehicle</label>{' '}
-    <select id="tracked-vehicle" value={selected} onChange={event => setSelected(event.target.value)}>
+    <select id="tracked-vehicle" value={selected} onChange={event => { manualSelection.current = true; setSelected(event.target.value) }}>
       {fleet.length === 0 && <option value="">No registered vehicles available</option>}
       {fleet.map(item => <option key={item.id} value={item.id}>{item.registrationNumber} · {item.driverName ?? 'No fixed Driver'}</option>)}
     </select>

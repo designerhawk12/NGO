@@ -5,8 +5,8 @@ export function hasTrackingPoint(latitude: number | null | undefined, longitude:
   return latitude != null && longitude != null && Number.isFinite(latitude) && Number.isFinite(longitude)
     && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180
 }
-export function selectTrackedVehicle(fleet: FleetLocation[], current: string): string {
-  return fleet.some(item => item.id === current) ? current
+export function selectTrackedVehicle(fleet: FleetLocation[], current: string, preserveSelection = true): string {
+  return preserveSelection && fleet.some(item => item.id === current) ? current
     : (fleet.find(item => hasTrackingPoint(item.latitude,item.longitude)) ?? fleet[0])?.id ?? ''
 }
 
