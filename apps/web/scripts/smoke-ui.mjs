@@ -425,7 +425,7 @@ try {
   // Verify Requirement: Donor page has no misleading Pickup assignment action
   const { readFileSync } = await import('node:fs')
   const { resolve } = await import('node:path')
-  const donorHtml = readFileSync(resolve(process.cwd(), 'public/donor/index.html'), 'utf8')
+  const donorHtml = readFileSync(resolve(process.cwd(), 'donor/index.html'), 'utf8')
   assert.doesNotMatch(donorHtml, /🚚 Open Pickup &amp; Logistics/, 'Donor page must not contain header pickup action')
   assert.doesNotMatch(donorHtml, /Open in Pickup &amp; Logistics/, 'Donor page must not contain status pickup action')
   assert.doesNotMatch(donorHtml, /Go to Volunteer Workspace/, 'Donor page must not link to volunteer workspace')
