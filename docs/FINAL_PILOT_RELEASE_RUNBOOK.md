@@ -1,5 +1,14 @@
 # Final pilot release runbook
 
+2026-11-10 update: staging final physical/SMTP acceptance is now owner-reported passed.
+The historical gate statements below describe earlier checkpoints. Production readiness
+is governed by [PRODUCTION_RELEASE_READINESS.md](PRODUCTION_RELEASE_READINESS.md):
+Production remains **NO-GO**, owner reports no backup, no Production writes authorized
+or executed. Only migration015 is pending and historical001–014 match exactly. Preserve
+original identities/history; never substitute staging data or publish the staging APK.
+The existing integration-branch Vercel auto-deploy guard must remain enabled for the
+authorized preparation-only push. No merge, deployment or new build is included.
+
 Status: approved staging rollout and hosted verification completed; existing Android preview ready for physical testing. Migration 015, restricted runtime role, private buckets and both designated staging deployments are complete. 584 local tests and 130 hosted checks plus GPS/security supplement passed. Preview build `69224e2c-8e03-4ca0-836e-90108f6061b6` from `c6eea23` passed artifact inspection. See the newest handoff checkpoint and operator phone checklist; earlier gate-closed/proposed-migration text below is historical, not instructions to repeat rollout. No Pilot GO: physical Android and SMTP delivery remain unverified. Production, live WhatsApp and public APK publication remain untouched/disabled. Do not rebuild, redeploy or reapply migrations without a demonstrated defect and appropriate authorization.
 
 ## Review and environment gates

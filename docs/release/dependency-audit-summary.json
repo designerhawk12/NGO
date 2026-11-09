@@ -1,0 +1,589 @@
+{
+  "all": {
+    "metadata": {
+      "info": 0,
+      "low": 3,
+      "moderate": 19,
+      "high": 6,
+      "critical": 2,
+      "total": 30
+    },
+    "advisories": [
+      {
+        "name": "@expo/cli",
+        "severity": "high",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/expo/node_modules/@expo/cli"
+        ],
+        "via": [
+          "@expo/config",
+          "glob",
+          "zod"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@expo/config",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@expo/config"
+        ],
+        "via": [
+          "deepmerge",
+          "glob"
+        ],
+        "fixAvailable": {
+          "name": "expo",
+          "version": "52.0.49",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@expo/config-plugins",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@expo/config-plugins"
+        ],
+        "via": [
+          "glob",
+          "xcode"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@expo/fingerprint",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@expo/fingerprint"
+        ],
+        "via": [
+          "glob",
+          "minimatch"
+        ],
+        "fixAvailable": {
+          "name": "expo",
+          "version": "52.0.49",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@expo/local-build-cache-provider",
+        "severity": "low",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@expo/local-build-cache-provider"
+        ],
+        "via": [
+          "@expo/config"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@expo/metro-config",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@expo/metro-config"
+        ],
+        "via": [
+          "@expo/config",
+          "glob"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@expo/prebuild-config",
+        "severity": "low",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@expo/prebuild-config"
+        ],
+        "via": [
+          "@expo/config"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@typescript-eslint/eslint-plugin",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@typescript-eslint/eslint-plugin"
+        ],
+        "via": [
+          "@typescript-eslint/parser",
+          "@typescript-eslint/type-utils",
+          "@typescript-eslint/utils"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@typescript-eslint/parser",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@typescript-eslint/parser"
+        ],
+        "via": [
+          "@typescript-eslint/typescript-estree"
+        ],
+        "fixAvailable": {
+          "name": "eslint-config-expo",
+          "version": "6.0.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@typescript-eslint/type-utils",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@typescript-eslint/type-utils"
+        ],
+        "via": [
+          "@typescript-eslint/typescript-estree",
+          "@typescript-eslint/utils"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@typescript-eslint/typescript-estree",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@typescript-eslint/typescript-estree"
+        ],
+        "via": [
+          "minimatch"
+        ],
+        "fixAvailable": {
+          "name": "eslint-config-expo",
+          "version": "6.0.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@typescript-eslint/utils",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/@typescript-eslint/utils"
+        ],
+        "via": [
+          "@typescript-eslint/typescript-estree"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@vitest/mocker",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "node_modules/@vitest/mocker"
+        ],
+        "via": [
+          {
+            "name": "@vitest/mocker",
+            "title": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+            "url": "https://github.com/advisories/GHSA-82fw-gwwq-j7x9",
+            "range": ">=2.1.0 <4.1.11"
+          },
+          {
+            "name": "@vitest/mocker",
+            "title": "Vitest: Code injection via unauthenticated manual mock registration",
+            "url": "https://github.com/advisories/GHSA-qxg6-89mg-rqv8",
+            "range": ">=2.1.0-beta.7 <4.1.12"
+          }
+        ],
+        "fixAvailable": {
+          "name": "vitest",
+          "version": "5.1.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "decode-uri-component",
+        "severity": "high",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/decode-uri-component"
+        ],
+        "via": [
+          {
+            "name": "decode-uri-component",
+            "title": "decode-uri-component: Denial of service via exponential decoding of malformed percent-encoded input",
+            "url": "https://github.com/advisories/GHSA-vcc3-ghjq-m6fr",
+            "range": "<=0.4.2"
+          },
+          {
+            "name": "decode-uri-component",
+            "title": "decode-uri-component vulnerable to denial of service via quadratic replacement of percent-encoded runs",
+            "url": "https://github.com/advisories/GHSA-qr28-fpjm-wq7f",
+            "range": "<=0.5.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "expo-router",
+          "version": "58.0.30",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "deepmerge",
+        "severity": "low",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/deepmerge"
+        ],
+        "via": [
+          {
+            "name": "deepmerge",
+            "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+            "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+            "range": ">=4.2.0 <=4.3.1"
+          }
+        ],
+        "fixAvailable": {
+          "name": "expo",
+          "version": "52.0.49",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "esbuild",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "node_modules/vite/node_modules/esbuild"
+        ],
+        "via": [
+          {
+            "name": "esbuild",
+            "title": "esbuild enables any website to send any requests to the development server and read the response",
+            "url": "https://github.com/advisories/GHSA-67mh-4wv8-2f99",
+            "range": "<=0.24.2"
+          }
+        ],
+        "fixAvailable": {
+          "name": "vite",
+          "version": "8.3.7",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "eslint-config-expo",
+        "severity": "moderate",
+        "isDirect": true,
+        "nodes": [
+          "apps/mobile/node_modules/eslint-config-expo"
+        ],
+        "via": [
+          "@typescript-eslint/eslint-plugin",
+          "@typescript-eslint/parser",
+          "eslint-plugin-expo"
+        ],
+        "fixAvailable": {
+          "name": "eslint-config-expo",
+          "version": "6.0.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "eslint-plugin-expo",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/eslint-plugin-expo"
+        ],
+        "via": [
+          "@typescript-eslint/utils"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "expo",
+        "severity": "moderate",
+        "isDirect": true,
+        "nodes": [
+          "apps/mobile/node_modules/expo"
+        ],
+        "via": [
+          "@expo/config",
+          "@expo/fingerprint"
+        ],
+        "fixAvailable": {
+          "name": "expo",
+          "version": "52.0.49",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "expo-router",
+        "severity": "high",
+        "isDirect": true,
+        "nodes": [
+          "apps/mobile/node_modules/expo-router"
+        ],
+        "via": [
+          "query-string"
+        ],
+        "fixAvailable": {
+          "name": "expo-router",
+          "version": "58.0.30",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "glob",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/glob"
+        ],
+        "via": [
+          {
+            "name": "glob",
+            "title": "Glob: AbortSignal cancellation bypass allows post-timeout filesystem traversal",
+            "url": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+            "range": ">=9.0.0 <=14.0.1"
+          },
+          "minimatch"
+        ],
+        "fixAvailable": {
+          "name": "expo",
+          "version": "52.0.49",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "minimatch",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/minimatch"
+        ],
+        "via": [
+          {
+            "name": "minimatch",
+            "title": "minimatch has potential denial of service via globparts amplification",
+            "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+            "range": ">=7.0.0 <11.0.1"
+          }
+        ],
+        "fixAvailable": {
+          "name": "expo",
+          "version": "52.0.49",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "postcss-selector-parser",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "node_modules/postcss-selector-parser"
+        ],
+        "via": [
+          {
+            "name": "postcss-selector-parser",
+            "title": "PostCSS: Quadratic complexity in flat selector parsing allows CPU exhaustion",
+            "url": "https://github.com/advisories/GHSA-rj75-hqrm-r3gf",
+            "range": "<6.1.5"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "query-string",
+        "severity": "high",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/query-string"
+        ],
+        "via": [
+          "decode-uri-component"
+        ],
+        "fixAvailable": {
+          "name": "expo-router",
+          "version": "58.0.30",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "tinypool",
+        "severity": "critical",
+        "isDirect": false,
+        "nodes": [
+          "node_modules/tinypool"
+        ],
+        "via": [
+          {
+            "name": "tinypool",
+            "title": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution",
+            "url": "https://github.com/advisories/GHSA-5gmw-xhrv-c9v3",
+            "range": "<=2.1.0"
+          },
+          {
+            "name": "tinypool",
+            "title": "Tinypool: Prototype Pollution Gadget to RCE in run() options",
+            "url": "https://github.com/advisories/GHSA-85c8-ppgw-ccpr",
+            "range": "<2.1.2"
+          }
+        ],
+        "fixAvailable": {
+          "name": "vitest",
+          "version": "5.1.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/uuid"
+        ],
+        "via": [
+          {
+            "name": "uuid",
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "vite",
+        "severity": "high",
+        "isDirect": true,
+        "nodes": [
+          "node_modules/vite"
+        ],
+        "via": [
+          {
+            "name": "vite",
+            "title": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling",
+            "url": "https://github.com/advisories/GHSA-4w7w-66w2-5vf9",
+            "range": "<=6.4.1"
+          },
+          {
+            "name": "vite",
+            "title": "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+            "url": "https://github.com/advisories/GHSA-v6wh-96g9-6wx3",
+            "range": "<=6.4.2"
+          },
+          {
+            "name": "vite",
+            "title": "launch-editor: escapeCmdArgs() omits % escaping on Windows",
+            "url": "https://github.com/advisories/GHSA-698v-4r3x-3vcv",
+            "range": "<=6.4.3"
+          },
+          {
+            "name": "vite",
+            "title": "launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors",
+            "url": "https://github.com/advisories/GHSA-r825-w8mm-5pxw",
+            "range": "<=6.4.3"
+          },
+          {
+            "name": "vite",
+            "title": "launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
+            "url": "https://github.com/advisories/GHSA-587h-7wmj-h5pm",
+            "range": "<=6.4.3"
+          },
+          {
+            "name": "vite",
+            "title": "Vite: Cross origin script execution through Vite custom middleware",
+            "url": "https://github.com/advisories/GHSA-9jrq-w75r-8gcw",
+            "range": "<=6.4.3"
+          },
+          {
+            "name": "vite",
+            "title": "Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine",
+            "url": "https://github.com/advisories/GHSA-rq7h-c2jc-7f22",
+            "range": "<=6.4.3"
+          },
+          {
+            "name": "vite",
+            "title": "vite: `server.fs.deny` bypass on Windows alternate paths",
+            "url": "https://github.com/advisories/GHSA-fx2h-pf6j-xcff",
+            "range": "<=6.4.2"
+          },
+          "esbuild"
+        ],
+        "fixAvailable": {
+          "name": "vite",
+          "version": "8.3.7",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "vitest",
+        "severity": "critical",
+        "isDirect": true,
+        "nodes": [
+          "node_modules/vitest"
+        ],
+        "via": [
+          "@vitest/mocker",
+          {
+            "name": "vitest",
+            "title": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+            "url": "https://github.com/advisories/GHSA-82fw-gwwq-j7x9",
+            "range": ">=2.1.0 <4.1.11"
+          },
+          "tinypool"
+        ],
+        "fixAvailable": {
+          "name": "vitest",
+          "version": "5.1.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "xcode",
+        "severity": "moderate",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/xcode"
+        ],
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "zod",
+        "severity": "high",
+        "isDirect": false,
+        "nodes": [
+          "apps/mobile/node_modules/zod"
+        ],
+        "via": [
+          {
+            "name": "zod",
+            "title": "Zod can exhaust memory while validating oversized constrained collections",
+            "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+            "range": "<4.6.6"
+          }
+        ],
+        "fixAvailable": true
+      }
+    ]
+  },
+  "server": {
+    "metadata": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "advisories": []
+  }
+}

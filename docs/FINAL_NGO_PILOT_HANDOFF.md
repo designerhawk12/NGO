@@ -359,3 +359,28 @@ Remaining gates: physical Android install/upgrade, GPS consent/background while 
 - Preview native introspection: existing package/EAS identity preserved; staging App Link host selected; background location and foreground-service-location present; no private credential candidates in resolved config. Existing remote signing credential was only read, not rotated. No native code changed after the584-test regression.
 
 Limits: public Volunteer registration stays disabled; SMTP/invitation/password-reset email delivery and hosted new-application outbox hook are NOT TESTED. Their local mocked tests pass; manual email/provider setup is still required before enabling public onboarding. Existing user-verified Auth redirects are correctly served publicly. WhatsApp live sending, deletion, geocoding and APK publication remain disabled. Hosted map rendering, background GPS with Google Maps, Android permission/picker/link/install/upgrade behavior remain physical/browser checks, not passed by API success. Pilot GO is not granted. Next: one authorized internal preview APK, artifact/certificate/secret checks, then the user's phone checklist.
+# Production preparation checkpoint — 2026-11-10
+
+Current decision: **Production NO-GO**. Owner confirms no backup. Production was inspected
+read-only; no Production write, deployment, native build or data extraction occurred.
+See [Production readiness and gated release plan](PRODUCTION_RELEASE_READINESS.md) for
+verified inventory, account preservation, configuration differences, backup approval
+scope,015 compatibility, dependency risk and rollback. This supersedes older pending
+staging acceptance statements below: the owner now reports final replacement APK,
+background GPS, registration/SMTP and the five physical checks passed in staging.
+Production SMTP and original account passwords remain untested.
+
+Frozen application candidate: `580801e9b54937be7ecbc0db592dea6537b95869`;
+mobile artifact source `3e89c26735aa130154268b5928e24178b3448f3d`.
+Production is still `b7b321cca94b318e29e0ae8ced1e136db1ebfd3e`, ledger001–014 exact;
+only015 pending, SHA256 `28d70f15fc4e45e18f85130fbb76abdbc0a2a1d881a8aeb2fca9f1c8ab0788e1`.
+Original requested Admin exists and mapsADMIN; password not tested/reset. All11 app
+users have Auth links. No existing account/data reconciliation was performed.
+
+Local preparation: server/web builds, mobile typecheck/lint, web smoke/i18n,59 focused
+server tests and26 native-link/photo/map tests passed. Synthetic015 rehearsal28/28 passed,
+including original synthetic row preservation and real restricted-group RLS access.
+This is not a Production restore rehearsal. Evidence in `docs/release/`; no secrets or
+record payloads committed. Pre-existing untracked `docs/STAGING_CHECKPOINT.md` preserved.
+Next: approve secure private Production logical backup + isolated restore, then review
+runtime/Auth/SMTP/Preview isolation/operator gates before any Production change approval.
