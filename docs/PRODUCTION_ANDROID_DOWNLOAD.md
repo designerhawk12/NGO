@@ -36,7 +36,19 @@ Local verification: 25/25 focused release/security tests passed; server and web 
 
 ## Current state
 
-User explicitly approved the five Production-only release settings and one narrow deployment after the first variable creation was rejected due to earlier restrictions. All five settings were then saved successfully using Vercel MCP. No deployment initiated yet. An unspecified deployment request was rejected; execution must explicitly bind reviewed source, Production target, team and project.
+User explicitly approved the five Production-only release settings and one narrow deployment after the first variable creation was rejected due to earlier restrictions. All five settings were then saved successfully using Vercel MCP. An unspecified deployment request was rejected; the corrected execution explicitly bound reviewed source, Production target, team and project.
+
+Publication PASS at approximately 16:42 IST on 2026-11-10:
+
+- Deployment source commit `66c71e5d5380f1cc4ed493c517c9f62a2e23fdbe`; all445 tracked files verified against an isolated source archive, excluding the unrelated untracked checkpoint.
+- Exactly one new Production deployment: `dpl_34ZbjB1tZhBqVSZm7t6coEPwVhRu`, https://ngo-ppf3ezyut-equinox10.vercel.app, READY.
+- Candidate release metadata200, APK redirect302 to the exact verified EAS artifact, health/readiness200, anonymous `/me`401. Verified using existing Vercel operator authentication, without temporary share links or protection changes.
+- Promoted that same READY deployment to https://ngo-eight-umber.vercel.app. No second build/deployment.
+- Canonical anonymous homepage200, release metadata200 with version/build/checksum, download302 to the exact artifact, health/readiness200, `/me`401.
+- Anonymous artifact HEAD200 with `Content-Length: 100566935`, matching inspected bytes.
+- Existing homepage component rendered against actual Production metadata in JSDOM: enabled `Download Android App` anchor, expected canonical API download URL and version `1.0.0 (8)`. This is DOM verification, not a visual browser or physical-device test.
+- Read-back: all five release settings correct and Production-only; all unrelated environment entries unchanged.
+- No database, Auth, account, donation, assignment, WhatsApp, SMTP, staging or signing-credential changes. No Android rebuild. Prior Production deployment retained for rollback.
 
 No new EAS build. Physical Production Android acceptance remains pending. HTTPS website association remains unverified/previously404; public Volunteer registration remains disabled. Publishing the download is not a claim that those gates passed. The existing web/API GO is unchanged.
 
