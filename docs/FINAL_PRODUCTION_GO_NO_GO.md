@@ -1,5 +1,69 @@
 # Final Production release gates — 2026-11-10
 
+## Bounded maintenance verification — PASS, 2026-11-10
+
+Authorized scope was verification only; no015, backup, runtime role, bucket or deployment.
+Migration015 review: alters vehicle_locations accuracy/speed and volunteer_applications
+identity_required/backfill/default; creates tracking_geocode_cache/rate,
+volunteer_identity_documents, identity_review_events, identity_registration_attempts,
+identity_storage_objects, whatsapp_preferences, food_request_submissions,
+notification_outbox/webhook_events/dispatch_rate (11 tables), two indexes, two singleton
+rows, enforce_identity_verification function and volunteer_identity_approval trigger.
+It applies private-table RLS/revokes, finite app grants/policies and the NOLOGIN API group.
+Existing function dependencies: guard_driver_identity, guard_fixed_driver_vehicle,
+assert_employee_driver_has_vehicle, assert_vehicle_reservable,
+assert_vehicle_downtime_available, assert_vehicle_status_change; gen_random_uuid default.
+FK dependencies include volunteers, app_users and food_requests; all existing app tables
+(including ledger, dependent history/role/profiles) are protected by the tested lock set.
+Auth is not directly altered by015 but its UUIDs/identities/passwords/sessions must remain
+consistent for preservation comparisons. All existing Auth tables except its provider
+schema_migrations are locked; no need to permit/reconcile Auth user writes during pause.
+
+Executed scripts/verify-production-maintenance.cjs with actual verified Production TLS
+admin connection and a second independent probe connection. One transaction obtained
+SHARE locks on **32 app +26 Auth tables** and runner advisory lock29017/1. pg_locks
+confirmed58 granted locks. Probe attempted ROW EXCLUSIVE NOWAIT (the lock needed for
+INSERT/UPDATE/DELETE), NOT DML, on EACH table: **58/58 denied with expected55P03**.
+Protected table counts/full-row digests before/after matched; zero row writes attempted.
+Both sessions rolled back/closed. Timeout/connection loss releases locks; verification
+passed only for the bounded window, not a continuously maintained current pause.
+
+Excluded storage.* and auth.schema_migrations have no015 SQL reference or app FK
+relationship (catalog count0). Provider migrations needing to alter locked user/app
+tables conflict with the held locks; changes solely to independent provider metadata
+are outside the consistency baseline and must not be mistaken for Auth/app data loss.
+Storage metadata is not part of015; buckets remain absent and storage-dependent release
+steps happen later. Do not claim a whole-database freeze or a fully quiescent provider
+metadata snapshot. Require table/dependency inventory drift checks at actual execution.
+
+Vercel named rule re-enabled/published for test, exact /api DENY except health/ready;
+canonical /me and food-requests GET403 firewall deny. Both alternative origins302 to
+Vercel login; authenticated operator curl on deployment /me403. No method condition:
+web/mobile API mutations and side-effecting GET provisioning share same blocked prefix.
+Direct DB/Auth/background DML cannot bypass table locks during the held transaction;
+no privileged test writes or real account operations were needed. Operator dashboard,
+DB session and health remain accessible. No unblocked relevant row writer was identified
+inside the window; active administrators must not terminate locks/change grants during
+release. Out-of-band DBA schema/role changes are a coordinated maintenance exclusion,
+not something table locks magically prevent.
+
+After test, disabled/published ONLY named rule back to original inactive state; no draft.
+Homepage/health/readiness200, anonymous /me401. All database locks released. Normal
+Production service restored; it is NOT presently write-paused. Existing expired jobs
+untouched. Existing deployment retained; Production release remains NO-GO.
+
+Next execution checkpoint: approved fresh snapshot/current baseline AFTER reacquiring
+this exact gate. Important orchestration prerequisite: retain app/Auth locks from backup
+through015 on the SAME migration-owning transaction/session. The current runner opens
+its own transaction; do not leave holder locks on a separate connection then invoke it,
+which would self-block DDL. Integrate a tested same-session hook into the existing runner
+(no second migration system), or another reviewed atomic handover before execution.
+A snapshot-only dump can read SHARE-locked tables from a separate connection. On missing
+lock, timeout, inventory drift or failure stop migration; snapshot consistency covers
+protected app/Auth rows, not uncontrolled provider metadata. Latest user authorization
+ends at maintenance verification: obtain explicit resume authorization for fresh backup,
+same-session orchestration and the previously reviewed rollout. No migration was applied.
+
 ## Actual maintenance execution — 2026-11-10
 
 Supported Vercel CLI (not failing config GET) verified named rule
