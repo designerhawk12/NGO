@@ -1,5 +1,133 @@
 # Final Production release gates — 2026-11-10
 
+## Consolidated closure checkpoint — 2026-11-10
+
+The user elects to be backup custodian, key custodian and recovery operator on the same
+laptop. Accept this as the interim operating model; no additional person/device is a
+prerequisite to preparation. Residual single-operator/laptop-loss risk remains. Independent
+person custody and second-device restoration are UNVERIFIED, not PASS. Off-device archive
+integrity and SMTP acceptance remain PASS without repetition.
+
+### Completed implementation and evidence reuse
+
+Portable restore support is implemented in scripts/production-restore-verify.cjs:
+`--portable <package-directory>` validates encrypted package hashes and pinned image,
+then reads exactly 32 binary key bytes from a protected stdin pipe. It never calls DPAPI
+in portable mode, does not load Production database config, and leaves the input manifest
+unchanged. No raw key command argument/environment variable or persistent plaintext
+archive is accepted. Authenticated plaintext exists in process memory and isolated
+container tmpfs only; best-effort buffer clearing cannot attest host pagefile erasure.
+Existing local restore behavior remains available. Do NOT run either real restore mode
+before sensitive-operation approval. Portable end-to-end restore is not yet tested.
+
+scripts/portable-recovery.cjs inventories encrypted files and creates a manifest view
+with an explicit allowlist, stripping key locators/unknown fields. It does not decrypt,
+read key files, copy or upload anything. scripts/portable-recovery.test.cjs verifies
+companion tampering rejection, private-field stripping, exact key pipe length and crypto
+loading without LOCALAPPDATA. Combined focused recovery tests: **7/7 PASS**, including
+synthetic DPAPI regression only; restore syntax and whitespace checks PASS. No accepted
+application code changed; no justification to repeat staging/device/SMTP/full recovery tests.
+Tooling is central integration-owned and needs review before real key handling.
+
+Required package inventory (read-only hash comparisons all PASS):
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| database.dump.gcm | 584722 | 63efae09259219a9dca0d8844ce0ded581b0bd8c83f020b141656623db25316f |
+| snapshot-metadata.json.gcm | 84463 | 657998254b71cb4b1693ab4e9d8302e20358e3b826049c76159ec7aeed3b2a6e |
+| cluster-settings.json.gcm | 1145 | f945501fbf05eee7496317a55999d1c51da0312d9025edf5d40cccf086165ec6 |
+
+Use sanitized portable manifest plus these three scripts: production-recovery.cjs,
+production-restore-verify.cjs, portable-recovery.cjs. Pinned image ID remains
+sha256:c141fd17ac6a76c4323e90b3aee8ff1a23d2e89e547c2b963cfadc309c079cc2.
+Original diagnostic ciphertext/TOC/old script copies are not required for restoration;
+do not upload them or the raw original manifest/key locator. Preserve originals locally.
+The two metadata companions and portable manifest/tooling have NOT been uploaded.
+
+### One practical vault and the one consolidated sensitive approval
+
+Recommend **Bitwarden Free**, in a dedicated account controlled by the elected custodian,
+with unique master password and free authenticator-based MFA. Keep its recovery code
+and master-password recovery instructions somewhere accessible without this laptop;
+never place the sole MFA/recovery copy inside the vault it unlocks. Drive remains the
+archive service; Bitwarden holds only the exact existing key, snapshot identifier and
+archive checksum in a secure note. No attachment subscription is needed for 32 bytes.
+Sources: https://bitwarden.com/help/setup-two-step-login-authenticator/ and
+https://bitwarden.com/help/cli/ . No vault account created or secret handled here.
+
+User actions needed once: create/unlock the selected Bitwarden vault privately; confirm
+account/server region, exact secure-note destination name/ID, MFA/recovery readiness and
+custodian authorization. Do not send master password, MFA seed, recovery code, session
+key or database key. Then review the vault-specific entry/retrieval mechanism: ordinary
+CLI commands exposing session keys via argv/environment/output are NOT approved. The
+current tooling accepts a protected binary pipe, but the vault bridge still needs a
+reviewed memory-only implementation; do not improvise clipboard or plaintext exports.
+
+Consolidated approval proposal (NOT EXECUTED; fill exact vault destination first):
+1. Under the elected custodian, unwrap the existing snapshot's DPAPI key once locally
+   using reviewed protected-memory handling and place the SAME key into the exact named
+   Bitwarden secure note; preserve DPAPI original and archive. No chat/log/file export.
+2. Upload only the two encrypted companions above, sanitized portable manifest and
+   reviewed public tooling/instructions into Drive folder 1VMVrMTYvda5g1nbLxMNN0Ngk6Ad91jiA;
+   do not reupload/replace the verified archive or change permissions. Download/checksum
+   new files and verify manifest/tool identities.
+3. Retrieve key through that vault into the protected pipe and perform one isolated local
+   portable rehearsal, without DPAPI/original profile dependency or live DB connection,
+   then remove disposable restored data. Record same-device test accurately; a later
+   second-device test remains unverified unless actually performed.
+No Production operation, credential rotation, migration, email or deployment is included.
+If a safe vault bridge cannot be established, stop key handling, preserve originals and
+report that exact limitation. Vault selection alone is not escrow completion.
+
+### Synthetic /me: exact browser-based user procedure
+
+Still pending: zero authorized /me calls made by this session; no session fabricated.
+On a private browser window with no existing Admin session, open the canonical site's
+Admin sign-in. Open developer tools Network, filter `/api/v1/me`, keep Response visible
+without copying headers/tokens. Enter ONLY the existing synthetic recipient credentials
+privately and submit ONCE. The reviewed Admin login calls /me once then rejects DONOR
+with Administrator access required; that rejection is expected, not an invitation to retry.
+Do not refresh, reopen/restore the session, use the old Donor portal, export HAR or send
+passwords/tokens. Record the one request's HTTP status and sanitized role/auth UUID fields.
+If the deployed form differs or makes unexpected requests, stop. After user result,
+read-only DB verification must confirm one DONOR app_users row and one donors row linked
+to the same synthetic Auth UUID, with no elevated roles/existing-record changes.
+This is the already approved provisioning test; no further permission for that exact
+request is needed, but private user interaction is required.
+
+### Actual Production release sequence and approval boundaries
+
+Frozen application source: 580801e9b54937be7ecbc0db592dea6537b95869. Tooling/docs commits
+are separate; deploy the frozen application tree unless an essential tested fix changes it.
+Only pending migration: server/db/migrations/015_final_pilot.sql, SHA-256
+28d70f15fc4e45e18f85130fbb76abdbc0a2a1d881a8aeb2fca9f1c8ab0788e1 (rechecked unchanged).
+Keep original 001–014 immutable. Reuse accepted Admin/Volunteer/Donor/Driver, donation/
+pickup, GPS, Storage/auth security, web/mobile and staging evidence; Production parity
+and original-account login checks remain release acceptance, not presumed from staging.
+
+Separate maintenance/release approval must name exact Production Supabase/Vercel IDs,
+operator (user), window and write-pause/active-job plan. Pause all write ingress including
+old clients/jobs; verify pause rather than relying only on UI. Obtain a fresh encrypted
+read-only snapshot and contemporaneous UUID/role/record/ledger/constraint baseline;
+retain historical snapshot. Validate exact 015 SQL then apply ONLY that checksum.
+Provision reviewed non-owner/NOBYPASSRLS runtime login/group and prove actual access;
+never run application with migration-admin credentials. Provision two private buckets
+(profile-photos 614400 bytes JPEG/PNG/WebP; volunteer identity policy per reviewed plan),
+verify private ownership/role denials, configure reviewed Production-only env/disabled
+flags, deploy combined web/Express candidate to ngo only. Preserve original identities,
+passwords/roles/history; run bounded approved synthetic and owner-performed role checks
+and workflow acceptance. Keep WhatsApp/public APK/deletion/geocoding off as planned.
+
+Rollback: retain current live deployment/aliases for code rollback; coordinate write pause
+and schema-compatible old-code behavior. Do not blindly down-migrate/drop 015 objects or
+restore historical data over new writes. Reconcile post-snapshot writes; database restore
+requires separate explicit approval. Do not reconnect automatic Git deploys or merge
+main/develop. Production Android is a later explicitly approved build using Production
+API, verified signing fingerprint and App Links; staging APK is never the release APK.
+Final GO requires hosted Production, physical Android acceptance and explicit disposition
+of residual custody/security/ownership risks. Same-device rehearsal is not second-device
+proof, and this historical archive is not a current migration rollback snapshot.
+
 Latest custody update (2026-11-10): **off-device encrypted archive upload/integrity PASS**.
 Drive upload and manually downloaded 584722-byte copy match original SHA-256. This does
 not verify independent recovery: DPAPI-independent escrow, approved encrypted metadata

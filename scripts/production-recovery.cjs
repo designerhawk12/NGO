@@ -4,8 +4,8 @@ const path = require('node:path');
 const cp = require('node:child_process');
 const crypto = require('node:crypto');
 const project = 'pyzyxgpcfwpcqyqrihuo';
-const base = path.join(process.env.LOCALAPPDATA, 'AahaaraConnect-Production');
-const keyRoot = path.join(process.env.LOCALAPPDATA, 'AahaaraConnect-RecoveryKeys');
+const base = path.join(process.env.LOCALAPPDATA || require('node:os').homedir(), 'AahaaraConnect-Production');
+const keyRoot = path.join(process.env.LOCALAPPDATA || require('node:os').homedir(), 'AahaaraConnect-RecoveryKeys');
 const image = 'public.ecr.aws/supabase/postgres:17.11.0.006';
 const magic = Buffer.from('AAH-GCM1');
 function ps(script, input) {

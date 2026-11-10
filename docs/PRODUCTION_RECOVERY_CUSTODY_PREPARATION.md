@@ -1,5 +1,12 @@
 # Recovery custody and role-mapping preparation — 2026-11-10
 
+Latest user custody decision: one elected custodian/operator on own laptop is accepted
+for preparation. Earlier independent-person requirements below are superseded as
+mandatory preparation prerequisites, but residual risk and second-device unverified
+status remain. Portable tooling and encrypted companion inventory now complete;
+7/7 focused synthetic tests PASS. No real key handling or transfer. See the consolidated
+closure section in FINAL_PRODUCTION_GO_NO_GO.md for exact next approval and release sequence.
+
 ## Current custody status — 2026-11-10
 
 **Off-device encrypted archive upload/integrity: PASS.** Authorized Drive file

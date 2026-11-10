@@ -1,12 +1,16 @@
 // Local-only isolated rehearsal of the approved encrypted backup. Never migrates.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
 const {decrypt,encrypt,protectedKey,sha,image,base}=require('./production-recovery.cjs');
-const dir=path.resolve(process.argv[2]||'');
-if(path.dirname(dir)!==path.resolve(base)||!path.basename(dir).startsWith('pre-015-'))throw Error('Private archive path gate');
+const portable=process.argv[2]==='--portable';
+const dir=path.resolve(process.argv[portable?3:2]||'');
+if(!portable&&(path.dirname(dir)!==path.resolve(base)||!path.basename(dir).startsWith('pre-015-')))throw Error('Private archive path gate');
 const manifest=JSON.parse(fs.readFileSync(path.join(dir,'manifest.json')));
 if(manifest.project!=='pyzyxgpcfwpcqyqrihuo')throw Error('Project gate');
+if(portable){require('./portable-recovery.cjs').inventory(dir);if(!/^sha256:[a-f0-9]{64}$/.test(manifest.restoreImageId||''))throw Error('Pinned restore image required');}
 const name='aahara-production-restore-'+path.basename(dir).slice(8).toLowerCase();
-const key=protectedKey(manifest.keyFile);
+// Portable mode accepts exactly 32 binary bytes through a protected pipe, never argv/env.
+// It never reads the DPAPI file or a remote database configuration.
+const key=portable?require('./portable-recovery.cjs').readKeyFromPipe():protectedKey(manifest.keyFile);
 let started=false,phase='archive-authentication';
 const report={project:manifest.project,backupSha256:manifest.sha256,startedUtc:new Date().toISOString(),migration015Applied:false,checks:[],limitations:['Local postgres remains bootstrap superuser; managed role login passwords are not exported.','No Auth/SMTP/Storage HTTP services are started; cryptographic record integrity is checked, not live login.']};
 function check(label,ok,extra={}){report.checks.push({name:label,passed:!!ok,...extra});if(!ok)throw Error('Verification check failed');}
@@ -73,6 +77,6 @@ async function main(){
 main().catch(e=>{report.restorationSucceeded=false;report.failedPhase=phase;console.error(JSON.stringify({restoreFailed:true,phase,error:e.message}));process.exitCode=1;}).finally(()=>{
   if(started){try{docker(['rm','-f','-v',name]);report.disposableContainerRemoved=true;report.disposableData='PostgreSQL data/WAL/archive were only on container tmpfs; removed with container. Physical host-memory erasure is not independently attestable.';}catch{report.disposableContainerRemoved=false;process.exitCode=1;}}
   fs.writeFileSync(path.join(dir,'restore-report.json'),JSON.stringify(report,null,2));
-  manifest.restoreVerified=report.restorationSucceeded===true&&report.disposableContainerRemoved===true;fs.writeFileSync(path.join(dir,'manifest.json'),JSON.stringify(manifest,null,2));
+  if(!portable){manifest.restoreVerified=report.restorationSucceeded===true&&report.disposableContainerRemoved===true;fs.writeFileSync(path.join(dir,'manifest.json'),JSON.stringify(manifest,null,2));}
   key.fill(0);console.log(JSON.stringify(report));
 });
