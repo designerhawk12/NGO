@@ -1,5 +1,31 @@
 # Final Production release gates — 2026-11-10
 
+## Authenticated acceptance progress — 2026-11-10
+
+User confirms existing ADMIN sign-in succeeded and live dashboard/Pickups load. The
+reviewed sign-in UI requires /me200/ADMIN before success. User separately confirms
+existing mapped DONOR sign-in and /me200/DONOR. Read-only mapping verified its Donor
+profile already existed. App-account full-row digest after ADMIN equals baseline
+f58bf0e393d654acab1f21be5e16470b; counts11app/6Donor profiles/8donations/5assignments/
+0orphans unchanged. These positive confirmations do not complete negative-role checks.
+
+Prepared operator-run, same-origin browser acceptance snippet (not deployed). Template
+scripts/production-role-acceptance.browser.js and4/4 synthetic tests PASS: unmapped-user
+provisioning prevention; server role/identity mismatch stop; authorized reads/role denials;
+private password clearing and temporary-session-only logout. Private generated snippet
+in local Production directory contains only opaque hashes of currently confirmed mapped
+Auth UUIDs, not emails/passwords/tokens/API keys. Real private mapping not committed.
+User runs it manually in DevTools Sources on protected candidate Donor page; can reuse
+ADMIN/DONOR browser sessions, privately authenticate VOLUNTEER/DRIVER and report only
+sanitized endpoint/status/role results. All API operations are GET after mapped-identity
+validation; no arbitrary session generation, signup, password reset, privilege change or
+unmapped synthetic /me. Private test sign-ins use normal Supabase password authentication.
+
+Waiting for four panel results, including authorized reads and cross-role403 checks.
+No promotion/public reopening. Existing candidate-only operator window remains Vercel
+protected; ordinary public API traffic stays maintenance-denied. No browser automation
+bypass; no Production passwords/tokens requested in chat. Production remains NO-GO.
+
 ## Controlled role acceptance handoff — 2026-11-10
 
 User authorized final authenticated acceptance/promotion/reopening only after all roles
