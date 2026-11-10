@@ -1,6 +1,37 @@
 # Owned SMTP sender migration plan — 2026-11-10
 
-**Production NO-GO. Preparation only; current SMTP configuration unchanged.**
+**Production NO-GO. Approved user-entered SMTP save is recorded below; delivery untested.**
+
+## Approved SMTP save and read-back — 2026-11-10
+
+The user explicitly confirmed control/authorization of the selected Gmail mailbox,
+2-Step Verification and a privately generated app password, then approved the exact
+SMTP-only change. This supersedes the earlier sender-ownership uncertainty for that
+selected mailbox only; it grants no permission to use earlier test recipients.
+The user reported a successful Dashboard save after entering the secret privately.
+Codex did not read, enter, persist or retrieve the app password and did not submit it.
+
+Read-back after Dashboard reload on Production project `pyzyxgpcfwpcqyqrihuo`:
+
+- Custom SMTP enabled; host `smtp.gmail.com`; port `587`.
+- Sender display name `AahaaraConnect NGO`; Save changes disabled.
+- Sender address and username remain tool-redacted. Their exact values and credential
+  replacement are user-attested, not independently verified by this inspection.
+- Site URL remains `https://ngo-eight-umber.vercel.app/`.
+- All seven redirect entries match the pre-save baseline exactly.
+- No invitation, reset or other test email was sent; no identity was created.
+- No database SQL, migration, deployment or other configuration edit was performed
+  by Codex in this verification. Existing account/data/deployment equality was not
+  re-audited; this read-only check does not claim a new full preservation comparison.
+
+**Configuration read-back complete; delivery gate remains BLOCKED/untested.** Next is
+separate authorization of one unused controlled recipient and its synthetic identity,
+followed by one invitation and, only after confirmed success, one reset. Optional
+security-notification flags must be checked before fixing the total email budget.
+Do not send anything under the SMTP-save approval. Production release remains NO-GO.
+
+## Historical preparation (before approval)
+
 The user states they do not control/use the previously identified Gmail accounts and
 have no custom domain/DNS access. Those addresses, prior proposed aliases and earlier
 test-recipient discussions must not be reused for sending. No SMTP credential was read,

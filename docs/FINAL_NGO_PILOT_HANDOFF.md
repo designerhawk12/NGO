@@ -1,5 +1,14 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest SMTP checkpoint (2026-11-10): user confirmed sender control, approved SMTP-only
+replacement and privately saved the new app password. Read-back verified Gmail host/587,
+enabled state, retained display name, canonical Site URL and all seven redirects unchanged.
+Sender/username are tool-masked and therefore user-attested; credential never retrieved.
+No emails, SQL or deployments. Delivery remains BLOCKED and Production NO-GO. See
+[approved save/read-back](PRODUCTION_SMTP_SENDER_MIGRATION_PLAN.md).
+
+Earlier ownership/preparation history follows and is superseded for the now-authorized sender.
+
 Latest SMTP ownership correction: user does not control old Gmail accounts and has no
 custom domain/DNS. Read-only status remains enabled/smtp.gmail.com:587; no credentials,
 messages or configuration changes. Owned Gmail+2FA/app-password is proposed as a free,
