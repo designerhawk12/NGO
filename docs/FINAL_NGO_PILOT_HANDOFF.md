@@ -1,5 +1,15 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest SMTP acceptance (2026-11-10): **delivery/callback PASS**. Exactly one invitation
+and one reset, with reset sent only after invitation success confirmation. Both HTTP200;
+recipient confirmed sender, receipt and canonical callback/password completion for both.
+Synthetic Auth identity has no privileged metadata/application role. Express /me/DONOR
+mapping untested; 14 other Auth users, 11 app accounts/roles and 14 ledger entries match
+prior aggregates. No further emails authorized. Production remains NO-GO for other gates.
+See [actual acceptance evidence](PRODUCTION_SMTP_DELIVERY_ACCEPTANCE.md).
+
+Earlier checkpoints below are superseded by this acceptance where noted.
+
 Latest SMTP checkpoint (2026-11-10): user confirmed sender control, approved SMTP-only
 replacement and privately saved the new app password. Read-back verified Gmail host/587,
 enabled state, retained display name, canonical Site URL and all seven redirects unchanged.

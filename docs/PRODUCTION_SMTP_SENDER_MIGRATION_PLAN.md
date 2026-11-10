@@ -1,6 +1,40 @@
 # Owned SMTP sender migration plan — 2026-11-10
 
-**Production NO-GO. Approved user-entered SMTP save is recorded below; delivery untested.**
+## Controlled SMTP delivery acceptance — PASS (2026-11-10)
+
+The exact authorized recipient was absent from Auth/application/Driver email records
+before the invitation. One invitation request returned HTTP 200 at 06:27:16.793Z
+(11:57:16 IST). User confirmed receipt, correct sender, canonical accept-invite callback
+and completed password setup. Read-only Auth check confirmed email verification,
+sign-in and a stored password without retrieving its contents.
+
+Only after that confirmation, exactly one reset request was made at 06:29:13.344Z
+(11:59:13 IST), returning HTTP 200 at 06:29:14.370Z. Explicit callback:
+`https://ngo-eight-umber.vercel.app/reset-password`. User confirmed receipt, correct
+sender/callback and completed reset. Auth recovery timestamp is consistent with that
+request. No retries or additional mail requests were made. Optional security email
+notifications were off and were not changed.
+
+The synthetic identity has the normal Auth database role `authenticated`, no role
+metadata and no application mapping. No privileged role was granted. **Authenticated
+Express /me and application DONOR mapping were not exercised**: the callback clients
+complete password setup/reset without calling /me. Do not equate Auth's authenticated
+role with an application role or claim a tested DONOR login. Existing 11 app accounts
+remain ADMIN1/DONOR5/DRIVER1/VOLUNTEER4; 14 other Auth users and zero app/Auth orphans
+match prior aggregate evidence. Ledger still has 14 entries. Aggregate comparisons
+are not full-record equality verification.
+
+**SMTP delivery/callback acceptance PASS**, combining actual HTTP outcomes, Auth state
+and recipient attestations. Production release remains **NO-GO** for the other release
+gates. No migration, deployment, SMTP edit, existing-account reset or deletion occurred.
+The authorized synthetic identity is retained; deletion requires separate approval.
+Passwords, token links, credential material and recipient address are excluded from Git.
+No further email is authorized. Remaining optional acceptance: private synthetic sign-in
+and /me to verify application mapping and role restrictions, without sharing credentials.
+
+## Earlier checkpoint history (superseded where noted)
+
+**Production NO-GO. SMTP delivery accepted above; other release gates remain.**
 
 ## Approved SMTP save and read-back — 2026-11-10
 

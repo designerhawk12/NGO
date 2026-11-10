@@ -8,14 +8,13 @@ During that earlier isolation checkpoint, no015, database permission/SMTP change
 or key export occurred. Existing backup was hashed, not restored again. The subsequent
 single-field Auth Site URL correction is separately approved and complete as recorded below.
 
-**Latest SMTP checkpoint:** the user confirmed sender control and approved the
-SMTP-only change, entered the new app password privately and reported a successful save.
-Reload verified enabled Gmail SMTP/587, retained display name, canonical Site URL and
-all seven unchanged redirects. Sender/username are tool-redacted; exact mailbox and
-credential replacement are user-attested. No credential retrieved, test email sent,
-identity created, SQL executed or deployment performed during verification.
-**Delivery remains BLOCKED/untested**, pending a separately authorized unused recipient.
-See [save/read-back evidence and limitations](PRODUCTION_SMTP_SENDER_MIGRATION_PLAN.md).
+**Latest SMTP delivery acceptance: PASS (2026-11-10).** Exactly one invitation and,
+after confirmed invitation/password setup, exactly one reset returned HTTP 200. User
+confirmed both receipts, correct sender, canonical callbacks and completed password
+setup/reset. Synthetic Auth identity is authenticated/unprivileged, with no application
+mapping or elevated metadata. Express /me/DONOR mapping remains untested. Existing
+aggregate account/role counts and 14-entry ledger match prior evidence. No further mail,
+migration or deployment authorized. See [acceptance evidence/limitations](PRODUCTION_SMTP_DELIVERY_ACCEPTANCE.md).
 
 **Latest authorized Auth correction:** default Site URL is now
 `https://ngo-eight-umber.vercel.app/`, verified after Dashboard reload. All seven allowed
@@ -75,7 +74,7 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 | Production Auth default Site URL | **PASS**: exact approved canonical URL saved/reloaded, homepage200, seven redirects and account/session state preserved | Default landing fixed; actual invitation/reset delivery still needs authorized mailbox test | Supabase/Auth owner, formal NGO ownership unconfirmed | Approved single-field correction complete |
 | Legacy Auth redirect allowlist | **BLOCKED** for narrowing: all seven entries intentionally unchanged, including old-origin and wildcard entries | Operator dependency/outstanding-link review and separate approval required before any removal | Supabase/Auth owner + operators | Review yes; no redirect edits authorized |
 | SMTP sender configuration | **READ-BACK COMPLETE**: user approved and privately saved replacement; enabled smtp.gmail.com:587 and sender name retained | Sender/username exact values and new password are user-attested due to tool masking; no delivery proof. Site URL/seven redirects unchanged | User-confirmed mail custodian; organizational handover still pending | SMTP-only approval complete; no test email authorized |
-| Production SMTP delivery | **BLOCKED**: zero emails; both supplied addresses already exist; unused candidate authorization declined. No synthetic identity exists | Keep sending blocked; later explicit unused-recipient approval and sender authorization required before one invite/one reset | Auth owner + recipient | Read-only checks complete; email/account activity not currently authorized |
+| Production SMTP delivery | **PASS**: one authorized invite and one subsequent reset accepted HTTP200; actual sender/receipts/callbacks/setup/reset confirmed by recipient | Synthetic Auth identity retained without privileges; Express /me/application mapping remains untested. No further mail authorized | User-confirmed mail custodian; NGO handover pending | Controlled two-message acceptance completed |
 | Public Volunteer registration | **BLOCKED**: current Production flagtrue; new proof/Storage prerequisites absent | Pause during approved cutover; re-enable only with proof/rate/deduplication and confirmed Production SMTP | Integration + NGO operator | No flag change authorized now |
 | Current Donor web routing | **FAIL**: old Production donor artifact references foreign Auth project oneiwcfdnqzcyfvxufhc | Candidate fixes env substitution; never test credentials on old page or access foreign project | Food/Donor + integration owner | Local fix already present; deploy requires approval |
 | Operator handover | **BLOCKED**:3 expired nonterminal assignments; named owners/contacts not supplied | Decide safe handover through normal approved workflow; never auto-extend food windows/cancel history | NGO dispatch/food-safety lead | Planning yes; business actions need owner authorization |
