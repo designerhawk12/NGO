@@ -1,6 +1,12 @@
 # Production release preparation — 2026-11-10
 
-**NO-GO for release. No Production writes performed.** The approved encrypted Production
+Latest authorized change: [Vercel isolation correction](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md)
+completed2026-11-10. Git disconnected, seven shared bindings narrowed to Production,
+Preview API entry removed; values/types/current deployment/aliases and staging unchanged.
+Historical preview risk and all database/Auth/Storage/release gates remain open. Older
+shared-scope findings below describe the before-state, superseded by the linked evidence.
+
+**NO-GO for release. No Production database writes or deployments performed.** The approved encrypted Production
 logical backup and isolated local restore now pass45/45 checks; see
 [backup/recovery verification](PRODUCTION_BACKUP_RECOVERY_VERIFICATION.md).
 Off-device key custody and the configuration/runtime/Auth gates remain open.

@@ -1,5 +1,10 @@
 # Final pilot release runbook
 
+2026-11-10 isolation checkpoint: the narrowly approved Vercel Git disconnect/environment
+scope correction passed; see [evidence](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md).
+This changes no database/Auth/SMTP/Storage or application deployment and grants no
+release authority. Historical previews retain a separate risk; Production remainsNO-GO.
+
 Latest decision/checklist: [FINAL_PRODUCTION_GO_NO_GO.md](FINAL_PRODUCTION_GO_NO_GO.md).
 The recovery candidate is frozen; no Production release is authorized by documentation
 or the recovery-branch push. Off-device custody, isolation, runtime, Auth/SMTP and operator

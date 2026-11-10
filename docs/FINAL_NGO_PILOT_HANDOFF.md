@@ -1,5 +1,12 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest approved isolation correction (2026-11-10): see
+[PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md).
+Onlyngo Vercel Git link/scopes changed under exact authorization; seven variables now
+Production-only, Preview API entry removed. Values/types/deployment/aliases and staging
+preserved; health200, anonymousme401; no new deployment/promotion. Historical42 previews
+remain a separate access risk. No database/Auth/SMTP/Storage/build/release/transfer action.
+
 Latest release-gate checkpoint (2026-11-10): see
 [FINAL_PRODUCTION_GO_NO_GO.md](FINAL_PRODUCTION_GO_NO_GO.md). Existing encrypted backup
 checksum reverified; no repeat restore. Current gates distinguish demonstrated Preview/

@@ -1,8 +1,11 @@
 # Final Production release gates — 2026-11-10
 
-**Decision: NO-GO for Production release.** Read-only checks and local preparation
-are complete. No015, permission/Auth/SMTP/hosting change, email, deployment, build,
-backup transfer or key export occurred. Existing backup was hashed, not restored again.
+**Decision: NO-GO for Production release.** The separately approved Vercel isolation
+correction is complete: Git disconnected, seven shared variables now Production-only,
+separate Preview API binding removed. Values/types, live deployment/aliases and staging
+preserved. See [correction evidence](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md).
+No015, database permission/Auth/SMTP change, email, deployment, build, backup transfer
+or key export occurred. Existing backup was hashed, not restored again.
 
 Application release candidate: **`580801e9b54937be7ecbc0db592dea6537b95869`**.
 This is the frozen application source; preparation commits add documentation/tooling
@@ -21,9 +24,10 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 | Encrypted backup integrity | **PASS**: SHA256 still `63efae09259219a9dca0d8844ce0ded581b0bd8c83f020b141656623db25316f` | Retain immutable archive, manifest, sidecars, tools and separate protected key | Backup custodian, name unconfirmed | Yes; verified locally |
 | Isolated logical restore | **PASS**: prior45/45;73 table digests,319 constraints,14 migrations,14 Auth/11 app users; disposable tmpfs container removed | No need to repeat absent new evidence | Integration maintainer | Yes; completed |
 | Off-device recovery | **BLOCKED**: only development-computer copy; DPAPI key depends on original Windows profile. Owner proposes organization-managed Drive/OneDrive plus separate organization password manager; no destination approved | Identify tenant/folder/access list and independent vault recovery ownership, then approve transfer/key escrow; test replacement-machine recovery | NGO backup owner + independent key custodian, both unconfirmed | Yes, but external transfer/key export requires approval |
-| Preview isolation | **FAIL**: Production DB/public Supabase/CA/CORS entries share Production+Preview scopes | Prevent Git Preview builds, remove Preview bindings under approval, review existing protected previews; old artifacts keep frozen bindings | Vercel/Git owner + integration maintainer | No; correction is hosted configuration |
+| New Preview configuration isolation | **PASS**: approved seven entries now Production-only; Preview API entry removed; no Preview env bindings remain; values/types preserved | Preserve disconnect and scope controls; no deployment authorized | Vercel/Git owner + integration maintainer | Completed under exact approval |
+| Historical Preview exposure | **BLOCKED**:42 ready historical previews may retain old bindings; current protection unchanged | Owner reviews access/retirement and Auth redirect wildcards; no deletion or rotation approved | Vercel/security owner | Inventory yes; any control/config change needs separate approval |
 | Recovery-branch push safety | **PASS**: existing `git.deploymentEnabled["integration/ngo-recovery"]=false` preserved; CI pushes only main/develop | Keep guard; never merge or manually deploy by inference | Integration maintainer | Yes |
-| Production deploy governance | **BLOCKED**: configured Production branch main, repo default develop, active source integration/b7b321c | Owner approves immutable manual release and project-scoped automatic-deploy freeze; do not merge just to align names | Git/Vercel owner, unconfirmed | Planning yes; hosted controls need approval |
+| Automatic Git deployment freeze | **PASS**: Production project's Git link removed; original GitHub repository/history untouched; active deploymentb7b321c retained | Immutable manual deploy/redeploy/promote still needs separate release approval; do not reconnect Git or merge by inference | Git/Vercel owner, formal NGO ownership unconfirmed | Completed under exact approval |
 | Actual current API runtime identity | **NOT VERIFIED**: Vercel DATABASE_URL opaque; dedicated backup connection is postgres, not proof of deployed API role | Privately establish effective deployed DB/server Supabase binding; current backup login is overprivileged for runtime | Integration maintainer + secret owner | Read-only evidence yes; any replacement needs approval |
 | Restricted Production runtime | **BLOCKED**: Production has no aaharaconnect_api/runtime roles; postgres has CREATE/CREATEROLE/CREATEDB/BYPASSRLS | After015, provision separate non-owner/NOBYPASSRLS login with finite group grants; test actual login | Database owner + integration maintainer | SQL prepared; execution changes Production |
 | Anonymous app schema access | **PASS**, limited scope: anon/authenticated/authenticator lack app USAGE/CREATE and SELECT;32 tables;0 app sequences | RLSoff warnings alone do not demonstrate anonymous data access. Keep client roles out of app; review future grants | Integration/security owner | Yes |
@@ -44,8 +48,8 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 Production: Supabase `pyzyxgpcfwpcqyqrihuo`; Vercel `ngo` /
 `prj_6BuwhBiISjTlzgGtqG2arEXqOXGl`, teamequinox10. One existing combined web/Express
 deployment, stable `https://ngo-eight-umber.vercel.app`, current
-`dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR`, sourceb7b321c. Git link is designerhawk12/NGO,
-configured main. Public main artifact targets Production Supabase and `/api/v1`.
+`dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR`, sourceb7b321c. Former Git link was designerhawk12/NGO,
+configured main; it is now disconnected under exact approval. Public main artifact targets Production Supabase and `/api/v1`.
 The old donor artifact is the demonstrated exception above; no foreign project accessed.
 
 Designated staging web `prj_W1MrwAqFsWTFohHs6UXR2fo1EEIL`, latest
@@ -57,15 +61,17 @@ Environment labelProduction inside those **staging project IDs** is not the live
 Staging APK776393e8/source3e89c26 binds staging; candidate Production build needs its own
 public Supabase/API/web origins. No Production secret belongs in VITE_/EXPO_PUBLIC_.
 
-Current Production shared Production+Preview entries:
+Reviewed former Production+Preview entries, now all Production-only:
 `DATABASE_URL`, `DATABASE_SSL_CA`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `CORS_ORIGIN`.
-There is also a separate Preview `VITE_API_BASE_URL` entry; its value is opaque.
+The separate Preview `VITE_API_BASE_URL` entry is removed; Production API binding preserved.
 Production SUPABASE_SECRET_KEY is Production-only; do not claim it leaks into Preview.
 Public project binding identifies the client target; opaque server credentials are not
 independent proof of every historical function's connection target.
 
-**Proposed correction, no settings changed:**
+**Approved correction completed2026-11-10:** Git unlink and all scope/removal changes
+below are done, independently read back and documented in the correction evidence.
+The remaining historical-deployment access review is not executed or authorized.
 
 1. On Production projectngo only, disconnect its Git repository link to prevent automatic
    Git deployments/Preview creation pending immutable release approval. This does not delete
@@ -244,15 +250,15 @@ Do not drop tables/disable proof gates or restore over Production as an automati
 Any restore requires separate approval, isolated rehearsal and post-snapshot reconciliation.
 See [full runbook](PRODUCTION_RELEASE_READINESS.md) and [operator guide](NGO_PILOT_OPERATIONS.md).
 
-## Consolidated next approval request
+## Approval boundary after isolation correction
 
-**Approve only the hosted isolation correction** forngo /
-`prj_6BuwhBiISjTlzgGtqG2arEXqOXGl`: disconnect only its Git repository link pending release;
-narrow the seven named shared bindings to Production, preserving values/types; remove
-only the Preview VITE_API_BASE_URL binding; read back targets/controls. Do not deploy,
+**Completed approved hosted isolation correction** forngo /
+`prj_6BuwhBiISjTlzgGtqG2arEXqOXGl`: Git repository link disconnected pending release;
+seven named shared bindings narrowed to Production, preserving values/types; only the
+Preview VITE_API_BASE_URL binding removed; targets/controls read back. Do not deploy,
 delete existing previews, rotate credentials or change the stable Production alias.
 
-In the same response, supply the non-secret Dashboard/ownership facts and exact proposed
+Remaining owner action: supply the non-secret ownership facts and exact proposed
 off-device destination/key-custody identifiers. Transfer/export requires its own concrete
 destination-specific approval after those facts are available. **This is not a request
 to approve015, roles, buckets, Auth/SMTP edits, email tests, builds or the Production release.**
@@ -260,5 +266,5 @@ to approve015, roles, buckets, Auth/SMTP edits, email tests, builds or the Produ
 Owner follow-up: original URL values and SMTP-enable status are now independently read.
 Still manual: redacted sender address/provider ownership; formal NGO ownership of backups,
 deployments and account recovery; cloud folder/vault custody identifiers. All remain pending
-organizational handover, not inferred from personal developer access. The owner did not
-approve the proposed isolation correction; it remains a proposal, not an executable task.
+organizational handover, not inferred from personal developer access. The owner subsequently
+approved only the isolation correction, now complete. No broader approval is inferred.
