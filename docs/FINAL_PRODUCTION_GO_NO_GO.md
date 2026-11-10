@@ -1,5 +1,58 @@
 # Final Production release gates — 2026-11-10
 
+## Actual Production015 APPLIED — 2026-11-10
+
+Explicit resumed approval verified actual catalog text arrays32app/26Auth, focused
+runner15/15 PASS, disposable snapshot/rollback/Auth-bridge/original-column checks PASS.
+A pre-backup local ACL operation failed with PrivilegeNotHeldException while resetting
+an already-secure directory. Database transaction rolled back, no backup/migration then;
+firewall restored. Corrected helper preserves/verifies already-private owner/SYSTEM ACLs
+without reassignment; synthetic regression5/5 PASS and actual key-directory metadata
+verification PASS. No original key read/changed. One local diagnostic was blocked by
+approval-review internal Bad Request; later authorized normal operations succeeded.
+Continued after this unambiguous recoverable local tooling correction as authorized.
+
+Maintenance re-enabled, canonical and operator-protected /me403 verified. Same-session
+58-table gate acquired with0unexpected admin transactions. Fresh read-only snapshot73
+tables: C:\Users\desig\AppData\Local\AahaaraConnect-Production\pre-015-20261110T091612Z\database.dump.gcm
+584974 bytes, SHA2561873e937f56f8c287705a49b6909a01db4b5c14685dd211e80de45ea77437b92.
+Actual archive authenticated/decrypted in memory for equality, persisted file hash checked;
+new DPAPI key protect/unprotect comparison passed. No plaintext dump persisted; historical
+archive and original key preserved. New archive not transferred off-device.
+
+015 committed through existing runner, checksum
+28d70f15fc4e45e18f85130fbb76abdbc0a2a1d881a8aeb2fca9f1c8ab0788e1.
+Precommit original-column fingerprints matched57protected original tables excluding
+ledger;30pre-existing role attribute records preserved. Ledger15 read back exact.
+Current15Auth identities,11app accounts ADMIN1/DONOR5/DRIVER1/VOLUNTEER4,6donors,
+8donations,5assignments,0orphan links. No expired jobs/users/passwords modified.
+Do NOT run execute-approved-production-015.cjs again: migration is already committed.
+
+Created aaharaconnect_runtime LOGIN/INHERIT member of aaharaconnect_api with no superuser,
+CREATEDB/CREATEROLE/replication/BYPASSRLS. Generated credential saved privately outside Git
+in production-runtime.env; no secret output. Creation transaction committed. Initial
+verification SELECT returned42501 while resolving inaccessible auth.users by name.
+STOPPED dependent operations under explicit failure rule. Read-only OID-based diagnosis
+then verified real TLS login/current_user/session_user, appUSAGE true, schemaCREATE false,
+authUSAGE/authSELECT/ledgerSELECT/auditUPDATE false and required app/identity reads succeed.
+Runtime role is CREATED/verified; no privilege repair or credential reset needed. Future
+checks must resolve inaccessible object OIDs through admin first, then test them from
+runtime. Never recreate/overwrite role or credentials to resume.
+
+Buckets0; no Vercel environment edits or deployment performed. Existing deployment
+still b7b321c; frozen candidate580801e not yet deployed. Production web/API is NOT ready
+for final acceptance. Firewall intentionally remains enabled after migration/role changes;
+no destructive rollback or blind reopening. Auth bridge remains in live exec session22519
+until explicit release or its25-minute failure deadline. It is bounded, not permanent:
+on expiry/disconnection the wrapper logs failure/releases Auth locks while WAF remains
+DENY. Before any resumed sensitive action confirm/reacquire Auth protection; do not claim
+an expired bridge still holds. No application reopening is authorized on timeout.
+
+Next: explicit continue from VERIFIED runtime role to private buckets, reviewed Production
+configuration, frozen web/API deployment and bounded acceptance. Recheck held protection;
+no migration/role-creation retry and no repeat SMTP/historical backups. The diagnostic
+failure is understood, not a reason to broaden Auth grants. Production remains NO-GO.
+
 ## Approved orchestration execution — stopped safely, 2026-11-10
 
 Minimal runner extension adds before/after hooks on its existing transaction/client and

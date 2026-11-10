@@ -2,7 +2,13 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
-const {encrypt,decrypt,protectedKey,sha}=require('./production-recovery.cjs');
+const {encrypt,decrypt,protectedKey,sha,restrict}=require('./production-recovery.cjs');
+
+test('private directory creation and secure reuse require no owner reassignment',{skip:process.platform!=='win32'},()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'aahara-acl-regression-'));
+  try{restrict(dir);assert.doesNotThrow(()=>restrict(dir));}
+  finally{fs.rmdirSync(dir);}
+});
 test('AES-GCM authenticates binary data including zero bytes',()=>{
   const key=crypto.randomBytes(32),data=Buffer.concat([Buffer.alloc(32),crypto.randomBytes(4096)]);
   assert.deepEqual(decrypt(encrypt(data,key),key),data);key.fill(0);

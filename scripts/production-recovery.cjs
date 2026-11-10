@@ -11,13 +11,16 @@ const magic = Buffer.from('AAH-GCM1');
 function ps(script, input) {
   const env = {...process.env}; delete env.PSModulePath;
   const r = cp.spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], { input, env, maxBuffer: 1024 * 1024 });
-  if (r.status !== 0) throw Error('Windows key/ACL operation failed');
+  if (r.status !== 0) {
+    const errorId=(r.stderr?.toString('utf8').match(/FullyQualifiedErrorId\s*:\s*([A-Za-z0-9.,_-]+)/)||[])[1]||'unclassified';
+    throw Error('Windows key/ACL operation failed: '+r.status+' / '+errorId);
+  }
   return r.stdout;
 }
 function restrict(dir) {
   if (!path.resolve(dir).startsWith(path.resolve(process.env.LOCALAPPDATA) + path.sep)) throw Error('Private path gate');
   fs.mkdirSync(dir, { recursive: true });
-  ps(`$ErrorActionPreference='Stop'; $p='${dir.replace(/'/g,"''")}'; $a=New-Object System.Security.AccessControl.DirectorySecurity; $a.SetAccessRuleProtection($true,$false); $s=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; $a.SetOwner($s); foreach($i in @($s,(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')))) { $r=New-Object System.Security.AccessControl.FileSystemAccessRule($i,'FullControl','ContainerInherit,ObjectInherit','None','Allow'); $a.AddAccessRule($r) }; Set-Acl -LiteralPath $p -AclObject $a`);
+  ps(`$ErrorActionPreference='Stop'; $p='${dir.replace(/'/g,"''")}'; $a=Get-Acl -LiteralPath $p; $s=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; if($a.GetOwner([System.Security.Principal.SecurityIdentifier]).Value -ne $s.Value){throw 'Private directory owner mismatch'}; $expected=@($s.Value,'S-1-5-18'); $rules=@($a.Access); $secure=$a.AreAccessRulesProtected -and $rules.Count -eq 2; $seen=@(); foreach($existing in $rules){$sid=$existing.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value; $seen+=$sid; if($existing.IsInherited -or $sid -notin $expected -or $existing.AccessControlType -ne 'Allow' -or $existing.FileSystemRights -ne 'FullControl' -or $existing.InheritanceFlags -ne 'ContainerInherit, ObjectInherit'){$secure=$false}}; if(@($seen | Select-Object -Unique).Count -ne 2){$secure=$false}; if($secure){exit 0}; $a.SetAccessRuleProtection($true,$false); foreach($oldRule in @($a.Access)){$a.RemoveAccessRuleSpecific($oldRule)}; foreach($i in @($s,(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')))) { $r=New-Object System.Security.AccessControl.FileSystemAccessRule($i,'FullControl','ContainerInherit,ObjectInherit','None','Allow'); $a.AddAccessRule($r) }; Set-Acl -LiteralPath $p -AclObject $a`);
 }
 function protectedKey(file, raw) {
   const common = `Add-Type -AssemblyName System.Security; $ErrorActionPreference='Stop'; $p='${file.replace(/'/g,"''")}';`;
@@ -114,4 +117,4 @@ async function backup() {
   } finally {key.fill(0);await client.end();}
 }
 if(require.main===module){if(process.argv[2]!=='backup')throw Error('Explicit backup action required');backup().catch(e=>{console.error(JSON.stringify({failed:true,error:e.message.startsWith('pg_dump failed')?e.message:'Recovery safety/tooling check failed',code:e.code||null}));process.exitCode=1;});}
-module.exports={decrypt,encrypt,protectedKey,sha,image,base,snapshot,config,backup};
+module.exports={decrypt,encrypt,protectedKey,sha,image,base,snapshot,config,backup,restrict};
