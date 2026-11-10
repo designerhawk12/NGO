@@ -1,5 +1,15 @@
 # Production encrypted backup and isolated recovery — 2026-11-10
 
+Latest custody update (2026-11-10): **off-device encrypted archive upload/integrity PASS**.
+Drive upload and manually downloaded 584722-byte copy match original SHA-256. This does
+not verify independent recovery: DPAPI-independent escrow, approved encrypted metadata
+companions/portable tooling, NGO handover and second-device restore are pending. Only
+source/docs were inspected in this preparation; no key access/decryption/transfer.
+Historical snapshot still requires a fresh approved snapshot and integrity baseline
+immediately before 015. Production remains NO-GO. See
+[custody procedure and next approval](PRODUCTION_RECOVERY_CUSTODY_PREPARATION.md).
+Earlier custody statements below are historical and superseded only as noted here.
+
 **PASS for the approved backup/recovery scope. Production release remains NO-GO.**
 Project reidentified through Supabase MCP as NGO, `pyzyxgpcfwpcqyqrihuo`,
 ACTIVE_HEALTHY, eu-west-2, PostgreSQL17.11. All Production operations were reads.

@@ -1,5 +1,117 @@
 # Recovery custody and role-mapping preparation — 2026-11-10
 
+## Current custody status — 2026-11-10
+
+**Off-device encrypted archive upload/integrity: PASS.** Authorized Drive file
+`1SBuQmXw1iUybM1EJi1WdFdFbK6VevoGz`, restricted interim personal folder
+`1VMVrMTYvda5g1nbLxMNN0Ngk6Ad91jiA`. User manually downloaded the file; Codex hashed
+`C:\Users\desig\Downloads\database.dump.gcm`, not the original. Size 584722 and SHA-256
+`63efae09259219a9dca0d8844ce0ded581b0bd8c83f020b141656623db25316f` matched.
+MFA, non-laptop-only account recovery and interim custody are user-confirmed; permanent
+NGO ownership, separate escrow and independent recovery are still pending.
+
+**Independent recovery: NOT VERIFIED. Production: NO-GO.** Archive is historical;
+SMTP synthetic activity and later writes are outside its snapshot. Fresh approved
+Production snapshot/integrity baseline remains required immediately before 015.
+
+### Read-only implementation findings
+
+Only documentation and source were inspected in this preparation. Neither helper was
+executed and no key file was read. `production-recovery.cjs` defines AAH-GCM1 format:
+8-byte magic/AAD, 12-byte nonce, ciphertext, final 16-byte GCM tag; encryption key is
+32 random bytes. DPAPI CurrentUser protects the key locally, not the archive format.
+A separately escrowed copy of that exact key can authenticate/decrypt the same archive
+on another machine without the original Windows profile. A new random key cannot
+unlock the existing archive; base64 is encoding, not protection.
+
+`production-restore-verify.cjs` currently calls protectedKey(manifest.keyFile) immediately
+and enforces the original private-directory layout. **Do not run it for portable testing
+as-is.** A separately reviewed local-only adapter must take key bytes from approved
+vault recovery in memory, enforce archive identity/project gates, remove dependence on
+the old DPAPI path, and retain verification/isolation/cleanup safeguards. No such
+adapter was implemented or executed in this pass.
+
+The existing full rehearsal additionally requires manifest, snapshot-metadata.json.gcm
+and (where manifest specifies) cluster-settings.json.gcm, plus tooling/image identity.
+Encrypted metadata carries role definitions/memberships, counts/digests and settings
+needed for faithful reconstruction. Upload approval covered only database.dump.gcm:
+**these companions are not claimed off-device**. Before transfer, review manifest and
+instructions for private paths, role settings or credentials; never upload an original
+manifest blindly. Prepare a portable sanitized manifest with approved relative paths,
+file checksums, format and image identity, and keep confidential baseline metadata
+in its existing encrypted form. Additional package transfer requires exact approval.
+
+### Proposed escrow and roles (not authorized for execution)
+
+- Backup custodian: manages restricted encrypted archives, versions/checksums and
+  retention; does not need decryption-key access.
+- Independent key custodian: organization vault administrator/recovery custodian;
+  manages escrow access, MFA, emergency recovery and audit history separately from Drive.
+- Recovery operator: named person on an independent approved device; receives temporary
+  minimum access to both materials for an authorized rehearsal, with custody oversight.
+One personal account holding everything does not establish independent NGO recovery.
+Document any interim role overlap explicitly and arrange independent access/recovery.
+
+Choose an organization-controlled vault supporting secret insertion/retrieval through a
+reviewable secure API/SDK or protected prompt/pipe, MFA and audited restricted membership.
+Confirm offline/emergency vault recovery is independent of the original laptop and
+personal Google account. Do not put key material in Drive, Git, chat, command arguments,
+environment variables, clipboard, terminal output, screenshots or persistent plaintext.
+After explicit approval only, a reviewed helper would unwrap once under the original
+Windows identity, validate 32-byte length, place the exact key into the specified vault
+item through its supported protected channel and clear buffers on best effort. Managed
+runtime copies/pagefile cannot be guaranteed erased: use a trusted encrypted device,
+no transcript/debug logging/core dumps, and review vault/client telemetry first.
+Preserve the existing DPAPI key and archive; do not rotate/re-encrypt them for this test.
+Vault confirmation and independent decryptability, not a displayed key, prove escrow.
+If the provider cannot safely support this route, stop and revise the method.
+
+### Second-device procedure — after separate authorization
+
+1. Name operator/device, encrypted temporary directory, time window and cleanup owner.
+   Provision trusted reviewed tools and matching pinned Supabase PG17 image before
+   handling secrets; scan/review restore adapter using synthetic keys/data first.
+2. Download exact authorized archive and approved encrypted companions. Verify all
+   checksums against the approved portable manifest; retain immutable originals.
+3. Operator obtains the key through separate vault MFA, without access to the original
+   Windows user/profile. Load only into protected process memory; never print or save it.
+4. Verify format, project and AES-GCM tag before supplying any plaintext to pg_restore.
+   Do not stream unauthenticated GCM plaintext into a database before tag validation.
+5. Start fresh local container with network none, no ports, Unix socket only, read-only
+   root, dropped capabilities, no-new-privileges, disabled Docker logging, RAM-backed
+   database/archive/WAL and bounded memory/swap settings. No host DB/service sockets,
+   Production environment files/credentials or network/database URLs may be supplied.
+   Start PostgreSQL only: no Supabase Auth, workers, email, webhooks or integrations.
+6. Restore roles/memberships/settings and dump only in this isolated database. Retain
+   exit-on-error behavior and validate counts/full-row digests, Auth identities/password
+   hash preservation, role attributes, constraints, app/Auth links and all 001–014
+   ledger names/checksums against the historical encrypted baseline. Never compare this
+   historical snapshot to current Production by opening a live connection.
+7. Record sanitized checks, image identity, checksum, operator/time, limitations and
+   failures. No rows, password hashes or key values in evidence. Remove container and
+   disposable decrypted material; verify cleanup. Keep only authorized encrypted package,
+   escrow and sanitized instructions/results. Stop on any failed check; do not repair
+   Production or run migrations as part of rehearsal.
+
+### NGO ownership handover and exact next approval
+
+Supply NGO legal/operating owner and authorization record; long-term Drive tenant/folder
+or documented personal interim ownership/exit arrangement; vault provider/organization/
+vault and exact item destination; named backup/key custodians, independent operator and
+second device; MFA/recovery membership evidence, access-review and retention owners.
+Define loss/incapacity recovery, revocation, eventual personal-to-NGO handover and routine
+backup scheduling. Storage file bytes, external configuration/secrets and database-role
+passwords remain separate recovery components, not covered by this database archive.
+
+Next approval must name: exact existing DPAPI key locator (identified securely locally,
+not key contents), vault organization/item/custodians, reviewed memory-only escrow helper,
+exact approved encrypted companion files and Drive folder, portable-manifest scope,
+independent operator/device and isolated rehearsal/cleanup boundaries. Approval may be
+split into (A) helper/package preparation using synthetic data, (B) one-time key escrow
+and specified companion transfer, (C) second-device restoration. No blanket approval,
+key action or sensitive transfer is implied by this plan. Destination facts are still
+missing, so B/C cannot yet be finalized or executed.
+
 Approved single-request test checkpoint (2026-11-10): user authorized exactly one
 synthetic authenticated /me and normal DONOR app-user/profile provisioning. Read-only
 inspection confirms the same confirmed Auth identity, Auth role authenticated, no

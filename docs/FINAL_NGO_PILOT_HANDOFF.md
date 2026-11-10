@@ -1,5 +1,15 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest custody update (2026-11-10): **off-device encrypted archive upload/integrity PASS**.
+Drive upload and manually downloaded 584722-byte copy match original SHA-256. This does
+not verify independent recovery: DPAPI-independent escrow, approved encrypted metadata
+companions/portable tooling, NGO handover and second-device restore are pending. Only
+source/docs were inspected in this preparation; no key access/decryption/transfer.
+Historical snapshot still requires a fresh approved snapshot and integrity baseline
+immediately before 015. Production remains NO-GO. See
+[custody procedure and next approval](PRODUCTION_RECOVERY_CUSTODY_PREPARATION.md).
+Earlier custody statements below are historical and superseded only as noted here.
+
 Latest recovery/role checkpoint (2026-11-10): SMTP PASS remains accepted. Read-only
 synthetic identity inspection found no app mapping or privileged role. Deployed /me
 would provision DONOR app-user/profile rows, so it was NOT called pending specific

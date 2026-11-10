@@ -1,5 +1,15 @@
 # Final Production release gates — 2026-11-10
 
+Latest custody update (2026-11-10): **off-device encrypted archive upload/integrity PASS**.
+Drive upload and manually downloaded 584722-byte copy match original SHA-256. This does
+not verify independent recovery: DPAPI-independent escrow, approved encrypted metadata
+companions/portable tooling, NGO handover and second-device restore are pending. Only
+source/docs were inspected in this preparation; no key access/decryption/transfer.
+Historical snapshot still requires a fresh approved snapshot and integrity baseline
+immediately before 015. Production remains NO-GO. See
+[custody procedure and next approval](PRODUCTION_RECOVERY_CUSTODY_PREPARATION.md).
+Earlier custody statements below are historical and superseded only as noted here.
+
 Approved single-request test checkpoint (2026-11-10): user authorized exactly one
 synthetic authenticated /me and normal DONOR app-user/profile provisioning. Read-only
 inspection confirms the same confirmed Auth identity, Auth role authenticated, no
