@@ -1,5 +1,48 @@
 # Final Production release gates — 2026-11-10
 
+## Actual maintenance execution — 2026-11-10
+
+Supported Vercel CLI (not failing config GET) verified named rule
+rule_aahaara_connect_approved_production_maintenance_RiIt1s live/active/valid, no drafts:
+/api prefix DENY except exact health/ready. Canonical anonymous /me403 with
+x-vercel-mitigated=deny; health200. Both protected origins returned Vercel302 (earlier
+followed-login200 was not an application response). Operator-authenticated vercel curl
+on actual deployment /me also returned403. Thus Vercel ingress gate was verified.
+
+Database inspections: anon/authenticated/service_role lack app USAGE/CREATE; no direct
+app DML grants for these roles, no exposed public security-definers or custom Auth
+triggers, no pg_cron/pg_net, no other open transactions at observation. Only idle managed
+clients observed. These observations do not guarantee future writes are impossible.
+Direct Auth settings200 still disable_signup=false/email provider enabled. No Auth
+settings changed. An Auth users SHARE-lock probe succeeded and was immediately rolled
+back. A bounded lock gate covering all auth/storage tables then failed, transaction
+released. Permission diagnosis with actual postgres connection found no owner/write
+privilege for auth.schema_migrations, storage.migrations, storage.buckets_vectors and
+storage.vector_indexes. Exact lock SQL error was suppressed by the helper; permissions
+are diagnosed evidence, not a claim of a captured PostgreSQL error message. No retry,
+managed grant change or bypass attempted. Full database pause remains UNVERIFIED.
+
+With no migration/deployment applied, used explicit outage-recovery authority to disable
+ONLY the named temporary rule. Inspected diff contained exactly one active=false change;
+published and verified live/inactive/no draft. Canonical homepage200, health200,
+readiness200, anonymous /me401 afterwards. Existing deployment/aliases unchanged by
+these operations. No new snapshot,015,runtime,buckets or deployment attempted.
+
+Independent Android work: EAS Production env read returned all four required public
+variable names; expected canonical API/web and Production Supabase URLs appeared and
+no staging reference appeared. Masked key values not verified. Package/HTTPS /open/
+intent filters match approved configuration. Frozen application diff remains empty;
+015 checksum unchanged. Production signer/assetlinks/native build remain unverified;
+no build/publication or repetition of accepted staging/SMTP/recovery tests.
+
+Next corrective decision: establish a bounded database pause scoped to application/Auth
+user data while explicitly excluding provider-managed metadata that cannot be locked,
+or obtain a supported provider maintenance mechanism. Do not pretend this session
+established a complete database-wide freeze, and do not broaden managed grants. An
+app-only Vercel gate is insufficient under the currently stated full-pause requirement.
+Original expired jobs and existing users/history were not modified by this execution.
+Production remains NO-GO; existing service has been reopened, not the new release.
+
 ## Final release decision scope — 2026-11-10 (supersedes custody preconditions)
 
 User explicitly defers portable key escrow and second-device restore until after initial
