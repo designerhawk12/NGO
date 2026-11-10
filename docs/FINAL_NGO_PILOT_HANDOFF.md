@@ -1,5 +1,14 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest read-only security/operations closure (2026-11-10):42 Preview deployments assessed,
+89 HTTP checks all302 to Vercel authentication,5 current Preview aliases allprotected,
+no custom-domain Preview binding,22 DB/Supabase binding-name inventories. Exact42-ID/5-alias
+retirement proposal saved; PR25/26/owner use confirmation required. Auth seven URLs and
+SMTPon reconfirmed; legacy Site URL404/DEPLOYMENT_NOT_FOUND, canonical200. Proposed canonical
+callback pair, recipient-authorized SMTP test, cloud/vault custody checklist and release
+prerequisites recorded in [closure plan](PRE_RELEASE_SECURITY_OPERATIONS_CLOSURE.md).
+No mutation, credentials, emails, transfers, key exports, recovery rerun or deployment.
+
 Latest approved isolation correction (2026-11-10): see
 [PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md).
 Onlyngo Vercel Git link/scopes changed under exact authorization; seven variables now

@@ -32,6 +32,13 @@ with separate organization password-manager key recovery; folder, vault, access 
 custodians still need approval. No transfer/export has occurred. Production custom SMTP
 is enabled, but sender address/provider ownership and delivery still need confirmation.
 
+Final closure operator checklist and approved-only transfer/recovery steps are in
+[PRE_RELEASE_SECURITY_OPERATIONS_CLOSURE.md](PRE_RELEASE_SECURITY_OPERATIONS_CLOSURE.md).
+Please supply organization-managed cloud tenant/folder ID, separate vault/recovery method,
+backup and independent key custodians, recovery operators and verified MFA/recovery access.
+Also confirm whether any historical Preview/review link is still needed before approving
+its retirement. No Preview deletion, mail, upload or key export is authorized by this guide.
+
 This guide describes the implemented workflows. Use it on the approved staging/pilot environment only after the release gates in `FINAL_PILOT_RELEASE_RUNBOOK.md` pass. Final pilot clearance has not been granted.
 
 ## Acceptance fixes and replacement Android — 2026-11-10

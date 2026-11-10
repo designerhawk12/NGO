@@ -7,6 +7,19 @@ preserved. See [correction evidence](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md)
 No015, database permission/Auth/SMTP change, email, deployment, build, backup transfer
 or key export occurred. Existing backup was hashed, not restored again.
 
+Latest focused closure pass: [security and operations closure](PRE_RELEASE_SECURITY_OPERATIONS_CLOSURE.md).
+All42 historical Previews are Vercel-auth protected;89 unauthenticated checks returned302
+to authentication, including readiness and5 current aliases. No custom-domain Preview
+bypass observed.22 list DATABASE_URL/Supabase binding names; no values retrieved/decrypted.
+Cleanup remains a proposal, with an exact42-ID/5-alias manifest and required reviewer/owner
+retirement signoff. Open PR25/26 mean active review needs cannot be inferred away.
+
+Auth Site URL now independently returns404/DEPLOYMENT_NOT_FOUND; the canonical site200.
+Current seven redirects/SMTP-enabled status reconfirmed unchanged. Minimal canonical
+Auth settings, a transport-only synthetic invitation/reset plan, operator custody checklist
+and second-device procedure are prepared. No recipient, cloud folder or key-vault custody
+has been authorized. Completed staging/recovery tests were not repeated.
+
 Application release candidate: **`580801e9b54937be7ecbc0db592dea6537b95869`**.
 This is the frozen application source; preparation commits add documentation/tooling
 only. Starting preparation checkpoint: `ba0c7c4e2ceb8adb33c10d062fea3f5d7596addf`.
@@ -25,7 +38,7 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 | Isolated logical restore | **PASS**: prior45/45;73 table digests,319 constraints,14 migrations,14 Auth/11 app users; disposable tmpfs container removed | No need to repeat absent new evidence | Integration maintainer | Yes; completed |
 | Off-device recovery | **BLOCKED**: only development-computer copy; DPAPI key depends on original Windows profile. Owner proposes organization-managed Drive/OneDrive plus separate organization password manager; no destination approved | Identify tenant/folder/access list and independent vault recovery ownership, then approve transfer/key escrow; test replacement-machine recovery | NGO backup owner + independent key custodian, both unconfirmed | Yes, but external transfer/key export requires approval |
 | New Preview configuration isolation | **PASS**: approved seven entries now Production-only; Preview API entry removed; no Preview env bindings remain; values/types preserved | Preserve disconnect and scope controls; no deployment authorized | Vercel/Git owner + integration maintainer | Completed under exact approval |
-| Historical Preview exposure | **BLOCKED**:42 ready historical previews may retain old bindings; current protection unchanged | Owner reviews access/retirement and Auth redirect wildcards; no deletion or rotation approved | Vercel/security owner | Inventory yes; any control/config change needs separate approval |
+| Historical Preview exposure | **BLOCKED** for retirement:42/42 authprotected;89 HTTP gates;5 aliases,0 custom-domain bypasses;22 have DB/Supabase env names. Exact historical values remain unknown | Owner/reviewers confirm no required use, including PR25/26; approve exact42-ID/5-alias cleanup manifest. No deletion or rotation approved | Vercel/security owner + reviewers | Focused read-only assessment complete |
 | Recovery-branch push safety | **PASS**: existing `git.deploymentEnabled["integration/ngo-recovery"]=false` preserved; CI pushes only main/develop | Keep guard; never merge or manually deploy by inference | Integration maintainer | Yes |
 | Automatic Git deployment freeze | **PASS**: Production project's Git link removed; original GitHub repository/history untouched; active deploymentb7b321c retained | Immutable manual deploy/redeploy/promote still needs separate release approval; do not reconnect Git or merge by inference | Git/Vercel owner, formal NGO ownership unconfirmed | Completed under exact approval |
 | Actual current API runtime identity | **NOT VERIFIED**: Vercel DATABASE_URL opaque; dedicated backup connection is postgres, not proof of deployed API role | Privately establish effective deployed DB/server Supabase binding; current backup login is overprivileged for runtime | Integration maintainer + secret owner | Read-only evidence yes; any replacement needs approval |
@@ -34,7 +47,7 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 |015 and private Storage readiness | **BLOCKED**: only015 pending; Production buckets/policies0 | Approve015 exact checksum, restricted runtime and two private buckets; never publish proof/photo storage | Integration + Volunteer owners | No for provisioning |
 | Admin/account mappings | **PASS**: requested original Admin exists/confirmed/linkedADMIN/not disabled;14 Auth,11 app users,0 orphan app links | Password not tested; preserve every UUID/password/role/approval/history. Owner triage3 unmapped Auth identities | NGO Admin + integration maintainer | Read-only evidence yes |
 | Production Auth policy inspection | **PASS**, partial: public settings200, email provider enabled, disable_signup=false, mailer_autoconfirm=false | Email confirmation required. This does not prove SMTP or URLs | Auth owner | Yes |
-| Production Auth URLs | **BLOCKED** for release reconciliation: Dashboard Site URL is ngo-equinox10.vercel.app, not the frozen release origin; seven redirects include preview-host wildcards. Exact invite/reset callbacks are present; no broken login is inferred | Owner confirms legacy-alias requirements; approve canonical Site URL and narrowed allowlist without breaking outstanding legitimate links | Supabase/Auth owner, unconfirmed | Inspection complete; correction needs Production configuration approval |
+| Production Auth URLs | **FAIL** default landing: recorded Site URLngo-equinox10.vercel.app returns404/DEPLOYMENT_NOT_FOUND; canonical site200. Seven redirects include preview wildcards; exact invite/reset callbacks exist | Review outstanding/undocumented callbacks; separately approve canonical Site URL and two exact callbacks. No password-login failure is inferred | Supabase/Auth owner, unconfirmed | Read-only verification complete; correction needs approval |
 | Custom SMTP presence | **PASS** for configuration only: Dashboard Enable custom SMTP switch is on; sender name AahaaraConnect NGO | Sender email was tool-redacted: owner must manually confirm address/domain/provider ownership. Delivery remains untested | Auth/mail owner, unconfirmed | Yes; no credential reveal or email needed |
 | Production email delivery | **NOT VERIFIED**: no Production email sent | Separate authorized recipient/fixture/invite/reset test and confirmed receipts/callbacks | Auth owner + recipient | Delivery can create Auth/app records; explicit approval required |
 | Public Volunteer registration | **BLOCKED**: current Production flagtrue; new proof/Storage prerequisites absent | Pause during approved cutover; re-enable only with proof/rate/deduplication and confirmed Production SMTP | Integration + NGO operator | No flag change authorized now |
@@ -250,18 +263,23 @@ Do not drop tables/disable proof gates or restore over Production as an automati
 Any restore requires separate approval, isolated rehearsal and post-snapshot reconciliation.
 See [full runbook](PRODUCTION_RELEASE_READINESS.md) and [operator guide](NGO_PILOT_OPERATIONS.md).
 
-## Approval boundary after isolation correction
+## Exact next approval request after read-only closure
 
-**Completed approved hosted isolation correction** forngo /
-`prj_6BuwhBiISjTlzgGtqG2arEXqOXGl`: Git repository link disconnected pending release;
-seven named shared bindings narrowed to Production, preserving values/types; only the
-Preview VITE_API_BASE_URL binding removed; targets/controls read back. Do not deploy,
-delete existing previews, rotate credentials or change the stable Production alias.
+**Request retirement approval only for the exact42 Preview deployment IDs and5 mapped
+Preview aliases in [proposed-preview-retirement.json](release/proposed-preview-retirement.json),
+after owner/reviewers confirm no required use including PR25/26.** Current Production
+deployment/bothaliases, other deployments, staging, Git history, credentials and database
+records must remain intact. Reviewer/bookmark links to retired previews will stop working;
+their old artifacts will no longer be available for rollback. If any target is needed
+or moved, stop and revise the reviewed list rather than deleting a query's new results.
 
-Remaining owner action: supply the non-secret ownership facts and exact proposed
-off-device destination/key-custody identifiers. Transfer/export requires its own concrete
-destination-specific approval after those facts are available. **This is not a request
-to approve015, roles, buckets, Auth/SMTP edits, email tests, builds or the Production release.**
+The separately prepared Auth proposal is canonical Site URL plus the two exact canonical
+callbacks; it remains unapproved. SMTP transport test needs a newly authorized Production
+synthetic recipient; it can precede015 without a Volunteer proof workflow. Later full
+Volunteer acceptance requires015/buckets/matching app. Supply formal NGO owners, cloud
+tenant/folder, independent vault/key custody and second-device recovery operators before
+any concrete transfer/export approval. **Cleanup approval would authorize none of those
+actions, Auth edits, email,015/roles/buckets, rotations, builds or deployment.**
 
 Owner follow-up: original URL values and SMTP-enable status are now independently read.
 Still manual: redacted sender address/provider ownership; formal NGO ownership of backups,

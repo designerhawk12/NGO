@@ -1,0 +1,107 @@
+{
+  "status": "PROPOSAL ONLY; no deletion or configuration change authorized",
+  "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+  "teamId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+  "scope": "Only the 42 exact READY Preview IDs and five current Preview-only aliases listed below",
+  "prerequisites": [
+    "Owner/reviewers confirm no required active review/operator/bookmark dependencies, including open PR25/26",
+    "Re-read project/team identity; each target remains READY Preview in this project and not active Production",
+    "Re-resolve each alias; abort if any moved to Production, staging, another deployment or a different project",
+    "Verify stable Production deployment and both aliases unchanged; retain Git source/history and sanitized evidence"
+  ],
+  "deploymentIds": [
+    "dpl_28RM9mtJ5AxFJttybB7xntRgRRTd",
+    "dpl_2VkFDfWDM5qgEsNqx4Ybry4hAWQg",
+    "dpl_2wBnJ2swiSjypjfTuDs9oWZf2Fwa",
+    "dpl_3ccCf3HrY9iApuDJjmhWAt3x4rCs",
+    "dpl_4qU4ouzTNPGdn1tkvVsi4RsE8yzG",
+    "dpl_56EzLXSRZaResE6sUA2R9PeBvbkj",
+    "dpl_58fqbEZ2c4TGV3mtjZ7or9V4U28Q",
+    "dpl_5cbzb1BEKqWL8xy6vtEuoiYxstUf",
+    "dpl_6NJ9s73yd8m94DCy5N4YJ9JzR9ak",
+    "dpl_6nQQ21fj4JqUUzyhMxfiVDtBxUx7",
+    "dpl_6qhbUmCVmMkNXkFpyMq2yBXQuf5W",
+    "dpl_6QhzmLGvDKG8L2bZnfB6X1118444",
+    "dpl_7RgDCKNxHxpaiUa2qGz88pxpDuXS",
+    "dpl_7XNW6D1JqXGdCoVaUWdAHUH7xh8P",
+    "dpl_7ZYicErsWho7JfNL9BRhiiEJqniQ",
+    "dpl_8abaMWVSBcvRRNSzLC5H1oWEu78y",
+    "dpl_8dWurx1gVUpjUWGPs5B5fawtUZQU",
+    "dpl_8iH4tAHask8XWozdr62LUFRhcjZt",
+    "dpl_96bbfeyS2rUxWn9yvhehzZS2Fgc8",
+    "dpl_9EKEqiFnrvt2KXFVLKWRQMHEUL75",
+    "dpl_9kC6BxaHDdSsaNCDMCSnxGEqrXDJ",
+    "dpl_9MeyLBSqXD8r9FA6CH2XYK19dKia",
+    "dpl_Adox9TZ5TtoDwNr8c1wnKkFHvv16",
+    "dpl_Aeu3LSE6V9h7iyFR3z6vPG8MfZfe",
+    "dpl_ALcWeHgfr2mQzGaDPqZYFLakJnn8",
+    "dpl_AVW7JXsg3D3EWFVaVFTJCTxdW2so",
+    "dpl_AwUaLVegnRUQt9w47to7r2UxL4fy",
+    "dpl_CKxCdGCskBxW8EZRDPVV6gqfDK9P",
+    "dpl_CQwfGXfYdcYdaZKajajMhmyr8GKv",
+    "dpl_D4AEbTeEmTSqpSswRofqXUb1h1gR",
+    "dpl_D4eqkJXcPAFtuN41uJ37wTCRdbFy",
+    "dpl_DKYEhzEw7wP5iwBUw2V8eMcVZUQE",
+    "dpl_DtMkg6vTq3ZV9whRTKYvjACXH4DA",
+    "dpl_E8GjSbLXAF8busWxsPL6b37ryxnD",
+    "dpl_FqPr2iNWg424shQBnRs6ghboAYe1",
+    "dpl_G6Chk7wGN9rJoa7wcvn4Q17h2Pkr",
+    "dpl_GEyaVSX1J23QtS88fMdJpmwzj5zi",
+    "dpl_Gi14XH9cawMk7ifquDQUFh41o5Pt",
+    "dpl_Hf4beukB5h8p5q6AChP6Ss7JtWWd",
+    "dpl_HgcQRX7cKE2JQgFpcX9PCf7AzXY4",
+    "dpl_NfcFgohu5HZBVrpoGF2FCd3c8ZSZ",
+    "dpl_wXbuVcN7v7riLGbPocXv7foETq99"
+  ],
+  "aliases": [
+    {
+      "host": "ngo-git-fix-ist-donation-times-equinox10.vercel.app",
+      "expectedDeploymentId": "dpl_8iH4tAHask8XWozdr62LUFRhcjZt"
+    },
+    {
+      "host": "ngo-git-codex-driver-details-equinox10.vercel.app",
+      "expectedDeploymentId": "dpl_AVW7JXsg3D3EWFVaVFTJCTxdW2so"
+    },
+    {
+      "host": "ngo-git-feature-vehicle-tracking-equinox10.vercel.app",
+      "expectedDeploymentId": "dpl_CQwfGXfYdcYdaZKajajMhmyr8GKv"
+    },
+    {
+      "host": "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app",
+      "expectedDeploymentId": "dpl_DtMkg6vTq3ZV9whRTKYvjACXH4DA"
+    },
+    {
+      "host": "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app",
+      "expectedDeploymentId": "dpl_wXbuVcN7v7riLGbPocXv7foETq99"
+    }
+  ],
+  "preserve": {
+    "activeProductionDeployment": "dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR",
+    "productionAliases": [
+      "ngo-eight-umber.vercel.app",
+      "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+    ],
+    "stagingProjectIds": [
+      "prj_W1MrwAqFsWTFohHs6UXR2fo1EEIL",
+      "prj_Nd3YLsJkOYjlZMPLmFZw9MFG88Ul"
+    ],
+    "allOtherDeployments": true,
+    "repositoryBranchesAndCommits": true,
+    "allCredentials": true,
+    "allDatabaseRecords": true
+  },
+  "actions": [
+    "Delete only the exact listed Preview deployments after explicit approval and prerequisite attestation",
+    "Remove only the five listed Preview-only aliases if they are not automatically removed, after confirming expected mapping",
+    "Verify retired URLs unavailable, stable Production health/aliases/deployment intact, no new deployments/promotions and staging unchanged"
+  ],
+  "impact": "Preview reviewers/bookmarks/PR deployment links may stop working; old Preview artifacts cease to be available for rollback. Production and staging must remain available. Required-use confirmation is not inferred from protection or absence of known traffic.",
+  "notIncluded": [
+    "Auth settings",
+    "SMTP/email tests",
+    "credential rotation",
+    "Production/staging deployment",
+    "database writes/migrations",
+    "backup/key transfers"
+  ]
+}
