@@ -8,7 +8,10 @@ export function androidRelease() {
   if (process.env.ANDROID_RELEASE_APPROVED !== 'true' || !url || !version || !buildId || !sha256 || !/^[a-f0-9]{64}$/i.test(sha256)) return pending;
   try {
     const parsed = new URL(url);
-    if (parsed.origin !== new URL(process.env.SUPABASE_URL ?? '').origin || parsed.protocol !== 'https:' || parsed.search || parsed.hash || parsed.username || parsed.password || !parsed.pathname.startsWith('/storage/v1/object/public/mobile-releases/') || !parsed.pathname.endsWith('.apk')) return pending;
+    if (parsed.protocol !== 'https:' || parsed.search || parsed.hash || parsed.username || parsed.password) return pending;
+    const expoArtifact = parsed.origin === 'https://expo.dev' && /^\/artifacts\/eas\/[A-Za-z0-9_-]+\.apk$/.test(parsed.pathname);
+    const hostedRelease = parsed.origin === new URL(process.env.SUPABASE_URL ?? '').origin && parsed.pathname.startsWith('/storage/v1/object/public/mobile-releases/') && parsed.pathname.endsWith('.apk');
+    if (!expoArtifact && !hostedRelease) return pending;
     return { ...pending, available: true, version, buildId, sha256, url };
   } catch { return pending; }
 }
