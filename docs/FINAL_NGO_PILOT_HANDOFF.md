@@ -7,6 +7,13 @@ Donor defects from unknown runtime/Auth/SMTP facts. Guarded runtime SQL and oper
 handover prepared;4/4 synthetic encryption/key-preservation tests passed. Application
 candidate remains580801e; Production unchanged. No key export or backup upload authorized.
 
+Read-only Dashboard follow-up: Site URLngo-equinox10.vercel.app and all seven redirect
+entries are now recorded in final gates; broad Preview wildcards need owner review.
+Custom SMTP switchon/sender name AahaaraConnect NGO verified; sender email tool-redacted,
+delivery untested. Ownership and proposed organization Drive/OneDrive plus separate vault
+custody remain pending. No settings/save/send/transfer action occurred; isolation approval
+is still outstanding. No need to repeat the backup restore or application test suite.
+
 ## Session and release boundary
 
 - Workspace: `C:\Users\desig\Projects\aaharaconnect-ngo-recovery`.

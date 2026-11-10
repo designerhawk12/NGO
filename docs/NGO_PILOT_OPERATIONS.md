@@ -25,6 +25,13 @@ backup and independent key custody. No organizational contact or credential is i
 Operator acceptance must confirm platform/service ownership, escalation coverage,
 maintenance communication and retention/recovery responsibilities before release.
 
+Owner follow-up: formal NGO ownership of backups, deployments and account recovery is
+not yet confirmed. Personal developer accounts do not establish permanent NGO custody.
+Proposed off-device destination is a restricted organization-managed Drive/OneDrive folder,
+with separate organization password-manager key recovery; folder, vault, access lists and
+custodians still need approval. No transfer/export has occurred. Production custom SMTP
+is enabled, but sender address/provider ownership and delivery still need confirmation.
+
 This guide describes the implemented workflows. Use it on the approved staging/pilot environment only after the release gates in `FINAL_PILOT_RELEASE_RUNBOOK.md` pass. Final pilot clearance has not been granted.
 
 ## Acceptance fixes and replacement Android — 2026-11-10

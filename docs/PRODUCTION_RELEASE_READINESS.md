@@ -137,10 +137,12 @@ references and Android keystore separately. Never put credentials or Auth hashes
 See [Supabase backups](https://supabase.com/docs/guides/platform/backups) and
 [logical recovery guidance](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore).
 
-Dashboard evidence still required: Database → Backups (confirm actual absence/options),
-Authentication → URL Configuration (Site URL and allowlist), Authentication → Email/SMTP
-settings (configured sender/provider, no password), and approved test-recipient readiness.
-No Production delivery is verified; staging SMTP success does not establish Production SMTP.
+Dashboard follow-up completed read-only: actual Site URL and all seven redirects are now
+recorded in [final gates](FINAL_PRODUCTION_GO_NO_GO.md); custom SMTP is enabled, sender
+name AahaaraConnect NGO. Sender email was tool-redacted and remains a manual confirmation,
+along with provider/domain ownership and approved test-recipient readiness. No Production
+delivery is verified; staging SMTP success does not establish Production delivery. Broad
+redirect patterns/legacy Site URL need owner reconciliation before any approved change.
 
 ## E. Security and Production configuration plan
 

@@ -20,7 +20,7 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 | --- | --- | --- | --- | --- |
 | Encrypted backup integrity | **PASS**: SHA256 still `63efae09259219a9dca0d8844ce0ded581b0bd8c83f020b141656623db25316f` | Retain immutable archive, manifest, sidecars, tools and separate protected key | Backup custodian, name unconfirmed | Yes; verified locally |
 | Isolated logical restore | **PASS**: prior45/45;73 table digests,319 constraints,14 migrations,14 Auth/11 app users; disposable tmpfs container removed | No need to repeat absent new evidence | Integration maintainer | Yes; completed |
-| Off-device recovery | **BLOCKED**: only development-computer copy; DPAPI key depends on original Windows profile | Approve named organization-controlled destination and independent portable key escrow; test recovery on another approved machine | NGO backup owner + independent key custodian, both unconfirmed | Yes, but external transfer/key export requires approval |
+| Off-device recovery | **BLOCKED**: only development-computer copy; DPAPI key depends on original Windows profile. Owner proposes organization-managed Drive/OneDrive plus separate organization password manager; no destination approved | Identify tenant/folder/access list and independent vault recovery ownership, then approve transfer/key escrow; test replacement-machine recovery | NGO backup owner + independent key custodian, both unconfirmed | Yes, but external transfer/key export requires approval |
 | Preview isolation | **FAIL**: Production DB/public Supabase/CA/CORS entries share Production+Preview scopes | Prevent Git Preview builds, remove Preview bindings under approval, review existing protected previews; old artifacts keep frozen bindings | Vercel/Git owner + integration maintainer | No; correction is hosted configuration |
 | Recovery-branch push safety | **PASS**: existing `git.deploymentEnabled["integration/ngo-recovery"]=false` preserved; CI pushes only main/develop | Keep guard; never merge or manually deploy by inference | Integration maintainer | Yes |
 | Production deploy governance | **BLOCKED**: configured Production branch main, repo default develop, active source integration/b7b321c | Owner approves immutable manual release and project-scoped automatic-deploy freeze; do not merge just to align names | Git/Vercel owner, unconfirmed | Planning yes; hosted controls need approval |
@@ -30,7 +30,8 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 |015 and private Storage readiness | **BLOCKED**: only015 pending; Production buckets/policies0 | Approve015 exact checksum, restricted runtime and two private buckets; never publish proof/photo storage | Integration + Volunteer owners | No for provisioning |
 | Admin/account mappings | **PASS**: requested original Admin exists/confirmed/linkedADMIN/not disabled;14 Auth,11 app users,0 orphan app links | Password not tested; preserve every UUID/password/role/approval/history. Owner triage3 unmapped Auth identities | NGO Admin + integration maintainer | Read-only evidence yes |
 | Production Auth policy inspection | **PASS**, partial: public settings200, email provider enabled, disable_signup=false, mailer_autoconfirm=false | Email confirmation required. This does not prove SMTP or URLs | Auth owner | Yes |
-| Production Auth URLs / SMTP presence | **NOT VERIFIED**: no config read capability in connected MCP; public settings omit URLs/SMTP | Supply Dashboard facts below; do not infer from staging | Supabase/Auth owner, unconfirmed | Yes, Dashboard reads only |
+| Production Auth URLs | **BLOCKED** for release reconciliation: Dashboard Site URL is ngo-equinox10.vercel.app, not the frozen release origin; seven redirects include preview-host wildcards. Exact invite/reset callbacks are present; no broken login is inferred | Owner confirms legacy-alias requirements; approve canonical Site URL and narrowed allowlist without breaking outstanding legitimate links | Supabase/Auth owner, unconfirmed | Inspection complete; correction needs Production configuration approval |
+| Custom SMTP presence | **PASS** for configuration only: Dashboard Enable custom SMTP switch is on; sender name AahaaraConnect NGO | Sender email was tool-redacted: owner must manually confirm address/domain/provider ownership. Delivery remains untested | Auth/mail owner, unconfirmed | Yes; no credential reveal or email needed |
 | Production email delivery | **NOT VERIFIED**: no Production email sent | Separate authorized recipient/fixture/invite/reset test and confirmed receipts/callbacks | Auth owner + recipient | Delivery can create Auth/app records; explicit approval required |
 | Public Volunteer registration | **BLOCKED**: current Production flagtrue; new proof/Storage prerequisites absent | Pause during approved cutover; re-enable only with proof/rate/deduplication and confirmed Production SMTP | Integration + NGO operator | No flag change authorized now |
 | Current Donor web routing | **FAIL**: old Production donor artifact references foreign Auth project oneiwcfdnqzcyfvxufhc | Candidate fixes env substitution; never test credentials on old page or access foreign project | Food/Donor + integration owner | Local fix already present; deploy requires approval |
@@ -82,11 +83,13 @@ independent proof of every historical function's connection target.
 
 ## Off-device strategy and laptop-loss recovery
 
-**Proposed suitable destination:** NGO-owned hardware-encrypted removable media kept in
-an NGO-controlled off-site safe, with an inventory/media ID, named custodian and approved
-access list. This is a recommendation, not an identified existing asset. Alternatively,
-the NGO may nominate its access-restricted managed backup store with MFA/audit/retention;
-no account/subscription or upload is created now. Avoid personal drives/public links.
+**Owner-proposed destination:** restricted folder in an organization-managed Google Drive
+or OneDrive, with key recovery in a separate organization-controlled password manager.
+No actual tenant/folder/vault/access list has been approved. Supply the organization/tenant,
+Shared Drive or SharePoint/OneDrive library and folder ID, managing account, backup and
+key custodians, authorized recovery users, MFA, no-public-link policy, audit/retention and
+vault emergency recovery ownership. Personal developer accounts are not accepted as
+permanent NGO custody. No connector, upload, subscription or key export is initiated.
 
 Keep key custody independent of both laptop and backup destination. Copying the DPAPI
 file alone is insufficient. Under a separate explicit export approval, decrypt the AES
@@ -94,6 +97,8 @@ key only in trusted memory and wrap it with an organization-controlled RSA-OAEP-
 public key (3072-bit or stronger), or place it in an approved organization secret vault.
 Verify certificate/public-key fingerprint and separate private-key recovery ownership
 before export. Never store plaintext key/password beside the archive or send it in chat.
+If using the organization password manager, a future approved import must use its supported
+CLI/API directly from trusted memory, not chat, clipboard or plaintext temporary files.
 The organization's recovery private key/vault recovery method must itself survive laptop
 loss and be tested by a second authorized custodian. No key wrapping/export occurred.
 
@@ -103,7 +108,7 @@ unwrap in memory on the replacement Windows host, protect under that host's DPAP
 update the **private** key locator; authenticate AES-GCM; run the offline RAM-backed
 restore verification. Do not restore over a live database. Record second-machine result.
 
-**Owner action needed now:** identify the media/store, custodian/access list and independent
+**Owner action needed now:** identify the cloud tenant/folder, custodian/access list and independent
 key escrow public-key fingerprint/vault recovery owner, then explicitly approve transfer
 and key export to those exact destinations. Until then this gate remainsBLOCKED.
 Original backup/archive/key are unchanged and remain outside Git.
@@ -141,12 +146,39 @@ No live Production document/upload/GPS mutation tests are authorized in this pha
 
 ## Auth/SMTP evidence and controlled delivery plan
 
-DashboardNGO → Authentication → URL Configuration: record actual Site URL/redirect list.
-Desired origin `https://ngo-eight-umber.vercel.app`, exact `/accept-invite` and
-`/reset-password`. Inspect Email/SMTP settings: configured status, sender address/domain,
-provider verification/rate limits and template/link settings; omit credentials. Capture
-non-secret facts or redacted screenshots. Existing Vercel invitation redirect is opaque;
-public settings do not prove the effective value. Staging SMTP success is not Production proof.
+Read-only authenticated in-app browser inspection on2026-11-10 positively displayed
+projectNGO and refpyzyxgpcfwpcqyqrihuo in the Dashboard URL. This resolves the earlier
+MCP capability gap; it does not authorize settings changes. No form field was edited,
+Save remained disabled and no email was sent. Native Brave URL-verification limitations
+were not bypassed; the supported in-app browser exposed the exact project URL.
+
+**Current Site URL:** `https://ngo-equinox10.vercel.app/`.
+**Current allowed redirects (all seven, unchanged):**
+
+- `https://ngo-eight-umber.vercel.app/accept-invite`
+- `https://ngo-eight-umber.vercel.app/reset-password`
+- `https://ngo-equinox10.vercel.app/`
+- `https://ngo-equinox10.vercel.app/**`
+- `https://ngo-*-equinox10.vercel.app`
+- `https://ngo-*-equinox10.vercel.app/**`
+- `https://ngo-eight-umber.vercel.app/**`
+
+The default URL differs from the frozen release origin, and matching preview hosts are
+allowed Auth callbacks. Combined with Preview bindings, this increases the risk of users
+authenticating through a non-approved frontend. No actual token theft or broken legacy
+alias is claimed. Owner must establish which old aliases/outstanding callbacks remain
+legitimate before approving a narrowed allowlist. Desired future canonical origin remains
+`https://ngo-eight-umber.vercel.app` with exact invite/reset callbacks; nothing was substituted.
+
+**SMTP:** Enable custom SMTP switchon; sender name`AahaaraConnect NGO`; sender email value
+was redacted by the tool and was not bypassed/reconstructed. No SMTP username/password
+was displayed or retained. Custom SMTP configuration presence is verified; sender address,
+provider/domain ownership and actual delivery remainNOT VERIFIED. Existing Vercel invitation
+redirect is still opaque; Dashboard allowlisting alone does not prove that runtime value.
+Staging delivery success does not establish Production delivery. Owner must manually
+confirm sender address/domain, provider verification/rate limits/template links and mail
+service ownership without disclosing credentials. See
+[Supabase SMTP guidance](https://supabase.com/docs/guides/auth/auth-smtp).
 
 Admin mapping was rechecked read-only; original password remains untested/unmodified.
 Email confirmation is required. Existing UUIDs, roles, passwords, approval history and
@@ -224,3 +256,9 @@ In the same response, supply the non-secret Dashboard/ownership facts and exact 
 off-device destination/key-custody identifiers. Transfer/export requires its own concrete
 destination-specific approval after those facts are available. **This is not a request
 to approve015, roles, buckets, Auth/SMTP edits, email tests, builds or the Production release.**
+
+Owner follow-up: original URL values and SMTP-enable status are now independently read.
+Still manual: redacted sender address/provider ownership; formal NGO ownership of backups,
+deployments and account recovery; cloud folder/vault custody identifiers. All remain pending
+organizational handover, not inferred from personal developer access. The owner did not
+approve the proposed isolation correction; it remains a proposal, not an executable task.
