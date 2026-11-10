@@ -1,5 +1,11 @@
 # AaharaConnect NGO pilot operator guide
 
+SMTP acceptance is currently **BLOCKED by the no-send decision**. Both supplied test
+addresses already exist and must not be reset/reinvited for acceptance. No synthetic
+identity or message was created. A new unused mailbox and plain sender-account
+authorization would need later explicit approval; do not resume from the earlier
+template/placeholders. See [actual preflight report](PRODUCTION_SMTP_DELIVERY_ACCEPTANCE.md).
+
 Production Auth default landing now uses `https://ngo-eight-umber.vercel.app/` after the
 approved single-field fix. All seven redirects are preserved. Sender/provider ownership
 and actual mail delivery remain unverified; see the

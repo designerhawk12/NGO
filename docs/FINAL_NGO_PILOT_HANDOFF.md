@@ -1,5 +1,13 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest SMTP delivery acceptance checkpoint (2026-11-10): preflight verified canonical
+Site URL, two exact callbacks, Google SMTPsmtp.gmail.com:587 enabled and token-free route
+availability. Both supplied addresses already exist in Production; neither was modified.
+Proposed unused alias was not authorized; latest user decision“No—keep sending blocked.”
+Zero invitations/resets/new identities; no credential retrieval or write/config change.
+Gate remainsBLOCKED; [report](PRODUCTION_SMTP_DELIVERY_ACCEPTANCE.md) stores sanitized
+checks and next approval requirements without personal emails/passwords/tokens.
+
 Latest authorized Site URL-only correction (2026-11-10): Production Supabase default
 Auth URL changed fromngo-equinox10.vercel.app/ tohttps://ngo-eight-umber.vercel.app/.
 Saved/reloaded; all seven redirects unchanged.14 Auth/11 app users, role mappings,

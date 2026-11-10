@@ -1,0 +1,22 @@
+{
+  "firstProvidedRecipient": {
+    "authMatches": 1,
+    "linkedApplicationAccounts": 1,
+    "eligibleAsNewSyntheticIdentity": false
+  },
+  "secondProvidedRecipient": {
+    "authMatches": 1,
+    "linkedApplicationAccounts": 1,
+    "eligibleAsNewSyntheticIdentity": false
+  },
+  "proposedUnusedAlias": {
+    "authMatches": 0,
+    "linkedApplicationAccounts": 0,
+    "sendAuthorizationGranted": false
+  },
+  "lastUserDecision": "No—keep sending blocked",
+  "emailsSent": 0,
+  "syntheticIdentitiesCreated": 0,
+  "existingAccountsModified": 0,
+  "gate": "BLOCKED"
+}

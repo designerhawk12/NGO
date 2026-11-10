@@ -8,6 +8,15 @@ No015, database permission/SMTP change, email, deployment, build, backup transfe
 or key export occurred. Existing backup was hashed, not restored again. The subsequent
 single-field Auth Site URL correction is separately approved and complete as recorded below.
 
+**Latest SMTP acceptance checkpoint:** read-only preflight complete; corrected Site URL,
+exact callbacks and Google SMTP host/587 verified, but delivery gate is **BLOCKED**.
+Both concrete supplied recipients already have Production Auth/app accounts and were
+preserved. An unused proposed alias was not authorized; latest user decision was
+“No—keep sending blocked.” Zero emails, new identities or account changes. Sender
+account/use authorization remains unconfirmed. See
+[SMTP acceptance report](PRODUCTION_SMTP_DELIVERY_ACCEPTANCE.md). Do not send or create
+an identity until a later concrete approval and all sender/recipient gates pass.
+
 **Latest authorized Auth correction:** default Site URL is now
 `https://ngo-eight-umber.vercel.app/`, verified after Dashboard reload. All seven allowed
 redirects remain exactly unchanged.14 Auth users/11 app users, identities, stored sessions,
@@ -65,8 +74,8 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 | Production Auth policy inspection | **PASS**, partial: public settings200, email provider enabled, disable_signup=false, mailer_autoconfirm=false | Email confirmation required. This does not prove SMTP or URLs | Auth owner | Yes |
 | Production Auth default Site URL | **PASS**: exact approved canonical URL saved/reloaded, homepage200, seven redirects and account/session state preserved | Default landing fixed; actual invitation/reset delivery still needs authorized mailbox test | Supabase/Auth owner, formal NGO ownership unconfirmed | Approved single-field correction complete |
 | Legacy Auth redirect allowlist | **BLOCKED** for narrowing: all seven entries intentionally unchanged, including old-origin and wildcard entries | Operator dependency/outstanding-link review and separate approval required before any removal | Supabase/Auth owner + operators | Review yes; no redirect edits authorized |
-| Custom SMTP presence | **PASS** for configuration only: Dashboard Enable custom SMTP switch is on; sender name AahaaraConnect NGO | Sender email was tool-redacted: owner must manually confirm address/domain/provider ownership. Delivery remains untested | Auth/mail owner, unconfirmed | Yes; no credential reveal or email needed |
-| Production email delivery | **NOT VERIFIED**: no Production email sent | Separate authorized recipient/fixture/invite/reset test and confirmed receipts/callbacks | Auth owner + recipient | Delivery can create Auth/app records; explicit approval required |
+| Custom SMTP presence | **PASS** for configuration only: SMTPon, smtp.gmail.com:587, sender name AahaaraConnect NGO | Sender address tool-redacted; confirm actual account/address authorization and provider ownership. Display name is not a DNS domain. No SMTP credential inspected | Auth/mail owner, unconfirmed | Read-only preflight complete |
+| Production SMTP delivery | **BLOCKED**: zero emails; both supplied addresses already exist; unused candidate authorization declined. No synthetic identity exists | Keep sending blocked; later explicit unused-recipient approval and sender authorization required before one invite/one reset | Auth owner + recipient | Read-only checks complete; email/account activity not currently authorized |
 | Public Volunteer registration | **BLOCKED**: current Production flagtrue; new proof/Storage prerequisites absent | Pause during approved cutover; re-enable only with proof/rate/deduplication and confirmed Production SMTP | Integration + NGO operator | No flag change authorized now |
 | Current Donor web routing | **FAIL**: old Production donor artifact references foreign Auth project oneiwcfdnqzcyfvxufhc | Candidate fixes env substitution; never test credentials on old page or access foreign project | Food/Donor + integration owner | Local fix already present; deploy requires approval |
 | Operator handover | **BLOCKED**:3 expired nonterminal assignments; named owners/contacts not supplied | Decide safe handover through normal approved workflow; never auto-extend food windows/cancel history | NGO dispatch/food-safety lead | Planning yes; business actions need owner authorization |
