@@ -95,7 +95,11 @@ async function backup() {
     if(r.status!==0) {fs.writeFileSync(path.join(dir,'failure-details.gcm'),encrypt(Buffer.concat([r.stderr||Buffer.alloc(0),Buffer.from(String(r.error?.code||''))]),key));throw Error('pg_dump failed; diagnostic encrypted privately');}
     if(r.stderr.length)fs.writeFileSync(path.join(dir,'dump-warnings.gcm'),encrypt(r.stderr,key));
     if(r.stdout.subarray(0,5).toString()!=='PGDMP')throw Error('Archive signature');
-    const encrypted = encrypt(r.stdout,key);fs.writeFileSync(path.join(dir,'database.dump.gcm'),encrypted,{flag:'wx'});
+    const encrypted = encrypt(r.stdout,key);
+    const recoveredArchive=decrypt(encrypted,key);
+    if(!crypto.timingSafeEqual(recoveredArchive,r.stdout))throw Error('Encrypted archive integrity');
+    recoveredArchive.fill(0);
+    fs.writeFileSync(path.join(dir,'database.dump.gcm'),encrypted,{flag:'wx'});
     fs.writeFileSync(path.join(dir,'snapshot-metadata.json.gcm'),encrypt(Buffer.from(JSON.stringify(metadata)),key),{flag:'wx'});
     const clusterBytes=encrypt(Buffer.from(JSON.stringify({capturedUtc:started,settings:metadata.clusterSettings})),key);
     fs.writeFileSync(path.join(dir,'cluster-settings.json.gcm'),clusterBytes,{flag:'wx'});
@@ -104,8 +108,10 @@ async function backup() {
     fs.writeFileSync(path.join(dir,'manifest.json'),JSON.stringify(manifest,null,2),{flag:'wx'});
     r.stdout.fill(0);
     await client.query('ROLLBACK');
-    console.log(JSON.stringify({phase:'encrypted-backup-complete',directory:dir,...manifest}));
+    if(sha(fs.readFileSync(path.join(dir,'database.dump.gcm')))!==manifest.sha256)throw Error('Persisted archive checksum');
+    console.log(JSON.stringify({phase:'encrypted-backup-complete',directory:dir,sha256:manifest.sha256,encryptedBytes:manifest.encryptedBytes}));
+    return {directory:dir,manifest};
   } finally {key.fill(0);await client.end();}
 }
 if(require.main===module){if(process.argv[2]!=='backup')throw Error('Explicit backup action required');backup().catch(e=>{console.error(JSON.stringify({failed:true,error:e.message.startsWith('pg_dump failed')?e.message:'Recovery safety/tooling check failed',code:e.code||null}));process.exitCode=1;});}
-module.exports={decrypt,encrypt,protectedKey,sha,image,base,snapshot,config};
+module.exports={decrypt,encrypt,protectedKey,sha,image,base,snapshot,config,backup};

@@ -120,6 +120,41 @@ afterEach(async () => {
 });
 
 describe('migration runner ledger reconciliation', () => {
+  it('runs maintenance hooks on the migration-owning client before commit', async () => {
+    const order: string[] = [];
+    await runMigrations('up', {
+      before: async client => { expect(client).toBe(state.client); order.push('locked'); },
+      after: async client => {
+        expect(client).toBe(state.client);
+        expect(state.transactionEvents).toEqual(['BEGIN']);
+        expect(state.migrationExecutions.length).toBeGreaterThan(0);
+        order.push('verified');
+      },
+    });
+    expect(order).toEqual(['locked', 'verified']);
+    expect(state.transactionEvents).toEqual(['BEGIN', 'COMMIT']);
+  });
+
+  it('fails closed before SQL when the approved pending set differs', async () => {
+    await expect(runMigrations('up', { expectedPending: { '015_final_pilot.sql': '0'.repeat(64) } }))
+      .rejects.toThrow('Pending migration set/checksum differs');
+    expect(state.migrationExecutions).toEqual([]);
+    expectRollback();
+  });
+
+  it('rolls back migration when preservation verification fails', async () => {
+    await expect(runMigrations('up', { after: async () => { throw Error('preservation failed'); } }))
+      .rejects.toThrow('preservation failed');
+    expectRollback();
+  });
+
+  it('does not execute migrations when maintenance acquisition fails', async () => {
+    await expect(runMigrations('up', { before: async () => { throw Error('lock lost'); } }))
+      .rejects.toThrow('lock lost');
+    expect(state.migrationExecutions).toEqual([]);
+    expectRollback();
+  });
+
   it('bootstraps a fresh ledger without inventing a historical 005 record', async () => {
     await runMigrations('up');
 

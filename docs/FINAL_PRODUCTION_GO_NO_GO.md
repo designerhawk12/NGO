@@ -1,5 +1,48 @@
 # Final Production release gates — 2026-11-10
 
+## Approved orchestration execution — stopped safely, 2026-11-10
+
+Minimal runner extension adds before/after hooks on its existing transaction/client and
+exact expected-pending/checksum gate; no second migration ledger, no015 SQL change.
+Server build PASS; focused migrationRunner15/15 PASS. Disposable localhost PG17 synthetic
+rehearsal PASS: same-session locks, snapshot pg_dump under locks, verification-failure
+rollback of015 DDL/ledger, successful015 transaction, projected original-row preservation,
+and overlapping Auth SHARE-lock bridge retained across commit/released explicitly.
+Backup helper now authenticates its actual encrypted archive before accepting it and
+checks persisted ciphertext hash; affected crypto/DPAPI synthetic regression4/4 PASS.
+Initial synthetic harness directory/cluster-role setup defects were fixed before PASS.
+Disposable test container was removed; no Production data used in tests.
+
+Production maintenance enabled/published; public and operator-protected /me403 verified.
+Approved execution entered the existing runner transaction but failed before fresh backup
+and migration. Transaction and bridge rolled back/closed; no automatic Production retry.
+Read-only diagnosis: catalog array_agg(attname) returned name[] as a string to pg, not a
+JS array expected by preservation projection. Query now casts attname::text; shared
+maintenance-projection.cjs is exercised by both live wrapper and synthetic harness.
+Corrected exact projection passes disposable integration, including original columns
+across additive015. Startup missing API Auth/CORS configuration warning was nonfatal
+for the DB-only CLI; it was not evidence of deployed configuration failure.
+
+No fresh backup created;015 unapplied; no new roles/buckets/deployment. Existing live
+web source remains b7b321c; intended application deployment remains frozen580801e.
+Runner-only source differences are operational, not permission to deploy a different
+application tree. Migration checksum unchanged. Original encrypted backup/key untouched.
+
+Safely disabled/published ONLY temporary maintenance rule; active=false/no draft verified.
+Homepage/health/readiness200; anonymous /me401. Current counts: ledger14, app users11,
+donations8, assignments5, buckets0, planned roles0, orphan links0. Counts match previous
+aggregate evidence; do not claim a completed full-record post-migration comparison.
+Production remains NO-GO. Failure policy requires explicit resume after the failed live
+checkpoint; next action is authorize retry using corrected shared catalog projection.
+No SMTP activity, Android build, job changes, destructive rollback or data reset.
+
+For resumed rollout: app/Auth locks retained through backup+015 on runner client; separate
+Auth bridge acquired before commit preserves Auth pause afterward while Vercel denial
+and denied direct end-user app access protect the app. Check for unexpected direct admin
+transactions and stop on bridge loss. Operator must keep ingress denial until bounded
+acceptance is complete; no claim that transaction locks survive commit. Infrastructure
+and deployment remain unexecuted, not PASS based on synthetic evidence.
+
 ## Bounded maintenance verification — PASS, 2026-11-10
 
 Authorized scope was verification only; no015, backup, runtime role, bucket or deployment.

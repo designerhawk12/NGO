@@ -2,6 +2,13 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { withTransaction } from './pool';
+import type { PoolClient } from 'pg';
+
+export type MigrationHooks = {
+  before?: (client: PoolClient) => Promise<void>;
+  after?: (client: PoolClient) => Promise<void>;
+  expectedPending?: Record<string, string>;
+};
 
 export type MigrationMode = 'up' | 'status';
 
@@ -11,9 +18,10 @@ const verifiedHistoricalMigration = {
   checksum: '94bab7ac366215d29fd7346ed61ffb929a9858acb8cf2a6e58f5b8055080e94c',
 } as const;
 
-export async function runMigrations(mode: MigrationMode): Promise<void> {
+export async function runMigrations(mode: MigrationMode, hooks: MigrationHooks = {}): Promise<void> {
   await withTransaction(async client => {
     await client.query('SELECT pg_advisory_xact_lock(29017, 1)');
+    await hooks.before?.(client);
     if (mode === 'up') {
       await client.query('CREATE SCHEMA IF NOT EXISTS app');
       await client.query(
@@ -84,6 +92,14 @@ export async function runMigrations(mode: MigrationMode): Promise<void> {
       }
     }
 
+    if (hooks.expectedPending) {
+      const pending = files.filter(name => !existing.has(name));
+      if (JSON.stringify(pending) !== JSON.stringify(Object.keys(hooks.expectedPending).sort())
+        || pending.some(name => migrationContents.get(name)!.checksum !== hooks.expectedPending![name])) {
+        throw new Error('Pending migration set/checksum differs from approved execution.');
+      }
+    }
+
     for (const name of files) {
       const migration = migrationContents.get(name)!;
       if (existing.has(name)) {
@@ -99,5 +115,6 @@ export async function runMigrations(mode: MigrationMode): Promise<void> {
         console.info('pending ' + name);
       }
     }
+    await hooks.after?.(client);
   });
 }
