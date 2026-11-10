@@ -1,5 +1,10 @@
 # Approved Production / Preview isolation correction — 2026-11-10
 
+Subsequent approved historical retirement is complete: exact42 Preview deployments and
+5 aliases removed;47 URLs404; live Production/staging and32 other deployments preserved.
+See [retirement evidence](HISTORICAL_PREVIEW_RETIREMENT.md). The residual-preview section
+below records the earlier before-state, not an instruction to delete further resources.
+
 **PASS for the approved correction. Production release remains NO-GO.**
 Only Vercel project `ngo` / `prj_6BuwhBiISjTlzgGtqG2arEXqOXGl`, teamequinox10 /
 `team_lRAI0kP7NNOxCUPBitJQ3d95`, was changed. No staging, database, Auth/SMTP,

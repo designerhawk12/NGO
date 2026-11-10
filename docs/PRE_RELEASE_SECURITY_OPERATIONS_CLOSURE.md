@@ -1,5 +1,11 @@
 # Final security and operations preparation — 2026-11-10
 
+Subsequent explicit retirement approval was executed successfully; see
+[HISTORICAL_PREVIEW_RETIREMENT.md](HISTORICAL_PREVIEW_RETIREMENT.md). Exactly42 IDs and
+5 aliases retired,47 URLs404,32 others/Production/staging unchanged. Proposal/read-only
+wording below is preserved as the earlier preparation checkpoint; it grants no further
+deletion or release authority. Remaining Auth/SMTP/custody/release gates still apply.
+
 **Production release NO-GO.** This pass used read-only Vercel/GitHub/HTTP/Dashboard
 inspection and local documentation only. No deletion, credential read/decryption/rotation,
 Auth/email/configuration change, database write, build/deploy, backup transfer or key export.

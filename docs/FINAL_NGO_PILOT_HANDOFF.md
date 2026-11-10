@@ -1,5 +1,14 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest authorized retirement checkpoint (2026-11-10): exact42 historical Preview
+deployments and5 aliases removed after all-target revalidation and explicit operator/
+reviewer confirmation. All47 URLs404;32 other deployments and both Production aliases,
+settings and staging preserved. Health200/anonymousme401, no new deployment/promotion.
+One hostname-form alias request failed; after read-only investigation all5 UID-form
+removals passed. Failure and successful actions retained in
+[HISTORICAL_PREVIEW_RETIREMENT.md](HISTORICAL_PREVIEW_RETIREMENT.md). Production release
+remainsNO-GO; no015/Auth/SMTP/env/Storage/database/build/transfer/key/Git-branch changes.
+
 Latest read-only security/operations closure (2026-11-10):42 Preview deployments assessed,
 89 HTTP checks all302 to Vercel authentication,5 current Preview aliases allprotected,
 no custom-domain Preview binding,22 DB/Supabase binding-name inventories. Exact42-ID/5-alias

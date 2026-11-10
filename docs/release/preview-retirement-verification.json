@@ -1,0 +1,567 @@
+{
+  "verifiedUtc": "2026-11-10T05:22:54.119Z",
+  "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+  "teamId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+  "manifestSha256": "5f21b22a766cccda0f7251382aa4684e13061e001a5d89a4d4862a2f29f36ba2",
+  "passed": true,
+  "checks": {
+    "all42DeleteActionsVerified": true,
+    "all42AbsentFromCompleteInventory": true,
+    "all5AliasActionsVerified": true,
+    "all5AliasesAbsentOrDeleted": true,
+    "everyOtherDeploymentUnchanged": true,
+    "productionActiveDeploymentUnchanged": true,
+    "productionAliasesUnchanged": true,
+    "productionSettingsAndEnvironmentMetadataUnchanged": true,
+    "stagingProjectsAndDeploymentsUnchanged": true,
+    "gitRemainsDisconnected": true,
+    "productionHealthAndAnonymousRestrictionPass": true
+  },
+  "successfulDeploymentDeletions": 42,
+  "successfulAliasRemovals": 5,
+  "failedRequests": [
+    {
+      "error": "Vercel operation failed: DELETE /v2/aliases/ngo-git-fix-ist-donation-times-equinox10.vercel.app",
+      "occurredUtc": "2026-11-10T05:13:47.133Z"
+    }
+  ],
+  "failedRequestResolution": "Initial hostname-form alias DELETE failed. Read-only exact mapping revalidation followed by official UID-form deletion succeeded for all five; failure retained in original action log.",
+  "activeProductionDeployment": "dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR",
+  "productionAliases": [
+    "ngo-eight-umber.vercel.app",
+    "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+  ],
+  "remainingDeploymentCount": 32,
+  "remainingDeployments": [
+    {
+      "id": "dpl_2wRUjz9oeo5YHy8rH43XdErPhHSV",
+      "target": "production",
+      "state": "READY",
+      "created": 1793705164405,
+      "url": "ngo-4ghxwjbqt-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_2YRszXKtrr1Be6Q2Wa7CcUbrJoj4",
+      "target": "production",
+      "state": "READY",
+      "created": 1793526663804,
+      "url": "ngo-2rs2pkgw7-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_35dxu4vKGyXBLhVTxr31oxauf4WN",
+      "target": "production",
+      "state": "READY",
+      "created": 1793517902327,
+      "url": "ngo-m49k5f0cx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_3RW9briSMFCbBXAV7tL3e19pEPJM",
+      "target": "production",
+      "state": "READY",
+      "created": 1793387125001,
+      "url": "ngo-br72nypkx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR",
+      "target": "production",
+      "state": "READY",
+      "created": 1793985230252,
+      "url": "ngo-i2v03pslb-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_4Dy14GR4DNKyDofaTMRwCAuRdxE9",
+      "target": "production",
+      "state": "READY",
+      "created": 1793383626362,
+      "url": "ngo-3d70zxzqx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_4MnYeEnsTuP1Ed8DVJ4y7uX1EXuM",
+      "target": "production",
+      "state": "READY",
+      "created": 1793216031611,
+      "url": "ngo-8mzza6cvh-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_56CpxejcUCBhqGtBunYMfonJ22Rr",
+      "target": "production",
+      "state": "READY",
+      "created": 1793386378652,
+      "url": "ngo-5guh3w9vy-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_5k9HrtHZvPBVgKeYSQSBRwpmBNSQ",
+      "target": "production",
+      "state": "READY",
+      "created": 1793528149497,
+      "url": "ngo-2dw8uorh5-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_6fM6wxDsw5Er2KAa9uZ5RRGDcaU1",
+      "target": null,
+      "state": "ERROR",
+      "created": 1793522844468,
+      "url": "ngo-wipmt3ki3-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_7cfbuMgYpDQzT5ogEZq53pVSdADr",
+      "target": "production",
+      "state": "READY",
+      "created": 1793380852923,
+      "url": "ngo-djmmwglt2-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_7qiMBgmRfahBg8Y41JU4oussdYL4",
+      "target": "production",
+      "state": "READY",
+      "created": 1793384573369,
+      "url": "ngo-8s7i0gq80-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_8mCga2ryn3LbfZ3exxwuKXChtQTb",
+      "target": "production",
+      "state": "READY",
+      "created": 1793367833033,
+      "url": "ngo-cez91rfrs-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_8ooCNzvqj6BFNcs2SM2hzqyyj1TG",
+      "target": "production",
+      "state": "READY",
+      "created": 1793530056851,
+      "url": "ngo-hyspyxj5o-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_94Dayeyeaz6Uhf2ffKBGy3Dq9GX6",
+      "target": "production",
+      "state": "READY",
+      "created": 1793522337057,
+      "url": "ngo-r502yekxn-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_A17kSj8a14WJPuKCFT3Hgtkzw24g",
+      "target": "production",
+      "state": "READY",
+      "created": 1793519405090,
+      "url": "ngo-ayq8lu9kj-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_A8BG62nmmr9gphVYpBHMAN5zkcD6",
+      "target": "production",
+      "state": "READY",
+      "created": 1793515611063,
+      "url": "ngo-1e2w5nvq8-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_AP947urXckRqHftdFhPDURhNwz5p",
+      "target": "production",
+      "state": "READY",
+      "created": 1793812279235,
+      "url": "ngo-2gorydeb4-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_ArPNwDXL57byYbyaVT6ynKCzGQaF",
+      "target": "production",
+      "state": "READY",
+      "created": 1793521323019,
+      "url": "ngo-1wnz155oy-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_B3kPtUtxrfXFxVwCTrjGENkTbAAL",
+      "target": "production",
+      "state": "READY",
+      "created": 1793526444219,
+      "url": "ngo-luay46klp-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_BPGxFs5pN3zEmq5Vs9WC5BrjUrKU",
+      "target": "production",
+      "state": "READY",
+      "created": 1793530434388,
+      "url": "ngo-3xf30mh5y-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_BpvLjEhRprwPrxQZw3THzr8H4TNw",
+      "target": "production",
+      "state": "READY",
+      "created": 1793522364173,
+      "url": "ngo-mpz6t27bl-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_C4JJduq4QPZCgVMHoPaTiReMNQCm",
+      "target": "production",
+      "state": "READY",
+      "created": 1793906205386,
+      "url": "ngo-auql5uugq-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_CTgZJSRJQvf6BFUr2CgSnAaYifCQ",
+      "target": "production",
+      "state": "READY",
+      "created": 1793762673556,
+      "url": "ngo-aixkl3cgx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_D5TPJCiTGXn1pAawdGpk7upSQpv3",
+      "target": "production",
+      "state": "READY",
+      "created": 1793524560288,
+      "url": "ngo-lv86b5z69-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_EX3iQqWa3jCRm7VrxJLyeqyJKUgm",
+      "target": "production",
+      "state": "READY",
+      "created": 1793526096205,
+      "url": "ngo-f2b57f371-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_EyU4KxdKcJN8aVCWfUzAQMqCGx86",
+      "target": "production",
+      "state": "READY",
+      "created": 1793985034002,
+      "url": "ngo-r9vri5r9p-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_F4psXMB27AfzvE4Myiq4LNbjAQJx",
+      "target": "production",
+      "state": "READY",
+      "created": 1793518494139,
+      "url": "ngo-kno2zzzx3-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_FLpniwaduSFLZmhM684iXN7eTm8q",
+      "target": "production",
+      "state": "READY",
+      "created": 1793388934020,
+      "url": "ngo-3a1yz1ain-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_GmAPYXpMvnP5Q65YoJs1VZdRawkh",
+      "target": "production",
+      "state": "READY",
+      "created": 1793517695250,
+      "url": "ngo-8pxg9x35m-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_GTZT4VyEqUxVj9CsMF6EDcJ8fLqp",
+      "target": "production",
+      "state": "READY",
+      "created": 1793776473183,
+      "url": "ngo-i6zivks0u-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_Hrp2g3JMQjuo3H1nEdbAwQv36y1c",
+      "target": "production",
+      "state": "READY",
+      "created": 1793372542079,
+      "url": "ngo-batxd8esn-equinox10.vercel.app"
+    }
+  ],
+  "aliasResults": [
+    {
+      "host": "ngo-git-fix-ist-donation-times-equinox10.vercel.app",
+      "removed": true,
+      "deletedAt": null
+    },
+    {
+      "host": "ngo-git-codex-driver-details-equinox10.vercel.app",
+      "removed": true,
+      "deletedAt": null
+    },
+    {
+      "host": "ngo-git-feature-vehicle-tracking-equinox10.vercel.app",
+      "removed": true,
+      "deletedAt": null
+    },
+    {
+      "host": "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app",
+      "removed": true,
+      "deletedAt": null
+    },
+    {
+      "host": "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app",
+      "removed": true,
+      "deletedAt": null
+    }
+  ],
+  "health": [
+    {
+      "path": "/",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/health",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/health/ready",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    }
+  ],
+  "newDeployments": [],
+  "promotions": [],
+  "projectHousekeepingTimestamp": {
+    "before": 1794285650141,
+    "after": 1794287620177
+  },
+  "retiredUrlChecks": [
+    {
+      "host": "ngo-2oxqz3712-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-nd2c0ymyp-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-ocm1jpkc5-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-ov61owyof-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-aomr5b8k2-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-6cftdovrf-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-afk6q50c7-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-40dsrgmhf-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-1vzjf42f0-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-17qujhawj-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-gu96fv5f6-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-4x3gmo864-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-f86aoh0sg-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-bftikdy7j-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-7ug3uaz56-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-6772tlcyg-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-8msbdv5cl-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-9dakrbhzy-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-jawiswfd6-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-jfsf42qdo-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-a3ns68hxj-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-mnwlycmel-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-lgxg8ei8d-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-opxvpt8at-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-dw70hbgsj-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-ezl2utptx-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-b4cvfnnrq-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-2fiiujlkv-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-hrsmxrr77-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-krpcsw9fq-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-628rt997i-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-knqafxw5l-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-g0s4x7ic4-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-12t3ebbmh-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-2ptg8iti5-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-c43ghjhpb-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-8baza3y4o-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-40r5fgyvh-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-l7wejkvif-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-nsos9acvm-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-6t574glt2-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-61wghh8lt-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-git-fix-ist-donation-times-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-git-codex-driver-details-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-git-feature-vehicle-tracking-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    }
+  ],
+  "retiredUrlStatusCounts": {
+    "404": 47
+  },
+  "stagingProjects": [
+    {
+      "id": "prj_W1MrwAqFsWTFohHs6UXR2fo1EEIL",
+      "name": "aaharaconnect-ngo-staging",
+      "activeDeployment": "dpl_5Ya46jG23KCua5tG3gXkA2cKnWHP",
+      "remainingDeploymentCount": 16
+    },
+    {
+      "id": "prj_Nd3YLsJkOYjlZMPLmFZw9MFG88Ul",
+      "name": "aaharaconnect-ngo-staging-api",
+      "activeDeployment": "dpl_9WrBdHU8JP4KD2CVBQpkUbwzJDqi",
+      "remainingDeploymentCount": 7
+    }
+  ],
+  "noDatabaseAuthSmtpEnvironmentOrDeploymentSettingsMutationRequested": true
+}

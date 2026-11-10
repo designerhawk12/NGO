@@ -7,12 +7,20 @@ preserved. See [correction evidence](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md)
 No015, database permission/Auth/SMTP change, email, deployment, build, backup transfer
 or key export occurred. Existing backup was hashed, not restored again.
 
-Latest focused closure pass: [security and operations closure](PRE_RELEASE_SECURITY_OPERATIONS_CLOSURE.md).
-All42 historical Previews are Vercel-auth protected;89 unauthenticated checks returned302
-to authentication, including readiness and5 current aliases. No custom-domain Preview
-bypass observed.22 list DATABASE_URL/Supabase binding names; no values retrieved/decrypted.
-Cleanup remains a proposal, with an exact42-ID/5-alias manifest and required reviewer/owner
-retirement signoff. Open PR25/26 mean active review needs cannot be inferred away.
+**Latest authorized retirement completed2026-11-10:** the exact42 historical Preview
+deployments and5 aliases are retired. All47 URLs404; all32 other deployments, both live
+Production aliases/settings and staging unchanged. Production health200, anonymousme401;
+no deployment/promotion. One hostname-form alias request failed, was stopped/investigated,
+then resolved with freshly validated UID-based removals. See
+[retirement report](HISTORICAL_PREVIEW_RETIREMENT.md). Earlier proposed-retirement text
+below describes the prior checkpoint and must not be used to delete anything further.
+
+Read-only evidence before retirement: [security and operations closure](PRE_RELEASE_SECURITY_OPERATIONS_CLOSURE.md).
+All42 then-existing Previews were Vercel-auth protected;89 checks returned302, including
+readiness and5 aliases. No custom-domain bypass was observed;22 listed DB/Supabase binding
+names without a value/decryption read. The owner subsequently confirmed all operator and
+PR25/26 review dependencies were cleared and approved the exact42-ID/5-alias retirement,
+now complete. Open PRs remain untouched; their old Preview links now404.
 
 Auth Site URL now independently returns404/DEPLOYMENT_NOT_FOUND; the canonical site200.
 Current seven redirects/SMTP-enabled status reconfirmed unchanged. Minimal canonical
@@ -38,7 +46,7 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 | Isolated logical restore | **PASS**: prior45/45;73 table digests,319 constraints,14 migrations,14 Auth/11 app users; disposable tmpfs container removed | No need to repeat absent new evidence | Integration maintainer | Yes; completed |
 | Off-device recovery | **BLOCKED**: only development-computer copy; DPAPI key depends on original Windows profile. Owner proposes organization-managed Drive/OneDrive plus separate organization password manager; no destination approved | Identify tenant/folder/access list and independent vault recovery ownership, then approve transfer/key escrow; test replacement-machine recovery | NGO backup owner + independent key custodian, both unconfirmed | Yes, but external transfer/key export requires approval |
 | New Preview configuration isolation | **PASS**: approved seven entries now Production-only; Preview API entry removed; no Preview env bindings remain; values/types preserved | Preserve disconnect and scope controls; no deployment authorized | Vercel/Git owner + integration maintainer | Completed under exact approval |
-| Historical Preview exposure | **BLOCKED** for retirement:42/42 authprotected;89 HTTP gates;5 aliases,0 custom-domain bypasses;22 have DB/Supabase env names. Exact historical values remain unknown | Owner/reviewers confirm no required use, including PR25/26; approve exact42-ID/5-alias cleanup manifest. No deletion or rotation approved | Vercel/security owner + reviewers | Focused read-only assessment complete |
+| Approved historical Preview retirement | **PASS**: owner/reviewers confirmed no required use; exact42 deployments/5 aliases removed;47 URLs404;32 others and Production/staging preserved | Closed for this approved set. No new targets, rotations or broader release action authorized | Vercel/security owner + reviewers | Authorized retirement complete; full evidence linked |
 | Recovery-branch push safety | **PASS**: existing `git.deploymentEnabled["integration/ngo-recovery"]=false` preserved; CI pushes only main/develop | Keep guard; never merge or manually deploy by inference | Integration maintainer | Yes |
 | Automatic Git deployment freeze | **PASS**: Production project's Git link removed; original GitHub repository/history untouched; active deploymentb7b321c retained | Immutable manual deploy/redeploy/promote still needs separate release approval; do not reconnect Git or merge by inference | Git/Vercel owner, formal NGO ownership unconfirmed | Completed under exact approval |
 | Actual current API runtime identity | **NOT VERIFIED**: Vercel DATABASE_URL opaque; dedicated backup connection is postgres, not proof of deployed API role | Privately establish effective deployed DB/server Supabase binding; current backup login is overprivileged for runtime | Integration maintainer + secret owner | Read-only evidence yes; any replacement needs approval |
@@ -92,10 +100,9 @@ The remaining historical-deployment access review is not executed or authorized.
 2. Narrow those seven existing entries to Production only, preserving values/types;
    remove only the separate Preview VITE_API_BASE_URL binding. Do not put staging credentials
    into this Production project; designated staging projects provide test hosting.
-3. Verify environment targets and Git behavior with read-only metadata. Existing42 READY
-   previews seen in the prior inventory remain protected (`all_except_custom_domains`)
-   but retain frozen bindings. Owner reviews access/retirement; no deletion/rotation
-   is included. A fresh scope change does not sanitize already built deployments.
+3. Environment scopes/Git behavior were independently verified. The prior42 READY previews
+   retained old bindings until the later exact approved retirement, now complete. A scope
+   change alone did not sanitize those artifacts. No credential rotation was included.
 4. Reject redeploy/promote/manual deploy without explicit project/target/artifact checks;
    Git guards alone do not govern those actions. Review app dependencies/secret consumers
    before removing any other legacy variables.
@@ -263,15 +270,14 @@ Do not drop tables/disable proof gates or restore over Production as an automati
 Any restore requires separate approval, isolated rehearsal and post-snapshot reconciliation.
 See [full runbook](PRODUCTION_RELEASE_READINESS.md) and [operator guide](NGO_PILOT_OPERATIONS.md).
 
-## Exact next approval request after read-only closure
+## Approval boundary after exact historical retirement
 
-**Request retirement approval only for the exact42 Preview deployment IDs and5 mapped
-Preview aliases in [proposed-preview-retirement.json](release/proposed-preview-retirement.json),
-after owner/reviewers confirm no required use including PR25/26.** Current Production
-deployment/bothaliases, other deployments, staging, Git history, credentials and database
-records must remain intact. Reviewer/bookmark links to retired previews will stop working;
-their old artifacts will no longer be available for rollback. If any target is needed
-or moved, stop and revise the reviewed list rather than deleting a query's new results.
+**Completed:** the owner approved and attested the exact42-ID/5-alias manifest; every
+target was revalidated and retired. Current Production deployment/bothaliases,32 other
+deployments, staging, Git history, credentials and database records were preserved.
+Reviewer/bookmark links to retired previews now404; their artifacts are no longer
+available for rollback. The manifest is retained as original scope history, not authority
+for another deletion. No additional cleanup or credential rotation is authorized.
 
 The separately prepared Auth proposal is canonical Site URL plus the two exact canonical
 callbacks; it remains unapproved. SMTP transport test needs a newly authorized Production
@@ -284,5 +290,6 @@ actions, Auth edits, email,015/roles/buckets, rotations, builds or deployment.**
 Owner follow-up: original URL values and SMTP-enable status are now independently read.
 Still manual: redacted sender address/provider ownership; formal NGO ownership of backups,
 deployments and account recovery; cloud folder/vault custody identifiers. All remain pending
-organizational handover, not inferred from personal developer access. The owner subsequently
-approved only the isolation correction, now complete. No broader approval is inferred.
+organizational handover, not inferred from personal developer access. The owner separately
+approved the isolation correction and exact historical retirement; both are complete.
+No broader approval is inferred.

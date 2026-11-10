@@ -1,0 +1,318 @@
+{
+  "startedUtc": "2026-11-10T05:07:44.912Z",
+  "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+  "teamId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+  "manifestSha256": "5f21b22a766cccda0f7251382aa4684e13061e001a5d89a4d4862a2f29f36ba2",
+  "ownerReviewAttestation": "User confirmed relevant operators and PR25/PR26 reviewers no longer need every listed Preview link",
+  "deletions": [
+    {
+      "id": "dpl_28RM9mtJ5AxFJttybB7xntRgRRTd",
+      "requestedUtc": "2026-11-10T05:08:09.455Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:08:12.667Z"
+    },
+    {
+      "id": "dpl_2VkFDfWDM5qgEsNqx4Ybry4hAWQg",
+      "requestedUtc": "2026-11-10T05:08:17.347Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:08:20.438Z"
+    },
+    {
+      "id": "dpl_2wBnJ2swiSjypjfTuDs9oWZf2Fwa",
+      "requestedUtc": "2026-11-10T05:08:25.173Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:08:28.317Z"
+    },
+    {
+      "id": "dpl_3ccCf3HrY9iApuDJjmhWAt3x4rCs",
+      "requestedUtc": "2026-11-10T05:08:33.112Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:08:36.192Z"
+    },
+    {
+      "id": "dpl_4qU4ouzTNPGdn1tkvVsi4RsE8yzG",
+      "requestedUtc": "2026-11-10T05:08:41.025Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:08:44.354Z"
+    },
+    {
+      "id": "dpl_56EzLXSRZaResE6sUA2R9PeBvbkj",
+      "requestedUtc": "2026-11-10T05:08:49.072Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:08:52.162Z"
+    },
+    {
+      "id": "dpl_58fqbEZ2c4TGV3mtjZ7or9V4U28Q",
+      "requestedUtc": "2026-11-10T05:08:56.901Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:09:00.188Z"
+    },
+    {
+      "id": "dpl_5cbzb1BEKqWL8xy6vtEuoiYxstUf",
+      "requestedUtc": "2026-11-10T05:09:04.826Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:09:08.249Z"
+    },
+    {
+      "id": "dpl_6NJ9s73yd8m94DCy5N4YJ9JzR9ak",
+      "requestedUtc": "2026-11-10T05:09:13.068Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:09:16.277Z"
+    },
+    {
+      "id": "dpl_6nQQ21fj4JqUUzyhMxfiVDtBxUx7",
+      "requestedUtc": "2026-11-10T05:09:20.888Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:09:24.182Z"
+    },
+    {
+      "id": "dpl_6qhbUmCVmMkNXkFpyMq2yBXQuf5W",
+      "requestedUtc": "2026-11-10T05:09:28.635Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:09:31.865Z"
+    },
+    {
+      "id": "dpl_6QhzmLGvDKG8L2bZnfB6X1118444",
+      "requestedUtc": "2026-11-10T05:09:36.611Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:09:40.275Z"
+    },
+    {
+      "id": "dpl_7RgDCKNxHxpaiUa2qGz88pxpDuXS",
+      "requestedUtc": "2026-11-10T05:09:45.083Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:09:48.270Z"
+    },
+    {
+      "id": "dpl_7XNW6D1JqXGdCoVaUWdAHUH7xh8P",
+      "requestedUtc": "2026-11-10T05:09:52.945Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:09:56.023Z"
+    },
+    {
+      "id": "dpl_7ZYicErsWho7JfNL9BRhiiEJqniQ",
+      "requestedUtc": "2026-11-10T05:10:01.271Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:10:04.457Z"
+    },
+    {
+      "id": "dpl_8abaMWVSBcvRRNSzLC5H1oWEu78y",
+      "requestedUtc": "2026-11-10T05:10:09.160Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:10:12.352Z"
+    },
+    {
+      "id": "dpl_8dWurx1gVUpjUWGPs5B5fawtUZQU",
+      "requestedUtc": "2026-11-10T05:10:17.015Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:10:20.206Z"
+    },
+    {
+      "id": "dpl_8iH4tAHask8XWozdr62LUFRhcjZt",
+      "requestedUtc": "2026-11-10T05:10:25.035Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:10:28.252Z"
+    },
+    {
+      "id": "dpl_96bbfeyS2rUxWn9yvhehzZS2Fgc8",
+      "requestedUtc": "2026-11-10T05:10:33.415Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:10:36.635Z"
+    },
+    {
+      "id": "dpl_9EKEqiFnrvt2KXFVLKWRQMHEUL75",
+      "requestedUtc": "2026-11-10T05:10:41.260Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:10:44.567Z"
+    },
+    {
+      "id": "dpl_9kC6BxaHDdSsaNCDMCSnxGEqrXDJ",
+      "requestedUtc": "2026-11-10T05:10:49.246Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:10:52.321Z"
+    },
+    {
+      "id": "dpl_9MeyLBSqXD8r9FA6CH2XYK19dKia",
+      "requestedUtc": "2026-11-10T05:10:57.199Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:11:00.348Z"
+    },
+    {
+      "id": "dpl_Adox9TZ5TtoDwNr8c1wnKkFHvv16",
+      "requestedUtc": "2026-11-10T05:11:05.396Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:11:08.586Z"
+    },
+    {
+      "id": "dpl_Aeu3LSE6V9h7iyFR3z6vPG8MfZfe",
+      "requestedUtc": "2026-11-10T05:11:13.256Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:11:16.612Z"
+    },
+    {
+      "id": "dpl_ALcWeHgfr2mQzGaDPqZYFLakJnn8",
+      "requestedUtc": "2026-11-10T05:11:21.214Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:11:24.410Z"
+    },
+    {
+      "id": "dpl_AVW7JXsg3D3EWFVaVFTJCTxdW2so",
+      "requestedUtc": "2026-11-10T05:11:29.007Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:11:32.271Z"
+    },
+    {
+      "id": "dpl_AwUaLVegnRUQt9w47to7r2UxL4fy",
+      "requestedUtc": "2026-11-10T05:11:37.128Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:11:40.833Z"
+    },
+    {
+      "id": "dpl_CKxCdGCskBxW8EZRDPVV6gqfDK9P",
+      "requestedUtc": "2026-11-10T05:11:45.404Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:11:48.537Z"
+    },
+    {
+      "id": "dpl_CQwfGXfYdcYdaZKajajMhmyr8GKv",
+      "requestedUtc": "2026-11-10T05:11:53.233Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:11:56.521Z"
+    },
+    {
+      "id": "dpl_D4AEbTeEmTSqpSswRofqXUb1h1gR",
+      "requestedUtc": "2026-11-10T05:12:01.131Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:12:04.373Z"
+    },
+    {
+      "id": "dpl_D4eqkJXcPAFtuN41uJ37wTCRdbFy",
+      "requestedUtc": "2026-11-10T05:12:09.160Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:12:12.234Z"
+    },
+    {
+      "id": "dpl_DKYEhzEw7wP5iwBUw2V8eMcVZUQE",
+      "requestedUtc": "2026-11-10T05:12:17.085Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:12:21.443Z"
+    },
+    {
+      "id": "dpl_DtMkg6vTq3ZV9whRTKYvjACXH4DA",
+      "requestedUtc": "2026-11-10T05:12:26.237Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:12:29.878Z"
+    },
+    {
+      "id": "dpl_E8GjSbLXAF8busWxsPL6b37ryxnD",
+      "requestedUtc": "2026-11-10T05:12:34.533Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:12:37.770Z"
+    },
+    {
+      "id": "dpl_FqPr2iNWg424shQBnRs6ghboAYe1",
+      "requestedUtc": "2026-11-10T05:12:42.354Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:12:45.539Z"
+    },
+    {
+      "id": "dpl_G6Chk7wGN9rJoa7wcvn4Q17h2Pkr",
+      "requestedUtc": "2026-11-10T05:12:50.421Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:12:53.598Z"
+    },
+    {
+      "id": "dpl_GEyaVSX1J23QtS88fMdJpmwzj5zi",
+      "requestedUtc": "2026-11-10T05:12:58.253Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:13:01.370Z"
+    },
+    {
+      "id": "dpl_Gi14XH9cawMk7ifquDQUFh41o5Pt",
+      "requestedUtc": "2026-11-10T05:13:06.607Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:13:09.720Z"
+    },
+    {
+      "id": "dpl_Hf4beukB5h8p5q6AChP6Ss7JtWWd",
+      "requestedUtc": "2026-11-10T05:13:14.432Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:13:17.579Z"
+    },
+    {
+      "id": "dpl_HgcQRX7cKE2JQgFpcX9PCf7AzXY4",
+      "requestedUtc": "2026-11-10T05:13:22.636Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:13:26.143Z"
+    },
+    {
+      "id": "dpl_NfcFgohu5HZBVrpoGF2FCd3c8ZSZ",
+      "requestedUtc": "2026-11-10T05:13:30.958Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:13:34.232Z"
+    },
+    {
+      "id": "dpl_wXbuVcN7v7riLGbPocXv7foETq99",
+      "requestedUtc": "2026-11-10T05:13:38.829Z",
+      "status": "DELETED_VERIFIED",
+      "responseState": "DELETED",
+      "verifiedUtc": "2026-11-10T05:13:42.148Z"
+    }
+  ],
+  "aliases": [],
+  "failures": [
+    {
+      "error": "Vercel operation failed: DELETE /v2/aliases/ngo-git-fix-ist-donation-times-equinox10.vercel.app",
+      "occurredUtc": "2026-11-10T05:13:47.133Z"
+    }
+  ],
+  "excludedActions": [
+    "database/Auth/SMTP/env/deployment settings changes",
+    "credentials/key export or rotation",
+    "build/deploy/promote",
+    "Git or staging changes"
+  ],
+  "passed": false,
+  "resolution": "See preview-alias-retirement-result.json and preview-retirement-verification.json for successful completion after the preserved hostname-form request failure."
+}
