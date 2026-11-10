@@ -1,8 +1,10 @@
 # Production release preparation — 2026-11-10
 
-**NO-GO. No Production writes performed.** The owner reports no Production backup.
-No current Production archive or restore rehearsal has been verified. Staging recovery
-evidence cannot satisfy this gate. Migration, Storage, credentials, hosting, native
+**NO-GO for release. No Production writes performed.** The approved encrypted Production
+logical backup and isolated local restore now pass45/45 checks; see
+[backup/recovery verification](PRODUCTION_BACKUP_RECOVERY_VERIFICATION.md).
+Off-device key custody and the configuration/runtime/Auth gates remain open.
+Migration, Storage, credentials, hosting, native
 builds and public release remain unapproved. Preparation is on `integration/ngo-recovery`.
 
 ## A. Verified inventory
@@ -90,18 +92,22 @@ No staging users, test passwords, donations, GPS or identity files may enter Pro
 
 ## D. Backup and recovery — unresolved hard gate
 
-Owner: **no backup**. Free plan confirmed. No managed backup timestamp, retention,
-PITR or tested Production recovery is established. Old local restore containers and
-the Nov9 staging archives do not prove current Production recoverability.
+Initial owner report: **no backup**. Free plan confirmed; no managed backup timestamp,
+retention or PITR established. Under the subsequent explicit backup-only approval,
+a new complete encrypted Production archive and isolated local restore were verified.
+All73 table digests,319 constraints and14 migrations matched;45/45 checks passed.
+See the linked verification report for location, hashes, custody and limitations.
+Old restore containers and staging archives were not used as recovery evidence.
 
-The next approval must explicitly permit a sensitive private backup and isolated
-restore. Proposed destination, outside Git:
+The completed backup-only approval permitted a sensitive private backup and isolated
+restore. For a future approved refresh, use this destination pattern outside Git:
 `C:\Users\desig\AppData\Local\AahaaraConnect-Production\pre-015-YYYYMMDD-HHMMSS\`.
 Before extracting anything, restrict directory ACLs to the owner/system and establish
 encrypted storage and recovery-key custody. Use a dedicated private Production
 connection file; never reuse staging.env or credentials from an old checkout.
 
-Approved procedure to finalize and execute only after approval:
+Procedure retained for a future separately approved refresh (completed results are in
+the verification report; do not repeat automatically):
 
 1. Dashboard NGO / `pyzyxgpcfwpcqyqrihuo` → Connect: obtain the exact supported
    direct/session connection and CA privately. Verify project, database, TLS certificate
@@ -321,16 +327,16 @@ untrusted branch/test jobs. Residual security disposition requires integration-o
 
 Verified: environment identities, migration compatibility, existing account mapping,
 synthetic preservation/RLS tests, tested staging source/artifact lineage, local builds.
-**Blockers:** no Production backup/restore proof; shared Preview Production bindings and
+**Blockers:** off-device encrypted backup/key custody; shared Preview Production bindings and
 deploy governance; actual runtime/server bindings unknown; Production Auth/SMTP unknown;
 operator handover for active expired jobs; Production native/domain/cert verification.
 Dependency/native-link residual risks require a documented owner decision. No Production GO.
 
-**Next approval requested:** permit only a private encrypted logical backup of
-`pyzyxgpcfwpcqyqrihuo` (including sensitive Auth recovery data), restricted configuration/
-grant metadata, and a restore rehearsal in a new isolated local PostgreSQL environment,
-using the outside-repository destination in sectionD. No restoration over Production.
-This would authorize no Production schema/configuration/deployment writes.
+**Backup-only approval completed:** encrypted logical backup of `pyzyxgpcfwpcqyqrihuo`,
+including Auth recovery records, restricted role/configuration metadata and isolated
+local restore45/45PASS. No restoration over Production and no schema/configuration/
+deployment writes occurred. Next establish off-device key custody and remaining effective
+configuration evidence before requesting approval of the release change set below.
 
 The subsequent consolidated Production change set to review after those gates pass is:
 project-scoped deployment freeze/Preview credential isolation; approved maintenance ingress

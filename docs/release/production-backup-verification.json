@@ -1,0 +1,56 @@
+{
+  "project": "pyzyxgpcfwpcqyqrihuo",
+  "startedUtc": "2026-11-09T20:37:32.602Z",
+  "completedUtc": "2026-11-09T20:39:06.742Z",
+  "backupPath": "C:\\Users\\desig\\AppData\\Local\\AahaaraConnect-Production\\pre-015-20261109T203730Z\\database.dump.gcm",
+  "encryptedSha256": "63efae09259219a9dca0d8844ce0ded581b0bd8c83f020b141656623db25316f",
+  "encryptedBytes": 584722,
+  "restorationSucceeded": true,
+  "disposableContainerRemoved": true,
+  "checks": 45,
+  "passed": 45,
+  "tableCount": 73,
+  "constraints": 319,
+  "roleCount": 30,
+  "memberships": 24,
+  "roleSettings": 15,
+  "migrationLedgerEntries": 14,
+  "migration015Applied": false,
+  "counts": {
+    "auth.users": 14,
+    "auth.identities": 14,
+    "app.app_users": 11,
+    "app.volunteers": 4,
+    "app.volunteer_applications": 3,
+    "app.donors": 6,
+    "app.drivers": 1,
+    "app.vehicles": 3,
+    "app.food_requests": 8,
+    "app.pickups": 8,
+    "app.assignments": 5,
+    "storage.buckets": 0,
+    "storage.objects": 0
+  },
+  "appRoles": [
+    {
+      "role": "ADMIN",
+      "count": 1
+    },
+    {
+      "role": "DONOR",
+      "count": 5
+    },
+    {
+      "role": "DRIVER",
+      "count": 1
+    },
+    {
+      "role": "VOLUNTEER",
+      "count": 4
+    }
+  ],
+  "limitations": [
+    "Local postgres remains bootstrap superuser; managed role login passwords are not exported.",
+    "No Auth/SMTP/Storage HTTP services are started; cryptographic record integrity is checked, not live login."
+  ]
+}

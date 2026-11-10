@@ -1,10 +1,17 @@
 # Final pilot release runbook
 
+Latest decision/checklist: [FINAL_PRODUCTION_GO_NO_GO.md](FINAL_PRODUCTION_GO_NO_GO.md).
+The recovery candidate is frozen; no Production release is authorized by documentation
+or the recovery-branch push. Off-device custody, isolation, runtime, Auth/SMTP and operator
+gates remain open; exact guarded permission SQL is a proposal outside the migration stream.
+
 2026-11-10 update: staging final physical/SMTP acceptance is now owner-reported passed.
 The historical gate statements below describe earlier checkpoints. Production readiness
 is governed by [PRODUCTION_RELEASE_READINESS.md](PRODUCTION_RELEASE_READINESS.md):
-Production remains **NO-GO**, owner reports no backup, no Production writes authorized
-or executed. Only migration015 is pending and historical001–014 match exactly. Preserve
+Production release remains **NO-GO**. The separately authorized encrypted Production
+backup and isolated restore now pass45/45 checks; see
+[recovery evidence](PRODUCTION_BACKUP_RECOVERY_VERIFICATION.md). No Production writes
+are authorized or executed. Only migration015 is pending and historical001–014 match exactly. Preserve
 original identities/history; never substitute staging data or publish the staging APK.
 The existing integration-branch Vercel auto-deploy guard must remain enabled for the
 authorized preparation-only push. No merge, deployment or new build is included.

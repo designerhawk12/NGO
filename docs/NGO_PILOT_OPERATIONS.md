@@ -1,5 +1,30 @@
 # AaharaConnect NGO pilot operator guide
 
+## Production handover preparation — 2026-11-10
+
+Production release is **NO-GO**; this section is preparation for the frozen candidate,
+not permission to use new features on the old deployment. Final staging physical/SMTP
+acceptance is now owner-reported passed; older pending statements below are historical.
+See [final gates](FINAL_PRODUCTION_GO_NO_GO.md) before any Production action.
+
+| Duty | Operator action / ownership still needed |
+| --- | --- |
+| Admin access/recovery | Confirm original account owner privately; open only the approved Production origin. Never use the old donor page for credentials. Use Forgot Password only after authorized SMTP/callback verification; do not recreate an Admin after a login failure. Name backup Admin/recovery contact without sharing passwords. |
+| Volunteer review | Use Applications → Review identity; manually verify masked Aadhaar/PAN/licence, then approve. Keep document numbers out of notes/screenshots/messages. Existing approvals/UUIDs remain intact; signed previews expire. Name identity-review and privacy owners. |
+| Donor registration/donations | Use the correct approved Production app; confirm email as required, enter honest preparation/deadline/quantity/address, then review My Donations. Admin reviews safety and scheduling; the platform does not certify food automatically. Name food-safety lead. |
+| Driver/fixed vehicle | Register vehicle first, then Assign Driver with individual identity/contact/licence and its unassigned vehicle. Do not create duplicate people or change role selectors to grant access. Contact maintainer for exceptional fixed-assignment correction. |
+| Dispatch | Choose safety-reviewed request, valid window/destination, mandatory Driver+vehicle, optional eligible Volunteers and compatible containers; confirm once. Preserve history; reconcile the3 expired active jobs with dispatch/food-safety owners before release. |
+| GPS | Driver explicitly enables precise/background GPS with foreground notification; check Maps/background timestamp, permissions/connectivity/battery restrictions. Admin selects vehicle and reads freshness/accuracy. Stop/sharing-off/offline states are not proof of work status. Name tracking/privacy escalation contact. |
+| APK/update | Current validated replacement APK is staging-only. Production needs separately approved build/cert/domain verification. Update only a signed approved artifact; stop on signature mismatch, do not uninstall to bypass it or publish staging APK. Name signing-key custodian. |
+| Backup/recovery | Name data owner, backup custodian and independent recovery-key custodian; choose NGO-controlled off-site destination and portable escrow. Never upload/export without approval; retain encrypted backup/sidecars and verified checksum. See recovery report. |
+| Incident/rollback | Record timestamp/requestID/build and sanitized symptoms, protect private data, contact named maintainer. Pause unsafe work through approved incident controls; never delete accounts, disable identity gates, restore over Production or revert binaries blindly. |
+
+NGO must supply actual people and secure contact channels for: Admin/recovery, dispatch,
+food safety, identity/privacy, Supabase/Auth/SMTP, Vercel/Git release, Android signing,
+backup and independent key custody. No organizational contact or credential is invented.
+Operator acceptance must confirm platform/service ownership, escalation coverage,
+maintenance communication and retention/recovery responsibilities before release.
+
 This guide describes the implemented workflows. Use it on the approved staging/pilot environment only after the release gates in `FINAL_PILOT_RELEASE_RUNBOOK.md` pass. Final pilot clearance has not been granted.
 
 ## Acceptance fixes and replacement Android — 2026-11-10

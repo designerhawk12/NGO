@@ -1,5 +1,12 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest release-gate checkpoint (2026-11-10): see
+[FINAL_PRODUCTION_GO_NO_GO.md](FINAL_PRODUCTION_GO_NO_GO.md). Existing encrypted backup
+checksum reverified; no repeat restore. Current gates distinguish demonstrated Preview/
+Donor defects from unknown runtime/Auth/SMTP facts. Guarded runtime SQL and operator
+handover prepared;4/4 synthetic encryption/key-preservation tests passed. Application
+candidate remains580801e; Production unchanged. No key export or backup upload authorized.
+
 ## Session and release boundary
 
 - Workspace: `C:\Users\desig\Projects\aaharaconnect-ngo-recovery`.
@@ -361,8 +368,12 @@ Remaining gates: physical Android install/upgrade, GPS consent/background while 
 Limits: public Volunteer registration stays disabled; SMTP/invitation/password-reset email delivery and hosted new-application outbox hook are NOT TESTED. Their local mocked tests pass; manual email/provider setup is still required before enabling public onboarding. Existing user-verified Auth redirects are correctly served publicly. WhatsApp live sending, deletion, geocoding and APK publication remain disabled. Hosted map rendering, background GPS with Google Maps, Android permission/picker/link/install/upgrade behavior remain physical/browser checks, not passed by API success. Pilot GO is not granted. Next: one authorized internal preview APK, artifact/certificate/secret checks, then the user's phone checklist.
 # Production preparation checkpoint — 2026-11-10
 
-Current decision: **Production NO-GO**. Owner confirms no backup. Production was inspected
-read-only; no Production write, deployment, native build or data extraction occurred.
+Current decision: **Production release NO-GO**. The subsequent backup-only approval is
+complete: encrypted Production logical backup and isolated local restore45/45PASS.
+See [recovery verification](PRODUCTION_BACKUP_RECOVERY_VERIFICATION.md) for private
+location/checksum/custody/limits. No Production write,015 application, deployment or
+native build occurred. Off-device recovery-key custody and remaining configuration gates
+are still open. Earlier no-backup statements describe the pre-approval checkpoint.
 See [Production readiness and gated release plan](PRODUCTION_RELEASE_READINESS.md) for
 verified inventory, account preservation, configuration differences, backup approval
 scope,015 compatibility, dependency risk and rollback. This supersedes older pending
@@ -382,5 +393,6 @@ server tests and26 native-link/photo/map tests passed. Synthetic015 rehearsal28/
 including original synthetic row preservation and real restricted-group RLS access.
 This is not a Production restore rehearsal. Evidence in `docs/release/`; no secrets or
 record payloads committed. Pre-existing untracked `docs/STAGING_CHECKPOINT.md` preserved.
-Next: approve secure private Production logical backup + isolated restore, then review
-runtime/Auth/SMTP/Preview isolation/operator gates before any Production change approval.
+Next: establish off-device backup/key custody and review runtime/Auth/SMTP/Preview
+isolation/operator gates before any separate Production change approval. Preserve the
+encrypted recovery copy; no backups, keys or Auth recovery records enter Git.
