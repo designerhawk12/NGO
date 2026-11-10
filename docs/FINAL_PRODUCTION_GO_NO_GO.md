@@ -1,5 +1,28 @@
 # Final Production release gates — 2026-11-10
 
+## Controlled role acceptance handoff — 2026-11-10
+
+User authorized final authenticated acceptance/promotion/reopening only after all roles
+pass. No completed infrastructure/migration/backup operation repeated. Read-only baseline:
+11app accounts,6donor profiles,8donations,5assignments,0orphans; app-user full-row digest
+f58bf0e393d654acab1f21be5e16470b. Mapped roles ADMIN1/DONOR5/VOLUNTEER4/DRIVER1.
+
+Reopened the previously tested narrow operator window by adding only the exact protected
+candidate hostname exception to the existing WAF rule. Published inspected diff. Public
+canonical /me403 firewall deny; unauthenticated candidate /me302 to vercel.com; operator
+Vercel-authenticated candidate /me401 from application. No public bypass/share link or
+deployment-protection weakening. Exact URL for private ADMIN sign-in:
+https://ngo-i0tqqrcp8-equinox10.vercel.app/#/workspace/settings
+
+Browser automation is disabled by Work settings; do not bypass through native browser
+control. User instructed to sign in privately using an EXISTING mapped ADMIN account,
+then open live dashboard/Pickups read-only and report results. No password/token request,
+identity impersonation, synthetic /me provisioning or account mutation performed.
+ADMIN/DONOR/VOLUNTEER/DRIVER acceptance all NOT TESTED pending legitimate sessions.
+No promotion/reopening performed. Operator exception remains intentionally for this
+handoff; remove after acceptance or if abandoned. Candidate stays Vercel-protected,
+ordinary public API traffic remains maintenance-denied. Production remains NO-GO.
+
 ## Production candidate deployed READY; role acceptance BLOCKED — 2026-11-10
 
 User authorized continuation from runtime checkpoint, no015/backup/credential recreation.
