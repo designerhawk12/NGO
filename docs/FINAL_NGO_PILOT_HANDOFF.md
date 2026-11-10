@@ -1,5 +1,12 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest recovery/role checkpoint (2026-11-10): SMTP PASS remains accepted. Read-only
+synthetic identity inspection found no app mapping or privileged role. Deployed /me
+would provision DONOR app-user/profile rows, so it was NOT called pending specific
+approval. Off-device destination/key-custody/operator facts and second-device rehearsal
+remain pending. See [exact custody procedure and migration gate distinctions](PRODUCTION_RECOVERY_CUSTODY_PREPARATION.md).
+No Production write or repeated delivery/recovery test performed in this checkpoint.
+
 Latest SMTP acceptance (2026-11-10): **delivery/callback PASS**. Exactly one invitation
 and one reset, with reset sent only after invitation success confirmation. Both HTTP200;
 recipient confirmed sender, receipt and canonical callback/password completion for both.

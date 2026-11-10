@@ -1,5 +1,21 @@
 # Final Production release gates — 2026-11-10
 
+Approved single-request test checkpoint (2026-11-10): user authorized exactly one
+synthetic authenticated /me and normal DONOR app-user/profile provisioning. Read-only
+inspection confirms the same confirmed Auth identity, Auth role authenticated, no
+application mapping and no role metadata. No /me request has been made: a legitimately
+authenticated synthetic session is not available to the agent. No password/token was
+requested or extracted, and no admin-generated session was substituted. Private user
+sign-in handoff is required before executing the one-shot request. Approval remains
+limited to this identity; no retries, emails, migrations or other writes authorized.
+
+Latest recovery/role checkpoint (2026-11-10): SMTP PASS remains accepted. Read-only
+synthetic identity inspection found no app mapping or privileged role. Deployed /me
+would provision DONOR app-user/profile rows, so it was NOT called pending specific
+approval. Off-device destination/key-custody/operator facts and second-device rehearsal
+remain pending. See [exact custody procedure and migration gate distinctions](PRODUCTION_RECOVERY_CUSTODY_PREPARATION.md).
+No Production write or repeated delivery/recovery test performed in this checkpoint.
+
 **Decision: NO-GO for Production release.** The separately approved Vercel isolation
 correction is complete: Git disconnected, seven shared variables now Production-only,
 separate Preview API binding removed. Values/types, live deployment/aliases and staging
