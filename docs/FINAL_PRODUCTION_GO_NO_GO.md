@@ -1,5 +1,52 @@
 # Final Production release gates — 2026-11-10
 
+## FINAL WEB/API VERDICT: GO — 2026-11-10, 15:57 IST
+
+Scope: approved Production web/API release and bounded authenticated acceptance.
+This does NOT certify Production Android/native distribution or independent recovery.
+User-reported controlled panel results: ADMIN PASS, DONOR PASS, VOLUNTEER PASS,
+DRIVER PASS. Panel checked legitimate confirmed pre-existing identity, /me200 and exact
+server role/Auth UUID, authorized role-specific reads and cross-role403 denials. No
+unmapped /me, account creation/reset/elevation, donation/assignment edit or test email.
+All four role results are operator-confirmed browser execution, not agent-held sessions.
+
+Promoted the EXISTING READY deployment, no new build/deploy:
+- Deployment dpl_3sCfmZxYNwAQrmHzmAAxJn2SocWP
+- Frozen source 580801e9b54937be7ecbc0db592dea6537b95869
+- Canonical https://ngo-eight-umber.vercel.app now verified pointing to that exact ID.
+- Protected artifact https://ngo-i0tqqrcp8-equinox10.vercel.app retained.
+- Legacy protected branch alias remains on previous deployment by design; promotion
+  moves canonical project domain, not every historical manual alias. An overstrict
+  diagnostic assertion expecting both to move was corrected as an inspection assumption;
+  no extra alias was moved or deleted and no deployment was repeated.
+
+After inspecting one-rule diff, published active=false for ONLY named temporary rule,
+removed candidate-host exception, verified no draft/pending change. Vercel authentication
+and other protections unchanged. Auth maintenance locks0. No public testing/bypass link.
+Public canonical homepage/health/readiness200; anonymous /me, food-requests, pickups,
+Driver assignments and tracking401. User then confirmed canonical ADMIN login and live
+Dashboard/Pickups reads after promotion and reopening. Public application operational.
+
+Final preservation read-back AFTER canonical login:11app users, full-row digest
+f58bf0e393d654acab1f21be5e16470b exactly matches pre-acceptance baseline;6Donor profiles,
+8donations,5assignments,0orphan links. No duplicates. Prior57original-table comparisons
+and30original-role attribute preservation passed at015 commit. Normal authorized Auth
+sign-in/session timestamps changed as expected; do not claim Auth sessions are unchanged.
+015 remains applied with approved checksum; restricted runtime and two private buckets
+verified. SMTP/Auth redirects, expired jobs and existing credentials untouched by closure.
+
+Retained limitations/operations: registration remainsfalse until separately approved
+Production proof/registration activation; Driver tracking requirementfalse pending
+Production Android handover. WhatsApp/outbox/geocoding/deletion/public APK remainoff.
+Production Android build/signer/App Links/physical acceptance are not complete; no APK
+built or published. Portable escrow/second-device recovery deferred by explicit user
+risk acceptance; fresh encrypted pre015 backup and original archive/key retained.
+Do not rerun015, recreate runtime/buckets, resend SMTP or rebuild this web artifact.
+Close the private browser acceptance panel/tab when finished; no passwords/tokens were
+requested in chat, written into reports or committed. Private generated snippet is not
+part of deployed source or Git. Historical NO-GO entries below describe earlier gates
+and are superseded for web/API by this closeout; they remain history, not current status.
+
 ## Authenticated acceptance progress — 2026-11-10
 
 User confirms existing ADMIN sign-in succeeded and live dashboard/Pickups load. The
@@ -586,7 +633,7 @@ approval. Off-device destination/key-custody/operator facts and second-device re
 remain pending. See [exact custody procedure and migration gate distinctions](PRODUCTION_RECOVERY_CUSTODY_PREPARATION.md).
 No Production write or repeated delivery/recovery test performed in this checkpoint.
 
-**Decision: NO-GO for Production release.** The separately approved Vercel isolation
+**Historical pre-release decision (superseded for web/API): NO-GO.** The separately approved Vercel isolation
 correction is complete: Git disconnected, seven shared variables now Production-only,
 separate Preview API binding removed. Values/types, live deployment/aliases and staging
 preserved. See [correction evidence](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md).

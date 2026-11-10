@@ -1,5 +1,23 @@
 # Final NGO pilot handoff — 2026-11-09
 
+## Current Production web/API status — GO, 2026-11-10
+
+Canonical https://ngo-eight-umber.vercel.app is operational on existing READY deployment
+ dpl_3sCfmZxYNwAQrmHzmAAxJn2SocWP, exact frozen source
+580801e9b54937be7ecbc0db592dea6537b95869. Four existing mapped-role acceptances PASS
+(operator-confirmed role/identity/authorized GETs/cross-role denials); canonical ADMIN
+login/live reads confirmed after promotion. Homepage/health/readiness200; anonymous
+/me401. Temporary maintenance disabled, testing exception removed, no drafts/Auth locks.
+App-account full-row digest unchanged;11app accounts/6Donor profiles/8donations/
+5assignments/0orphans.015 applied; restricted runtime and two private buckets verified.
+No migration rerun, user reset/recreation, expired-job edit, SMTP change or new deployment
+was performed during promotion. See FINAL_PRODUCTION_GO_NO_GO.md for exact evidence.
+
+Scope excludes Android Production acceptance/publication and independent key recovery.
+Those remain unverified/deferred; no APK built/published. Registration, required Driver
+GPS, WhatsApp/outbox, geocoding, deletion and public APK remain gated/off as documented.
+Earlier NO-GO/preparation entries below are historical and superseded for web/API.
+
 Latest custody update (2026-11-10): **off-device encrypted archive upload/integrity PASS**.
 Drive upload and manually downloaded 584722-byte copy match original SHA-256. This does
 not verify independent recovery: DPAPI-independent escrow, approved encrypted metadata
