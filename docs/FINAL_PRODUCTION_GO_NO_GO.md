@@ -1,5 +1,110 @@
 # Final Production release gates — 2026-11-10
 
+## Final release decision scope — 2026-11-10 (supersedes custody preconditions)
+
+User explicitly defers portable key escrow and second-device restore until after initial
+release, accepting temporary laptop/Windows-profile and single-operator dependency.
+Archive integrity/local 45-check recovery remain PASS; independent recovery remains
+UNVERIFIED. Do not require Bitwarden or another custodian to prepare this release.
+Before writes, re-confirm original laptop/protected key availability without printing or
+exporting it, and obtain explicit residual-risk acceptance in the consolidated approval.
+
+Focused current evidence: application paths apps/server/packages/api and root dependency/
+Vercel files have no diff from 580801e9b54937be7ecbc0db592dea6537b95869. No essential
+code defect demonstrated; frozen app preserved. 015 checksum unchanged:
+28d70f15fc4e45e18f85130fbb76abdbc0a2a1d881a8aeb2fca9f1c8ab0788e1.
+Production ledger count14; planned aaharaconnect_api/aaharaconnect_runtime absent;
+Storage buckets absent. Vercel MCP confirms ngo/prj_6BuwhBiISjTlzgGtqG2arEXqOXGl under
+team_lRAI0kP7NNOxCUPBitJQ3d95; latest READY dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR and two
+existing domains preserved. All returned environment bindings target Production only;
+SUPABASE_SECRET_KEY is present. Secret values NOT decrypted: current effective DB login,
+TLS and URL bindings are not independently proven. Those will be explicitly replaced/
+verified against approved Production values during rollout; no credential removal/rotation
+of existing users is proposed. No remote configuration changed during this preparation.
+
+### One consolidated approval to request
+
+Approve only Production pyzyxgpcfwpcqyqrihuo and Vercel ngo above, using frozen source
+580801e9b54937be7ecbc0db592dea6537b95869 and exact 015 checksum above. User is operator.
+Accept deferred escrow/second-device risk explicitly and confirm laptop/key available.
+Authorize the ordered maintenance, fresh read-only encrypted snapshot/local integrity
+verification, 015, new restricted runtime login, two private buckets, finite Production-only
+env changes, one combined candidate deployment and bounded acceptance/service resumption.
+No main/develop merge, existing-account password reset/recreation, SMTP/Auth redirect
+change, WhatsApp, backup transfer, key export, Android build or APK publication included.
+
+Stop-on-failure sequence:
+1. Agree maintenance start/end and operator contact. Enforce platform ingress block for
+   ALL application API paths on every live/old deployment URL (including GET /me which
+   provisions records), except health/ready; separately pause scheduled/direct DB writers
+   and coordinate Auth activity. A UI banner alone is insufficient. The candidate has no
+   maintenance flag: do not deliberately break server configuration as a pause workaround.
+   Use only a supported reviewed Vercel access/firewall mechanism and retain its exact
+   before-state; verify external and old-client denials and drained in-flight writes.
+   If this cannot be established without broader changes, STOP before backup/migration.
+   Do not imply blocking Vercel pauses direct Supabase Auth or direct DB clients.
+2. Reconfirm project/TLS, available protected key and baseline role/UUID/ledger/constraints.
+   Create fresh encrypted snapshot using reviewed backup tooling under this approval;
+   validate archive hash/authentication/integrity against current baseline, preserve old
+   archive. No historical snapshot is substituted. Stop on drift/unexplained writes.
+3. Run existing migration runner ONLY for reviewed 015. Verify ledger15 exact and account,
+   record, role/UUID and relationship preservation; stop before infrastructure/deploy on
+   any mismatch. Do not migrate original001–014 or restore over live data automatically.
+4. Execute docs/release/production-runtime-after-015.sql with secure owner password entry,
+   new aaharaconnect_runtime member of restricted aaharaconnect_api, NOBYPASSRLS/non-owner.
+   Test NEW actual TLS connection/finite grants/denials. Never run application as admin.
+   Existing role collision or unexpected privilege => STOP, preserve, no overwrite.
+5. Create ONLY profile-photos (private,614400,JPEG/PNG/WebP) and volunteer-identity-private
+   (private,2097152,JPEG). No blanket anon/authenticated object policies. Verify Express
+   ownership, private signed reads/Admin identity authorization and denial behavior.
+6. Set Production-only reviewed matrix from PRODUCTION_RELEASE_READINESS.md: verified DB/TLS,
+   Production Supabase URL/public/server keys, canonical CORS/origin/invite callback,
+   /api/v1 frontend URL. Preserve legacy unrelated variables. Registration false during
+   acceptance; identity/idempotency on only after prerequisites; Driver GPS requirement
+   false until compatible Production Android handover. WhatsApp/outbox/geocoding/deletion/
+   public APK remain off. Preserve current Auth Site URL/seven redirects/SMTP unchanged.
+7. Stage exact candidate deployment to ngo from frozen source (no staging project touched,
+   no Git reconnection), verify READY and protected smoke before stable-alias switch where
+   supported. Keep ingress block until required acceptance is complete. Match web/API.
+8. Read-only before/after original-record fingerprints; owner privately verifies existing
+   Admin/Donor/Volunteer/Driver credentials without resets. Verify anonymous API401,
+   role/ownership denials, private Storage, readiness, callbacks without re-sending SMTP.
+   Synthetic /me provisioning is already separately authorized but still awaits private
+   user session. Other mutating smoke tests must use a precisely bounded synthetic fixture
+   set approved at execution, never real history. Stop for approval if writes exceed it.
+9. Return only approved workflows to service, restore maintenance controls to before-state,
+   monitor failures; keep registration/GPS requirements gated by their verified prerequisites.
+
+### Non-destructive expired-job handover
+
+Current read-only IDs/statuses:
+- 05c69748-c749-4ff9-9da3-0b8b955ce6d3: PENDING / pickup ASSIGNED.
+- 366992ed-f7e8-44c1-8204-734c71506921: FOOD_COLLECTED.
+- 51269901-47f1-45fc-9f32-e838767bf77d: EN_ROUTE.
+User/operator confirms actual crew/vehicle/container/food disposition before dispatch
+resumes. Preserve IDs, versions, reservations and history. Do not cancel/extend/complete
+or assert food safety automatically. Keep these jobs operationally on hold; any later
+transition follows existing authorized workflow and factual operator decision.
+
+### Android after hosted Production checks (separate build approval)
+
+Existing production-apk EAS profile uses production environment/internal APK; no changes
+needed to app source. Required public config: API https://ngo-eight-umber.vercel.app/api/v1,
+Supabase https://pyzyxgpcfwpcqyqrihuo.supabase.co + its public publishable key, WEB_BASE_URL
+https://ngo-eight-umber.vercel.app. Package com.rajashishpatil10.aaharaconnect; /open/
+HTTPS intent filter derives canonical host. Confirm actual Production signing certificate
+and continuity with installed Production app; configure matching assetlinks fingerprint
+only after private credential review. EAS effective env/signer remain UNVERIFIED; do not
+claim build ready merely from eas.json. Then approve one Production-configured internal
+APK, inspect signature/config/permissions and perform physical role/GPS/background/Maps,
+identity upload and authenticated-link tests. No public publication under rollout approval.
+
+Rollback: retain old READY deployment and original alias mappings; on failure keep pause,
+use schema-compatible code rollback only after compatibility review. Never drop015 or
+blindly restore old snapshot over post-snapshot writes. DB restoration/reconciliation
+requires separate approval. Stop if safe old-code compatibility cannot be established.
+Production remains NO-GO until explicit rollout approval and required checkpoints pass.
+
 ## Consolidated closure checkpoint — 2026-11-10
 
 The user elects to be backup custodian, key custodian and recovery operator on the same
