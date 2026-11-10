@@ -1,5 +1,13 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest SMTP ownership correction: user does not control old Gmail accounts and has no
+custom domain/DNS. Read-only status remains enabled/smtp.gmail.com:587; no credentials,
+messages or configuration changes. Owned Gmail+2FA/app-password is proposed as a free,
+low-volume no-domain pilot option, with no guarantee until controlled testing. User must
+choose a controlled sender/custodian and prepare the secret privately before a separate
+SMTP-only approval. See [migration/manual setup plan](PRODUCTION_SMTP_SENDER_MIGRATION_PLAN.md).
+Do not reuse any previous recipient/sender/alias. Production release stays NO-GO.
+
 Latest SMTP delivery acceptance checkpoint (2026-11-10): preflight verified canonical
 Site URL, two exact callbacks, Google SMTPsmtp.gmail.com:587 enabled and token-free route
 availability. Both supplied addresses already exist in Production; neither was modified.

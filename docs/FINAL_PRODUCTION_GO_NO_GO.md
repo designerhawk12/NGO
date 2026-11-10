@@ -8,6 +8,13 @@ No015, database permission/SMTP change, email, deployment, build, backup transfe
 or key export occurred. Existing backup was hashed, not restored again. The subsequent
 single-field Auth Site URL correction is separately approved and complete as recorded below.
 
+Latest sender-migration direction: the user does not control the old Gmail accounts and
+has no domain/DNS access. No prior account or alias may be used for sending. An owned,
+dedicated Gmail mailbox with 2-Step Verification/app password is proposed for a low-volume
+no-domain pilot, pending actual sender/custodian, secret readiness and explicit SMTP-only
+approval. Current SMTP remains unchanged and no mail was sent. See
+[owned-sender migration plan](PRODUCTION_SMTP_SENDER_MIGRATION_PLAN.md).
+
 **Latest SMTP acceptance checkpoint:** read-only preflight complete; corrected Site URL,
 exact callbacks and Google SMTP host/587 verified, but delivery gate is **BLOCKED**.
 Both concrete supplied recipients already have Production Auth/app accounts and were
@@ -74,7 +81,7 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 | Production Auth policy inspection | **PASS**, partial: public settings200, email provider enabled, disable_signup=false, mailer_autoconfirm=false | Email confirmation required. This does not prove SMTP or URLs | Auth owner | Yes |
 | Production Auth default Site URL | **PASS**: exact approved canonical URL saved/reloaded, homepage200, seven redirects and account/session state preserved | Default landing fixed; actual invitation/reset delivery still needs authorized mailbox test | Supabase/Auth owner, formal NGO ownership unconfirmed | Approved single-field correction complete |
 | Legacy Auth redirect allowlist | **BLOCKED** for narrowing: all seven entries intentionally unchanged, including old-origin and wildcard entries | Operator dependency/outstanding-link review and separate approval required before any removal | Supabase/Auth owner + operators | Review yes; no redirect edits authorized |
-| Custom SMTP presence | **PASS** for configuration only: SMTPon, smtp.gmail.com:587, sender name AahaaraConnect NGO | Sender address tool-redacted; confirm actual account/address authorization and provider ownership. Display name is not a DNS domain. No SMTP credential inspected | Auth/mail owner, unconfirmed | Read-only preflight complete |
+| SMTP sender replacement | **BLOCKED**: old sender not controlled by user; SMTP still enabled at smtp.gmail.com:587, sender name AahaaraConnect NGO. No credentials retrieved | User chooses a newly controlled Gmail mailbox, verifies 2FA/app-password availability and custodian, then explicitly approves sender-specific replacement; no domain required for proposed pilot | New mail-account owner/custodian, not supplied | Plan/read-only inspection complete; no SMTP change authorized |
 | Production SMTP delivery | **BLOCKED**: zero emails; both supplied addresses already exist; unused candidate authorization declined. No synthetic identity exists | Keep sending blocked; later explicit unused-recipient approval and sender authorization required before one invite/one reset | Auth owner + recipient | Read-only checks complete; email/account activity not currently authorized |
 | Public Volunteer registration | **BLOCKED**: current Production flagtrue; new proof/Storage prerequisites absent | Pause during approved cutover; re-enable only with proof/rate/deduplication and confirmed Production SMTP | Integration + NGO operator | No flag change authorized now |
 | Current Donor web routing | **FAIL**: old Production donor artifact references foreign Auth project oneiwcfdnqzcyfvxufhc | Candidate fixes env substitution; never test credentials on old page or access foreign project | Food/Donor + integration owner | Local fix already present; deploy requires approval |

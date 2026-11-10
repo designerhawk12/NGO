@@ -1,5 +1,11 @@
 # Production SMTP acceptance — 2026-11-10
 
+Subsequent owner correction: they do not control/use the previous Gmail accounts and
+have no domain/DNS. Those accounts and proposed old-account plus-aliases must not be
+used. See [new owned-sender migration plan](PRODUCTION_SMTP_SENDER_MIGRATION_PLAN.md).
+No SMTP change or test mail is authorized until a new sender and explicit approval are
+provided; earlier recipient checks below are history, not valid sending authority.
+
 **SMTP delivery gate: BLOCKED.** Read-only preflight completed. The latest user decision
 was **“No—keep sending blocked.”** No email was sent, no synthetic identity was created,
 and no existing Auth/application account, password or record was modified. No delivery
