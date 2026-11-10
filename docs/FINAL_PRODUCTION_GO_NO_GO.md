@@ -1,5 +1,80 @@
 # Final Production release gates — 2026-11-10
 
+## Production candidate deployed READY; role acceptance BLOCKED — 2026-11-10
+
+User authorized continuation from runtime checkpoint, no015/backup/credential recreation.
+Initial checks: exact015 ledger confirmed,26Auth locks still held, WAF live/enabled,
+buckets absent. Persisted corrected checker scripts/verify-production-runtime.cjs uses
+admin-resolved table OIDs and runtime has_table_privilege(OID), avoiding inaccessible
+Auth schema name resolution. Actual TLS runtime verification PASS: current/session user
+restricted login, required app/identity reads, no Auth/schemaCREATE/ledger/audit rewrite/
+admin/BYPASSRLS access. No credential/grant changes.
+
+Created and read-back verified BOTH private buckets via official Storage API:
+profile-photos614400,JPEG/PNG/WebP; volunteer-identity-private2097152,JPEG. No Storage
+client policies exist; no object uploads, extra buckets or user/account changes.
+
+Reviewed21-variable Production-only matrix is saved and metadata read-back PASS. DB URL
+now new restricted login; TLS true/verified CA. Production public key verified at exact
+Supabase endpoint; public web/Donor binding verified from actual build. Flags: registration
+false; identity/idempotency true; Driver-required GPS false pending Production Android;
+WhatsApp/outbox/geocoding/deletion/public APK false. CORS/origin/invite callback canonical.
+Legacy unrelated variables preserved. No SMTP/Auth URL/settings change.
+
+Known-outcome configuration tooling errors resolved without blind replay: Vercel list
+returns encrypted values, so public-key read uses supported single-variable decrypted
+endpoint. Bulk CLI stdin array rejected with no metadata changes; switched to individual
+object requests. Three sensitive DB updates succeeded, recorded in private non-secret
+progress metadata. Existing managed SUPABASE_SECRET_KEY update was rejected/unchanged:
+preserved its integration binding, shared with verified Production URL/public key. No
+managed credential rotation/bypass. Unchanged non-sensitive values were verified/skipped;
+remaining app-owned changes accepted. Managed secret itself remains opaque; authenticated
+Storage API workflow verification is pending authorized application role sessions.
+
+Original Auth bridge transferred with overlap to bounded deployment bridge (26locks)
+without depending on expired session. Both were explicitly released after sensitive
+work and protected anonymous checks; current catalog reports0remaining Auth ShareLocks.
+No infinite lock extension or residual Auth pause. Application WAF remains enabled.
+
+Created exactly ONE combined Production-target deployment:
+ID dpl_3sCfmZxYNwAQrmHzmAAxJn2SocWP
+URL https://ngo-i0tqqrcp8-equinox10.vercel.app
+READY, project prj_6BuwhBiISjTlzgGtqG2arEXqOXGl/team equinox10, source metadata
+580801e9b54937be7ecbc0db592dea6537b95869. Clean staged source393files matched Git blob
+hashes before deployment; no current recovery-tool changes substituted into frozen app.
+Used --prod --skip-domain: canonical https://ngo-eight-umber.vercel.app still maps to
+old dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR. NO stable alias promotion occurred.
+
+Protected candidate checks PASS: homepage/health/readiness200, /donor/index.html and
+accept-invite/reset-password token-free pages200. Scanned referenced main JS and Donor
+inline configuration: correct Production Auth URL, no sampled foreign/staging project,
+no unexpanded Donor Vite placeholders, no known operator server-key/runtime-credential
+literal in sampled JS. This is a sampled artifact scan, not exhaustive secret proof.
+
+For anonymous acceptance, temporarily excluded only the Vercel-authentication-protected
+candidate hostname from WAF deny; public stable/other origins remained denied and Vercel
+protection unchanged. Candidate /me, volunteers, food-requests, pickups, assignments/me,
+assignments/driver, vehicles/tracking and notifications/outbox denied unauthenticated
+access. /assignments root404 is an unsupported route, not a failed authorized workflow.
+Android release metadata200 available=false. No emails, authenticated /me, real-user
+record writes, fixture creation, GPS reports or APK build/publication performed.
+
+User explicitly replied NO authorized role sessions available. Therefore Admin/Donor/
+Volunteer/Driver logins, authenticated representative reads and Storage ownership flows
+remain UNVERIFIED; no session impersonation/password reset used. Cannot promote/reopen
+under mandatory acceptance rules. Removed/published candidate-only WAF exception; rule
+restored to exact all-/api DENY except health/ready, active=true/no intended draft.
+No extra temporary rule exists. Auth locks0;15Auth users/11app users/8donations/
+5assignments/0orphans match prior counts. Previous full57table/30role preservation PASS
+remains evidence; current aggregates are not a new full-row audit.
+
+Only remaining action: arrange legitimate private role sessions for bounded Production
+acceptance on READY candidate, then promote exact existing deployment (no rebuild) and
+disable only temporary maintenance rule after mandatory checks pass. Current stable
+website homepage accessible but application API deliberately maintenance-blocked;
+Production remains NO-GO, not restored operational service. Do not rerun015, recreate
+runtime/buckets, resend SMTP or deploy another artifact to resume this checkpoint.
+
 ## Actual Production015 APPLIED — 2026-11-10
 
 Explicit resumed approval verified actual catalog text arrays32app/26Auth, focused
