@@ -1,5 +1,13 @@
 # AaharaConnect NGO pilot operator guide
 
+Production Auth default landing now uses `https://ngo-eight-umber.vercel.app/` after the
+approved single-field fix. All seven redirects are preserved. Sender/provider ownership
+and actual mail delivery remain unverified; see the
+[next controlled SMTP acceptance plan](PRODUCTION_AUTH_SITE_URL_CORRECTION.md).
+Supply a specifically authorized Production test mailbox and the requested non-secret
+sender/domain/provider ownership facts before any test mail. No existing Admin reset,
+invitation, SMTP credential retrieval or redirect cleanup is authorized by this guide.
+
 ## Production handover preparation — 2026-11-10
 
 Production release is **NO-GO**; this section is preparation for the frozen candidate,

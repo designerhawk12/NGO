@@ -1,0 +1,56 @@
+{
+  "verifiedUtc": "2026-11-10T05:37:22.360Z",
+  "supabaseProject": "pyzyxgpcfwpcqyqrihuo",
+  "previousSiteUrl": "https://ngo-equinox10.vercel.app/",
+  "finalSiteUrl": "https://ngo-eight-umber.vercel.app/",
+  "allowedRedirects": [
+    "https://ngo-eight-umber.vercel.app/accept-invite",
+    "https://ngo-eight-umber.vercel.app/reset-password",
+    "https://ngo-equinox10.vercel.app/",
+    "https://ngo-equinox10.vercel.app/**",
+    "https://ngo-*-equinox10.vercel.app",
+    "https://ngo-*-equinox10.vercel.app/**",
+    "https://ngo-eight-umber.vercel.app/**"
+  ],
+  "checks": {
+    "sameProjectTeam": true,
+    "sameActiveDeployment": true,
+    "sameAliases": true,
+    "sameProtection": true,
+    "sameDeploymentInventory": true,
+    "gitStillDisconnected": true,
+    "savedSiteUrlExact": true,
+    "allSevenRedirectsUnchanged": true,
+    "readbackAfterReload": true,
+    "healthAndAnonymousRestriction": true
+  },
+  "activeProductionDeployment": "dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR",
+  "productionAliases": [
+    "ngo-eight-umber.vercel.app",
+    "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+  ],
+  "health": [
+    {
+      "path": "/",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/health",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/health/ready",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    }
+  ],
+  "newDeployments": [],
+  "promotions": [],
+  "deploymentCount": 32,
+  "emailsSent": 0,
+  "passed": true,
+  "uiReadbackObservation": "Initial reload observation preceded Dashboard data load; the subsequent full state confirmed the saved value. No save retry or additional edit was performed."
+}

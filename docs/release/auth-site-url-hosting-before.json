@@ -1,0 +1,258 @@
+{
+  "capturedUtc": "2026-11-10T05:32:21.114Z",
+  "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+  "teamId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+  "activeDeployment": "dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR",
+  "aliases": [
+    "ngo-eight-umber.vercel.app",
+    "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+  ],
+  "domains": [
+    {
+      "name": "ngo-eight-umber.vercel.app",
+      "verified": true
+    }
+  ],
+  "protection": {
+    "deploymentType": "all_except_custom_domains"
+  },
+  "gitDisconnected": true,
+  "deployments": [
+    {
+      "id": "dpl_2wRUjz9oeo5YHy8rH43XdErPhHSV",
+      "target": "production",
+      "state": "READY",
+      "created": 1793705164405,
+      "url": "ngo-4ghxwjbqt-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_2YRszXKtrr1Be6Q2Wa7CcUbrJoj4",
+      "target": "production",
+      "state": "READY",
+      "created": 1793526663804,
+      "url": "ngo-2rs2pkgw7-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_35dxu4vKGyXBLhVTxr31oxauf4WN",
+      "target": "production",
+      "state": "READY",
+      "created": 1793517902327,
+      "url": "ngo-m49k5f0cx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_3RW9briSMFCbBXAV7tL3e19pEPJM",
+      "target": "production",
+      "state": "READY",
+      "created": 1793387125001,
+      "url": "ngo-br72nypkx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR",
+      "target": "production",
+      "state": "READY",
+      "created": 1793985230252,
+      "url": "ngo-i2v03pslb-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_4Dy14GR4DNKyDofaTMRwCAuRdxE9",
+      "target": "production",
+      "state": "READY",
+      "created": 1793383626362,
+      "url": "ngo-3d70zxzqx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_4MnYeEnsTuP1Ed8DVJ4y7uX1EXuM",
+      "target": "production",
+      "state": "READY",
+      "created": 1793216031611,
+      "url": "ngo-8mzza6cvh-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_56CpxejcUCBhqGtBunYMfonJ22Rr",
+      "target": "production",
+      "state": "READY",
+      "created": 1793386378652,
+      "url": "ngo-5guh3w9vy-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_5k9HrtHZvPBVgKeYSQSBRwpmBNSQ",
+      "target": "production",
+      "state": "READY",
+      "created": 1793528149497,
+      "url": "ngo-2dw8uorh5-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_6fM6wxDsw5Er2KAa9uZ5RRGDcaU1",
+      "target": null,
+      "state": "ERROR",
+      "created": 1793522844468,
+      "url": "ngo-wipmt3ki3-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_7cfbuMgYpDQzT5ogEZq53pVSdADr",
+      "target": "production",
+      "state": "READY",
+      "created": 1793380852923,
+      "url": "ngo-djmmwglt2-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_7qiMBgmRfahBg8Y41JU4oussdYL4",
+      "target": "production",
+      "state": "READY",
+      "created": 1793384573369,
+      "url": "ngo-8s7i0gq80-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_8mCga2ryn3LbfZ3exxwuKXChtQTb",
+      "target": "production",
+      "state": "READY",
+      "created": 1793367833033,
+      "url": "ngo-cez91rfrs-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_8ooCNzvqj6BFNcs2SM2hzqyyj1TG",
+      "target": "production",
+      "state": "READY",
+      "created": 1793530056851,
+      "url": "ngo-hyspyxj5o-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_94Dayeyeaz6Uhf2ffKBGy3Dq9GX6",
+      "target": "production",
+      "state": "READY",
+      "created": 1793522337057,
+      "url": "ngo-r502yekxn-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_A17kSj8a14WJPuKCFT3Hgtkzw24g",
+      "target": "production",
+      "state": "READY",
+      "created": 1793519405090,
+      "url": "ngo-ayq8lu9kj-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_A8BG62nmmr9gphVYpBHMAN5zkcD6",
+      "target": "production",
+      "state": "READY",
+      "created": 1793515611063,
+      "url": "ngo-1e2w5nvq8-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_AP947urXckRqHftdFhPDURhNwz5p",
+      "target": "production",
+      "state": "READY",
+      "created": 1793812279235,
+      "url": "ngo-2gorydeb4-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_ArPNwDXL57byYbyaVT6ynKCzGQaF",
+      "target": "production",
+      "state": "READY",
+      "created": 1793521323019,
+      "url": "ngo-1wnz155oy-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_B3kPtUtxrfXFxVwCTrjGENkTbAAL",
+      "target": "production",
+      "state": "READY",
+      "created": 1793526444219,
+      "url": "ngo-luay46klp-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_BPGxFs5pN3zEmq5Vs9WC5BrjUrKU",
+      "target": "production",
+      "state": "READY",
+      "created": 1793530434388,
+      "url": "ngo-3xf30mh5y-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_BpvLjEhRprwPrxQZw3THzr8H4TNw",
+      "target": "production",
+      "state": "READY",
+      "created": 1793522364173,
+      "url": "ngo-mpz6t27bl-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_C4JJduq4QPZCgVMHoPaTiReMNQCm",
+      "target": "production",
+      "state": "READY",
+      "created": 1793906205386,
+      "url": "ngo-auql5uugq-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_CTgZJSRJQvf6BFUr2CgSnAaYifCQ",
+      "target": "production",
+      "state": "READY",
+      "created": 1793762673556,
+      "url": "ngo-aixkl3cgx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_D5TPJCiTGXn1pAawdGpk7upSQpv3",
+      "target": "production",
+      "state": "READY",
+      "created": 1793524560288,
+      "url": "ngo-lv86b5z69-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_EX3iQqWa3jCRm7VrxJLyeqyJKUgm",
+      "target": "production",
+      "state": "READY",
+      "created": 1793526096205,
+      "url": "ngo-f2b57f371-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_EyU4KxdKcJN8aVCWfUzAQMqCGx86",
+      "target": "production",
+      "state": "READY",
+      "created": 1793985034002,
+      "url": "ngo-r9vri5r9p-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_F4psXMB27AfzvE4Myiq4LNbjAQJx",
+      "target": "production",
+      "state": "READY",
+      "created": 1793518494139,
+      "url": "ngo-kno2zzzx3-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_FLpniwaduSFLZmhM684iXN7eTm8q",
+      "target": "production",
+      "state": "READY",
+      "created": 1793388934020,
+      "url": "ngo-3a1yz1ain-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_GmAPYXpMvnP5Q65YoJs1VZdRawkh",
+      "target": "production",
+      "state": "READY",
+      "created": 1793517695250,
+      "url": "ngo-8pxg9x35m-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_GTZT4VyEqUxVj9CsMF6EDcJ8fLqp",
+      "target": "production",
+      "state": "READY",
+      "created": 1793776473183,
+      "url": "ngo-i6zivks0u-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_Hrp2g3JMQjuo3H1nEdbAwQv36y1c",
+      "target": "production",
+      "state": "READY",
+      "created": 1793372542079,
+      "url": "ngo-batxd8esn-equinox10.vercel.app"
+    }
+  ],
+  "urlStatus": [
+    {
+      "host": "ngo-equinox10.vercel.app",
+      "status": 404,
+      "vercelError": "DEPLOYMENT_NOT_FOUND"
+    },
+    {
+      "host": "ngo-eight-umber.vercel.app",
+      "status": 200,
+      "vercelError": null
+    }
+  ]
+}

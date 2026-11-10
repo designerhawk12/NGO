@@ -1,5 +1,14 @@
 # Final NGO pilot handoff — 2026-11-09
 
+Latest authorized Site URL-only correction (2026-11-10): Production Supabase default
+Auth URL changed fromngo-equinox10.vercel.app/ tohttps://ngo-eight-umber.vercel.app/.
+Saved/reloaded; all seven redirects unchanged.14 Auth/11 app users, role mappings,
+identities/sessions/refresh-token rows and ledger unchanged by read-only comparison.
+Homepage/health/readiness200, anonymousme401; same32 deployments/activeProduction/bothaliases.
+No mail, SMTP/redirect edits, user/password changes,015, builds or deployments. See
+[PRODUCTION_AUTH_SITE_URL_CORRECTION.md](PRODUCTION_AUTH_SITE_URL_CORRECTION.md) for
+evidence and next recipient-authorized SMTP plan. Overall Production release remainsNO-GO.
+
 Latest authorized retirement checkpoint (2026-11-10): exact42 historical Preview
 deployments and5 aliases removed after all-target revalidation and explicit operator/
 reviewer confirmation. All47 URLs404;32 other deployments and both Production aliases,

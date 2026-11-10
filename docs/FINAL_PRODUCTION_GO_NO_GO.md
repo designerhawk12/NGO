@@ -4,8 +4,16 @@
 correction is complete: Git disconnected, seven shared variables now Production-only,
 separate Preview API binding removed. Values/types, live deployment/aliases and staging
 preserved. See [correction evidence](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md).
-No015, database permission/Auth/SMTP change, email, deployment, build, backup transfer
-or key export occurred. Existing backup was hashed, not restored again.
+No015, database permission/SMTP change, email, deployment, build, backup transfer
+or key export occurred. Existing backup was hashed, not restored again. The subsequent
+single-field Auth Site URL correction is separately approved and complete as recorded below.
+
+**Latest authorized Auth correction:** default Site URL is now
+`https://ngo-eight-umber.vercel.app/`, verified after Dashboard reload. All seven allowed
+redirects remain exactly unchanged.14 Auth users/11 app users, identities, stored sessions,
+refresh-token rows, roles and ledger matched the before-state; hosted checks passed and
+the same32 deployments/active Production/bothaliases remain. No emails were sent. See
+[single-field correction and next SMTP plan](PRODUCTION_AUTH_SITE_URL_CORRECTION.md).
 
 **Latest authorized retirement completed2026-11-10:** the exact42 historical Preview
 deployments and5 aliases are retired. All47 URLs404; all32 other deployments, both live
@@ -22,11 +30,11 @@ names without a value/decryption read. The owner subsequently confirmed all oper
 PR25/26 review dependencies were cleared and approved the exact42-ID/5-alias retirement,
 now complete. Open PRs remain untouched; their old Preview links now404.
 
-Auth Site URL now independently returns404/DEPLOYMENT_NOT_FOUND; the canonical site200.
-Current seven redirects/SMTP-enabled status reconfirmed unchanged. Minimal canonical
-Auth settings, a transport-only synthetic invitation/reset plan, operator custody checklist
-and second-device procedure are prepared. No recipient, cloud folder or key-vault custody
-has been authorized. Completed staging/recovery tests were not repeated.
+The old default URL returned404 and has now been replaced by the approved canonical200
+origin. All seven redirects were preserved as required; narrowing remains a separate
+dependency review. A transport-only invitation/reset plan, operator custody checklist
+and second-device procedure are prepared. No Production recipient, cloud folder or key
+vault has been authorized. Staging/recovery tests were not repeated.
 
 Application release candidate: **`580801e9b54937be7ecbc0db592dea6537b95869`**.
 This is the frozen application source; preparation commits add documentation/tooling
@@ -55,7 +63,8 @@ FAIL = demonstrated defect. NOT VERIFIED = evidence insufficient, not a proven d
 |015 and private Storage readiness | **BLOCKED**: only015 pending; Production buckets/policies0 | Approve015 exact checksum, restricted runtime and two private buckets; never publish proof/photo storage | Integration + Volunteer owners | No for provisioning |
 | Admin/account mappings | **PASS**: requested original Admin exists/confirmed/linkedADMIN/not disabled;14 Auth,11 app users,0 orphan app links | Password not tested; preserve every UUID/password/role/approval/history. Owner triage3 unmapped Auth identities | NGO Admin + integration maintainer | Read-only evidence yes |
 | Production Auth policy inspection | **PASS**, partial: public settings200, email provider enabled, disable_signup=false, mailer_autoconfirm=false | Email confirmation required. This does not prove SMTP or URLs | Auth owner | Yes |
-| Production Auth URLs | **FAIL** default landing: recorded Site URLngo-equinox10.vercel.app returns404/DEPLOYMENT_NOT_FOUND; canonical site200. Seven redirects include preview wildcards; exact invite/reset callbacks exist | Review outstanding/undocumented callbacks; separately approve canonical Site URL and two exact callbacks. No password-login failure is inferred | Supabase/Auth owner, unconfirmed | Read-only verification complete; correction needs approval |
+| Production Auth default Site URL | **PASS**: exact approved canonical URL saved/reloaded, homepage200, seven redirects and account/session state preserved | Default landing fixed; actual invitation/reset delivery still needs authorized mailbox test | Supabase/Auth owner, formal NGO ownership unconfirmed | Approved single-field correction complete |
+| Legacy Auth redirect allowlist | **BLOCKED** for narrowing: all seven entries intentionally unchanged, including old-origin and wildcard entries | Operator dependency/outstanding-link review and separate approval required before any removal | Supabase/Auth owner + operators | Review yes; no redirect edits authorized |
 | Custom SMTP presence | **PASS** for configuration only: Dashboard Enable custom SMTP switch is on; sender name AahaaraConnect NGO | Sender email was tool-redacted: owner must manually confirm address/domain/provider ownership. Delivery remains untested | Auth/mail owner, unconfirmed | Yes; no credential reveal or email needed |
 | Production email delivery | **NOT VERIFIED**: no Production email sent | Separate authorized recipient/fixture/invite/reset test and confirmed receipts/callbacks | Auth owner + recipient | Delivery can create Auth/app records; explicit approval required |
 | Public Volunteer registration | **BLOCKED**: current Production flagtrue; new proof/Storage prerequisites absent | Pause during approved cutover; re-enable only with proof/rate/deduplication and confirmed Production SMTP | Integration + NGO operator | No flag change authorized now |
@@ -172,13 +181,14 @@ No live Production document/upload/GPS mutation tests are authorized in this pha
 
 ## Auth/SMTP evidence and controlled delivery plan
 
-Read-only authenticated in-app browser inspection on2026-11-10 positively displayed
-projectNGO and refpyzyxgpcfwpcqyqrihuo in the Dashboard URL. This resolves the earlier
-MCP capability gap; it does not authorize settings changes. No form field was edited,
-Save remained disabled and no email was sent. Native Brave URL-verification limitations
-were not bypassed; the supported in-app browser exposed the exact project URL.
+Initial read-only authenticated browser inspection positively identified the exact NGO
+project. The subsequent separately approved Site URL-only edit is complete and was read
+back after reload. All seven redirects remain unchanged; no other Auth field or email
+action was authorized. Native Brave URL-verification limitations were not bypassed;
+the supported in-app browser exposed the exact project URL.
 
-**Current Site URL:** `https://ngo-equinox10.vercel.app/`.
+**Current saved Site URL:** `https://ngo-eight-umber.vercel.app/`, after separately approved
+single-field correction. Previous Site URL was`https://ngo-equinox10.vercel.app/` (404).
 **Current allowed redirects (all seven, unchanged):**
 
 - `https://ngo-eight-umber.vercel.app/accept-invite`
@@ -189,12 +199,11 @@ were not bypassed; the supported in-app browser exposed the exact project URL.
 - `https://ngo-*-equinox10.vercel.app/**`
 - `https://ngo-eight-umber.vercel.app/**`
 
-The default URL differs from the frozen release origin, and matching preview hosts are
-allowed Auth callbacks. Combined with Preview bindings, this increases the risk of users
-authenticating through a non-approved frontend. No actual token theft or broken legacy
-alias is claimed. Owner must establish which old aliases/outstanding callbacks remain
-legitimate before approving a narrowed allowlist. Desired future canonical origin remains
-`https://ngo-eight-umber.vercel.app` with exact invite/reset callbacks; nothing was substituted.
+The missing old default landing has been corrected. Legacy and Preview-host wildcard
+callbacks remain intentionally allowlisted under the exact approval, even though the
+old Preview artifacts are now retired. Operator/outstanding-link review and separate
+approval are required before narrowing. No token theft or password-login failure is
+inferred; no redirect entry was substituted, removed or added.
 
 **SMTP:** Enable custom SMTP switchon; sender name`AahaaraConnect NGO`; sender email value
 was redacted by the tool and was not bypassed/reconstructed. No SMTP username/password
@@ -211,14 +220,13 @@ Email confirmation is required. Existing UUIDs, roles, passwords, approval histo
 legacy Volunteer/Admin donor profile are preserved. Three unmapped Auth identities need
 owner triage before their first intentional login; never auto-promote/reinvite/recreate them.
 
-Future delivery test requires explicit approval for one Production-authorized synthetic
-recipient not already present in Auth/app users (previous staging recipient authorization
-does not carry over). Approve the small synthetic application/proof records created by
-the normal invitation workflow. Send one invitation, confirm receipt/domain/callback and
-pending sign-in, then send one reset only after recipient confirmation; verify callback
-and continued pending state. Capture sanitized timestamps/message status, no passwords
-or tokens. Never test by resetting the original Admin. Ambiguous outcomes require
-reconciliation, not repeated sending. Any cleanup needs separate reviewed authorization.
+The exact next [SMTP transport test](PRODUCTION_AUTH_SITE_URL_CORRECTION.md) needs a new
+Production-authorized mailbox, one invitation and one subsequent reset, and approval for
+the synthetic Auth identity/optional default-DONOR app rows. It does not need015 or proof
+records and does not establish Volunteer approval. Receipt, password setup/reset and
+correct callbacks must be recipient-confirmed without sharing passwords/tokens. Never
+reset the original Admin or automatically resend ambiguous requests. Full Volunteer
+acceptance/any cleanup needs its later prerequisites and separate authorization.
 
 ## Frozen candidate, execution sequence and recovery
 
@@ -270,7 +278,7 @@ Do not drop tables/disable proof gates or restore over Production as an automati
 Any restore requires separate approval, isolated rehearsal and post-snapshot reconciliation.
 See [full runbook](PRODUCTION_RELEASE_READINESS.md) and [operator guide](NGO_PILOT_OPERATIONS.md).
 
-## Approval boundary after exact historical retirement
+## Approval boundary after completed limited corrections
 
 **Completed:** the owner approved and attested the exact42-ID/5-alias manifest; every
 target was revalidated and retired. Current Production deployment/bothaliases,32 other
@@ -279,8 +287,8 @@ Reviewer/bookmark links to retired previews now404; their artifacts are no longe
 available for rollback. The manifest is retained as original scope history, not authority
 for another deletion. No additional cleanup or credential rotation is authorized.
 
-The separately prepared Auth proposal is canonical Site URL plus the two exact canonical
-callbacks; it remains unapproved. SMTP transport test needs a newly authorized Production
+The separately approved canonical Site URL correction is complete; all seven redirects
+are preserved. Any proposed callback narrowing remains unapproved. SMTP test needs a Production
 synthetic recipient; it can precede015 without a Volunteer proof workflow. Later full
 Volunteer acceptance requires015/buckets/matching app. Supply formal NGO owners, cloud
 tenant/folder, independent vault/key custody and second-device recovery operators before
@@ -291,5 +299,6 @@ Owner follow-up: original URL values and SMTP-enable status are now independentl
 Still manual: redacted sender address/provider ownership; formal NGO ownership of backups,
 deployments and account recovery; cloud folder/vault custody identifiers. All remain pending
 organizational handover, not inferred from personal developer access. The owner separately
-approved the isolation correction and exact historical retirement; both are complete.
+approved the isolation correction, exact historical retirement and Site URL-only correction;
+all are complete.
 No broader approval is inferred.

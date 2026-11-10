@@ -1,5 +1,11 @@
 # Production release preparation — 2026-11-10
 
+Latest authorized Auth change: default Site URL is now `https://ngo-eight-umber.vercel.app/`;
+all seven redirects and account/session/role/ledger state preserved. Hosted checks passed,
+no deployment/email. See [correction and SMTP test plan](PRODUCTION_AUTH_SITE_URL_CORRECTION.md).
+Any old Site URL404 statements below describe the pre-correction finding; legacy redirect
+review and mail delivery/ownership remain gated. No database or release approval inferred.
+
 Latest authorized change: [Vercel isolation correction](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md)
 completed2026-11-10. Git disconnected, seven shared bindings narrowed to Production,
 Preview API entry removed; values/types/current deployment/aliases and staging unchanged.
