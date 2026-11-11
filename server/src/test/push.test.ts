@@ -13,6 +13,7 @@ describe('private push event construction',()=>{
     const [sql,parameters]=query.mock.calls[0];
     expect(sql).toContain('ON CONFLICT(event_key,recipient_user_id) DO NOTHING');
     expect(sql).toContain("SELECT id FROM app.app_users WHERE role='ADMIN'");
+    expect(sql).toContain('$5::uuid IS NULL');
     expect(sql).toContain('INSERT INTO app.push_deliveries');
     expect(parameters[0]).toBe(`food-request:${id}`);
     expect(parameters[2]).toBe(id);

@@ -26,7 +26,7 @@ export function validExpoToken(token: string): boolean {
 export async function enqueuePush(client: PoolClient, kind: PushKind, entityId: string, eventKey: string,
   recipients: 'ADMINS' | { appUserIds?: string[]; personIds?: string[]; donorFoodRequestId?: string }) {
   const recipientSql = recipients === 'ADMINS'
-    ? "SELECT id FROM app.app_users WHERE role='ADMIN'"
+    ? "SELECT id FROM app.app_users WHERE role='ADMIN' AND $5::uuid IS NULL"
     : recipients.appUserIds ? 'SELECT id FROM app.app_users WHERE id=ANY($5::uuid[])'
       : recipients.personIds ? 'SELECT DISTINCT app_user_id AS id FROM app.people WHERE id=ANY($5::uuid[]) AND app_user_id IS NOT NULL'
         : `SELECT p.app_user_id AS id FROM app.food_requests fr JOIN app.donors d ON d.id=fr.donor_id
