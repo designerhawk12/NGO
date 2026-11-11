@@ -14,6 +14,7 @@
       "maxDuration": 30
     }
   },
+  "crons": [{ "path": "/api/v1/push/dispatch", "schedule": "0 2 * * *" }],
   "routes": [
     { "src": "^/\\.well-known/assetlinks\\.json$", "dest": "/api/index", "transforms": [{ "type": "request.headers", "op": "set", "target": { "key": "x-ac-original-api-path" }, "args": "v1/releases/android/assetlinks" }] },
     {

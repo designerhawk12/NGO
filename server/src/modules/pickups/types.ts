@@ -45,6 +45,7 @@ export type AssignmentRow = {
   pickup_address?: string | null;
   delivery_address?: string | null;
   driver_acceptance?: 'NOT_REQUIRED' | 'PENDING' | 'ACCEPTED' | 'DECLINED' | null;
+  own_response?: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | null;
   window_starts_at?: Date | null;
   window_ends_at?: Date | null;
   terminal_at?: Date | null;

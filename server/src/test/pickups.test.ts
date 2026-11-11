@@ -1459,6 +1459,7 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
       pickupStatus?: string;
       pickupVersion?: number;
       isAssigned?: boolean;
+      responsePending?: boolean;
       assignmentExists?: boolean;
     }) {
       const assignmentExists = options.assignmentExists ?? true;
@@ -1469,6 +1470,10 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
       const isAssigned = options.isAssigned ?? true;
 
       query.mockImplementation(async (sql: string, params?: unknown[]) => {
+        if (sql.includes('UPDATE app.assignment_members am SET response=')) {
+          return { rows: isAssigned && options.responsePending !== false ? [{ volunteer_id: pr3VolunteerId }] : [] };
+        }
+        if (sql.includes('SELECT count(*)::int AS count FROM app.assignment_members')) return { rows: [{count:0}] };
         // Volunteer membership check
         if (sql.includes('FROM app.assignment_members am') && sql.includes('JOIN app.volunteers v')) {
           return { rows: isAssigned ? [{ exists: 1 }] : [] };
@@ -1500,7 +1505,7 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
               driver_id: pr3DriverId,
               vehicle_id: pr3VehicleId,
               role: 'Pickup Crew',
-              status: params?.[0] as string,
+              status: sql.includes('SET version=version+1') ? currentAssignmentStatus : params?.[0] as string,
               version: currentAssignmentVersion + 1,
               created_at: new Date('2026-10-01T12:00:00Z'),
             }],
@@ -1753,7 +1758,7 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
     });
 
     describe('Legal Status Transitions & Side Effects', () => {
-      it('assigned VOLUNTEER can ACCEPT: PENDING -> ACCEPTED, mirrors pickup ASSIGNED', async () => {
+      it('records the assigned VOLUNTEER acceptance without claiming Driver acceptance', async () => {
         findUser.mockResolvedValue(volunteer);
         mockDbForTransition({ assignmentStatus: 'PENDING', assignmentVersion: 0, pickupStatus: 'ASSIGNED', isAssigned: true });
         const res = await request(app)
@@ -1763,14 +1768,24 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
-        expect(res.body.data.status).toBe('ACCEPTED');
+        expect(res.body.data.status).toBe('PENDING');
         expect(res.body.data.version).toBe(1);
 
-        const assignEvent = query.mock.calls.find(([sql]) => sql.includes('INSERT INTO app.assignment_status_events'));
-        expect(assignEvent).toBeDefined();
+        const memberUpdate = query.mock.calls.find(([sql]) => sql.includes('UPDATE app.assignment_members am SET response='));
+        expect(memberUpdate).toBeDefined();
         // Reservations must NOT be released
         const releaseCall = query.mock.calls.find(([sql]) => sql.includes('UPDATE app.resource_reservations'));
         expect(releaseCall).toBeUndefined();
+      });
+
+      it('rejects a duplicate Volunteer response while preserving the assignment', async () => {
+        findUser.mockResolvedValue(volunteer);
+        mockDbForTransition({assignmentStatus:'PENDING',assignmentVersion:1,isAssigned:true,responsePending:false});
+        const res=await request(app).patch(`/api/v1/assignments/${pr3AssignmentId}/status`)
+          .set('Authorization','Bearer token').send({action:'ACCEPT',expectedVersion:1});
+        expect(res.status).toBe(409);
+        expect(res.body.error.code).toBe('INVALID_TRANSITION');
+        expect(query.mock.calls.some(([sql])=>sql.includes('UPDATE app.assignments'))).toBe(false);
       });
 
       it('assigned VOLUNTEER can START: ACCEPTED -> EN_ROUTE, mirrors pickup to EN_ROUTE', async () => {
@@ -2539,6 +2554,7 @@ describe('Pickups Assignment & Reservations API (PR2)', () => {
         teamId: null,
         driverId,
         vehicleId,
+        crewResponses: [],
       });
     });
 

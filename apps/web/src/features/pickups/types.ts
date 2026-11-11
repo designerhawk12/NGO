@@ -71,6 +71,7 @@ export interface LiveAssignment {
   vehicleId: string
   /** The NGO employee driver's own response, separate from the crew status. */
   driverAcceptance?: 'NOT_REQUIRED' | 'PENDING' | 'ACCEPTED' | 'DECLINED'
+  crewResponses?: Array<{volunteerId:string;response:'PENDING'|'ACCEPTED'|'DECLINED'|'CANCELLED'}>
 }
 
 export interface VehicleAssignmentSummary {

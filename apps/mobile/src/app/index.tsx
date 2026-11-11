@@ -9,6 +9,7 @@ export default function Welcome() {
   if (role === 'volunteer') return <Redirect href="/volunteer/(tabs)/home" />;
   if (role === 'donor') return <Redirect href="/donor/(tabs)/home" />;
   if (role === 'driver') return <Redirect href="/driver/(tabs)/jobs" />;
+  if (role === 'admin') return <Redirect href="/admin" />;
   return <Screen style={{ justifyContent: 'center' }}>
     <View style={{ alignItems: 'flex-end', marginBottom: 34 }}><LanguageSwitcher /></View>
     <View style={{ alignItems: 'center', marginBottom: 30 }}><View style={{ width: 70, height: 70, borderRadius: 21, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}><Icon name="heart" size={35} color={C.white} /></View>
@@ -31,5 +32,6 @@ export default function Welcome() {
     <Card style={{ padding: 20 }}><View style={{ width: 48, height: 48, borderRadius: 13, backgroundColor: C.blueSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}><Icon name="food" size={25} color={C.blue} /></View>
       <T size={20} weight="700" color={C.ink}>Donor / Event Organizer</T><T color={C.muted} style={{ marginTop: 5, marginBottom: 17 }}>Share surplus food and track every pickup.</T>
       <Button title="Continue as donor" onPress={() => router.push('/donor/login')} icon="arrow" /></Card>
+    <Button title="Administrator sign in" variant="quiet" onPress={() => router.push('/admin/login')} style={{ marginTop: 16 }} />
   </Screen>;
 }

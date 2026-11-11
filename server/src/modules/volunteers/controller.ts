@@ -3,6 +3,7 @@ import { uuidSchema, type AppUser, type CreateAvailabilityRequest } from '@aahar
 import { HttpError } from '../../middleware/errorHandler';
 import { sendSuccess } from '../../utils/response';
 import * as volunteerService from './service';
+import { dispatchBestEffort } from '../push/service';
 import {
   listTeamsQuerySchema,
   listVolunteersQuerySchema,
@@ -18,10 +19,12 @@ import {
 
 export const registerVolunteerHandler: RequestHandler = async (request, response, next) => {
   try {
-    sendSuccess(response, await volunteerService.registerVolunteer(
+    const result = await volunteerService.registerVolunteer(
       response.locals.validatedBody as CreateSelfRegistrationInput,
       request.ip ?? ''
-    ), 201);
+    );
+    await dispatchBestEffort();
+    sendSuccess(response,result,201);
   } catch (error) { next(error); }
 };
 

@@ -42,7 +42,7 @@ export default function PickupsLogistics({
   onCreateAssignment,
   notify,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<TabType>('Pickups')
+  const [activeTab, setActiveTab] = useState<TabType>(() => new URLSearchParams(window.location.hash.split('?')[1] ?? '').has('assignmentId') ? 'Assignments' : 'Pickups')
   const [searchQuery, setSearchQuery] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedPickup, setSelectedPickup] = useState<Pickup | null>(null)
@@ -87,6 +87,13 @@ export default function PickupsLogistics({
   useEffect(() => {
     if (activeTab === 'Assignments' && isLiveAdmin()) void loadLiveAssignments()
   }, [activeTab, loadLiveAssignments])
+  useEffect(() => {
+    const raw=new URLSearchParams(window.location.hash.split('?')[1]??'').get('assignmentId')
+    if(raw && /^[0-9a-f-]{36}$/i.test(raw)){
+      const found=liveAssignments.find(row=>row.assignment.id===raw)
+      if(found)setSelectedPickup(found.pickup)
+    }
+  },[liveAssignments])
 
   // Removed (cancelled) pickups stay in the database for audit but leave the active schedule.
   const removedCount = pickups.filter(p => p.status === 'CANCELLED').length

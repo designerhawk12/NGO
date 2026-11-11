@@ -33,10 +33,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       // The role always comes from the server; an NGO employee driver restores to the Driver screens.
-      if (user?.role === 'DONOR' || user?.role === 'VOLUNTEER' || user?.role === 'DRIVER') {
+      if (user?.role === 'ADMIN' || user?.role === 'DONOR' || user?.role === 'VOLUNTEER' || user?.role === 'DRIVER') {
         setVolunteerApplicationStatus(null);
         setMode('live');
-        setRole(user.role === 'DONOR' ? 'donor' : user.role === 'DRIVER' ? 'driver' : 'volunteer');
+        setRole(user.role === 'ADMIN' ? 'admin' : user.role === 'DONOR' ? 'donor' : user.role === 'DRIVER' ? 'driver' : 'volunteer');
       }
     }).catch(() => {});
     return () => { active = false; };

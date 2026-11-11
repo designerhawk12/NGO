@@ -10,6 +10,7 @@ import {
 } from '../pickups/service';
 import * as foodRepository from './repository';
 import { enqueue } from '../notifications/service';
+import { enqueuePush } from '../push/service';
 import type {
   FoodItemRow,
   FoodRequestDetail,
@@ -96,6 +97,7 @@ export async function createFoodRequest(
     const created = await foodRepository.createFoodRequest(donor.id, data, txClient);
     if(submission)await txClient.query('INSERT INTO app.food_request_submissions(app_user_id,submission_id,request_hash,food_request_id) VALUES($1,$2,$3,$4)',[appUser.id,submission,hash,created.id]);
     await enqueue(txClient, 'donation_received', created.id, [appUser.id]);
+    await enqueuePush(txClient,'FOOD_REQUEST',created.id,`food-request:${created.id}`,'ADMINS');
     return toFoodRequestDto(created, null);
   };
 

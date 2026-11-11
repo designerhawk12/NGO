@@ -82,13 +82,15 @@ export default function LiveAssignments({ historyOnly = false, assignmentId }: {
     {loading ? <T>Loading assignments...</T> : !error && visible.length === 0
       ? <Empty title="No assignments here" detail="Your assigned pickups will appear here." />
       : visible.map(item => {
-        const next = volunteerActions[item.status];
+        const next = item.ownResponse === 'PENDING' || !item.ownResponse ? volunteerActions[item.status]
+          : item.status === 'PENDING' ? undefined : volunteerActions[item.status];
         return <Card key={item.id} style={{ marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
             <T weight="700" color={C.ink}>Pickup assignment</T><Badge value={item.status.replaceAll('_', ' ')} />
           </View>
           <T color={C.muted} translate={false}>{item.id}</T>
           <T color={C.muted} translate={false}>Pickup: {item.pickupId}</T>
+          {item.ownResponse && <T color={item.ownResponse==='DECLINED'?C.red:C.muted} translate={false}>Your response: {item.ownResponse.toLowerCase()}</T>}
           {item.pickupAddress && <T color={C.ink} translate={false}>Pickup location: {item.pickupAddress}</T>}
           {item.driverAcceptance && item.driverAcceptance !== 'NOT_REQUIRED' && !terminal.has(item.status) && <T color={item.driverAcceptance === 'ACCEPTED' ? C.green : C.muted}>
             {item.driverAcceptance === 'ACCEPTED' ? 'NGO driver has accepted' : 'Waiting for the NGO driver to accept'}
@@ -98,7 +100,7 @@ export default function LiveAssignments({ historyOnly = false, assignmentId }: {
           {['ACCEPTED', 'EN_ROUTE', 'ARRIVED_AT_DONOR', 'FOOD_COLLECTED'].includes(item.status) && <Button title="Navigate to Pickup — Google Maps" variant="outline" onPress={() => void navigate(item.pickupAddress ?? '')} style={{ marginTop: 10 }} />}
           {next && <Button title={next.label} disabled={busyId !== null} loading={busyId === item.id}
             onPress={() => confirmAction(item, next.action)} style={{ marginTop: 12 }} />}
-          {item.status === 'PENDING' && <Button title="Reject assignment" variant="outline" disabled={busyId !== null}
+          {item.status === 'PENDING' && (!item.ownResponse || item.ownResponse==='PENDING') && <Button title="Decline assignment" variant="outline" disabled={busyId !== null}
             onPress={() => void changeStatus(item, 'REJECT')} style={{ marginTop: 8 }} />}
         </Card>;
       })}

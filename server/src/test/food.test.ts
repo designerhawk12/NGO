@@ -443,6 +443,8 @@ describe('Food and Donor Management API (Module 2)', () => {
       query.mockImplementationOnce(async () => ({ rows: [mockAssignmentRow] }));
       // 7. getAssignmentVolunteerIds -> [volunteerId]
       query.mockImplementationOnce(async () => ({ rows: [{ volunteer_id: '7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5' }] }));
+      // 8. Admin crew responses (same projection also used for donor status summary)
+      query.mockImplementationOnce(async () => ({ rows: [{ volunteer_id: '7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5', response: 'ACCEPTED' }] }));
 
       const res = await request(app)
         .get(`/api/v1/food-requests/${sampleFoodRequestId}`)

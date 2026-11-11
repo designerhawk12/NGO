@@ -7,6 +7,7 @@ import { HttpError } from '../../middleware/errorHandler';
 import { consumeVolunteerRegistrationRateLimit } from './registrationRateLimit';
 import { findAdminVolunteerConflict, insertSelfRegisteredVolunteer } from './repository';
 import { enqueue, outboxEnabled } from '../notifications/service';
+import { enqueuePush } from '../push/service';
 
 export const IDENTITY_BUCKET = 'volunteer-identity-private';
 export const identityEnabled = () => process.env.VOLUNTEER_IDENTITY_REQUIRED === 'true';
@@ -74,6 +75,7 @@ export async function registerWithIdentity(input: VolunteerRegistrationInput, ip
         catch { await tx.query('ROLLBACK TO SAVEPOINT registration_whatsapp_consent'); await tx.query('RELEASE SAVEPOINT registration_whatsapp_consent'); }
       }
       await enqueue(tx,'volunteer_application',volunteer.id,[]);
+      await enqueuePush(tx,'VOLUNTEER_APPLICATION',volunteer.id,`volunteer-application:${volunteer.id}`,'ADMINS');
       return { status: 'PENDING' as const, message: 'Application and private identity proof submitted. An administrator must verify your proof before approval.' };
     });
   } finally {

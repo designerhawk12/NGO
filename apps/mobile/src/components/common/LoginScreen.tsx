@@ -145,7 +145,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
       setRegistrationError(error instanceof Error ? error.message : 'Could not register. Check your details and try again.');
     } finally { registrationSubmitting.current = false; setRegistrationBusy(false); }
   };
-  if (app.role === role) return <Redirect href={role === 'volunteer' ? '/volunteer/(tabs)/home' : '/donor/(tabs)/home'} />;
+  if (app.role === role) return <Redirect href={role === 'volunteer' ? '/volunteer/(tabs)/home' : role === 'admin' ? '/admin' : '/donor/(tabs)/home'} />;
   if (role === 'volunteer' && app.role === 'driver') return <Redirect href="/driver/(tabs)/jobs" />;
   return <Screen style={{ justifyContent: 'center' }}><View style={{ alignItems: 'flex-end', marginBottom: 24 }}><LanguageSwitcher /></View>
     {registerMode && role === 'donor' ? <>
@@ -195,7 +195,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         </>}
       </Card>
     </> : <>
-      <Header title={role === 'volunteer' ? 'Login as Volunteer / Driver' : 'Donor sign in'} subtitle={role === 'volunteer' ? 'Volunteers and NGO drivers use the same email sign-in.' : 'Welcome back'} back />
+      <Header title={role === 'volunteer' ? 'Login as Volunteer / Driver' : role === 'admin' ? 'Administrator sign in' : 'Donor sign in'} subtitle={role === 'volunteer' ? 'Volunteers and NGO drivers use the same email sign-in.' : 'Welcome back'} back />
       {role === 'volunteer' && app.volunteerApplicationStatus && <Card style={{ marginBottom: 14 }}>
         <T weight="700" color={app.volunteerApplicationStatus === 'DENIED' ? C.red : C.ink}>
           {app.volunteerApplicationStatus === 'DENIED' ? 'Volunteer application not approved' : 'Volunteer application pending approval'}

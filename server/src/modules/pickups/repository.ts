@@ -490,7 +490,7 @@ export async function listAssignmentsForVolunteer(
   const db = client ?? getPool();
   try {
     const result = await db.query<AssignmentRow & { volunteer_ids: string[] }>(
-      `SELECT a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at, a.driver_acceptance, fr.pickup_address, pu.delivery_address, pu.window_starts_at, pu.window_ends_at, terminal_event.occurred_at AS terminal_at,
+      `SELECT a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at, a.driver_acceptance, am.response AS own_response, fr.pickup_address, pu.delivery_address, pu.window_starts_at, pu.window_ends_at, terminal_event.occurred_at AS terminal_at,
               COALESCE(array_agg(DISTINCT am_all.volunteer_id ORDER BY am_all.volunteer_id) FILTER (WHERE am_all.volunteer_id IS NOT NULL), '{}'::uuid[]) AS volunteer_ids
        FROM app.assignments a
        JOIN app.assignment_members am ON am.assignment_id = a.id
@@ -503,7 +503,7 @@ export async function listAssignmentsForVolunteer(
          ORDER BY occurred_at DESC LIMIT 1) terminal_event ON TRUE
        LEFT JOIN app.assignment_members am_all ON am_all.assignment_id = a.id
        WHERE p.app_user_id = $1
-       GROUP BY a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at, a.driver_acceptance, fr.pickup_address, pu.delivery_address, pu.window_starts_at, pu.window_ends_at, terminal_event.occurred_at
+       GROUP BY a.id, a.pickup_id, a.team_id, a.driver_id, a.vehicle_id, a.role, a.status, a.version, a.created_at, a.driver_acceptance, am.response, fr.pickup_address, pu.delivery_address, pu.window_starts_at, pu.window_ends_at, terminal_event.occurred_at
        ORDER BY COALESCE(terminal_event.occurred_at, a.created_at) DESC, a.id DESC`,
       [actorUserId]
     );
@@ -519,6 +519,7 @@ export async function listAssignmentsForVolunteer(
         version: r.version,
         created_at: r.created_at,
         driver_acceptance: r.driver_acceptance,
+        own_response: r.own_response,
         pickup_address: r.pickup_address,
         delivery_address: r.delivery_address,
         window_starts_at: r.window_starts_at,

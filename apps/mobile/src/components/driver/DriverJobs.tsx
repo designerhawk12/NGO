@@ -6,6 +6,7 @@ import { currentDestination, isClosedJob, listDriverJobs, nextDriverStep, update
 import { pickupNavigationUrl, pickupSearchUrl } from '../volunteer/pickupNavigation';
 import { Badge, Button, Card, Empty, Header, Icon, InfoRow, Screen, Sheet, T } from '../common/UI';
 import { C } from '../../constants/theme';
+import NotificationBell from '../common/NotificationBell';
 import { activeDriverTracking, requireDriverTracking, startDriverTracking, stopDriverTracking, trackingSession } from '../tracking/driverTracking';
 
 const declineReasons = ['Vehicle problem', 'Not available at this time', 'Too far from my location', 'Other reason'];
@@ -124,6 +125,7 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
 
   return <Screen>
     <Header title={historyOnly ? 'History' : 'My Jobs'} subtitle={historyOnly ? 'Your completed and closed jobs.' : 'Pickups assigned to you by the NGO.'} />
+    {!historyOnly && <NotificationBell />}
     <Button title="Refresh jobs" variant="outline" icon="history" onPress={() => void refresh()} style={{ marginBottom: 12 }} />
     {error && <Card style={{ marginBottom: 12 }}><T color={C.red}>{error}</T><Button title="Retry" variant="outline" onPress={() => void refresh()} style={{ marginTop: 10 }} /></Card>}
     {message && <Card style={{ marginBottom: 12 }}><T color={message.ok ? C.green : C.red}>{message.text}</T></Card>}

@@ -32,6 +32,13 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
   const [selectedVehicleMap, setSelectedVehicleMap] = useState<Record<string, string>>({})
   const [assigningId, setAssigningId] = useState<string | null>(null)
   const [selectedRequest, setSelectedRequest] = useState<DonorPickupRequest | null>(null)
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('requestId')
+    if (raw && /^[0-9a-f-]{36}$/i.test(raw)) {
+      const match = requests.find(request => request.id === raw)
+      if (match) setSelectedRequest(match)
+    }
+  }, [requests])
   const [showCancelledHistory, setShowCancelledHistory] = useState(false)
   const photoIds = useMemo(() => requests.map(request => request.donorId ?? ''), [requests])
   const photos = useProfilePhotos('DONOR', photoIds)

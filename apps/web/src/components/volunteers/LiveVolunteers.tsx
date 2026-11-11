@@ -92,6 +92,11 @@ export default function LiveVolunteers({ token }: { token: string }) {
     finally { setApplicationsLoading(false) }
   }, [token])
   useEffect(() => { void load(); void loadApplications() }, [load, loadApplications])
+  useEffect(() => {
+    const raw=new URLSearchParams(window.location.hash.split('?')[1]??'').get('volunteerId')
+    if(raw && /^[0-9a-f-]{36}$/i.test(raw) && applications.some(item=>item.volunteerId===raw))
+      document.getElementById(`application-${raw}`)?.scrollIntoView({block:'center'})
+  },[applications])
   const loadDetail = useCallback(async (id: string) => {
     setSelectedId(id); setDetail(null); setDetailLoading(true); setDetailError(false)
     try { setDetail(await getAdminVolunteer(token, id)) }
@@ -172,7 +177,7 @@ export default function LiveVolunteers({ token }: { token: string }) {
         : applicationsError && applications.length === 0 ? <EmptyState title="Could not load volunteer applications" description="Check your administrator session and API connection, then retry." action={<button className="button button-secondary" onClick={() => void loadApplications()}>Retry</button>}/>
           : applications.length === 0 ? <EmptyState title="No pending applications" description="New volunteer applications will appear here for review."/>
             : <div>{applicationsError && <p className="quiet-text" role="alert">Could not refresh applications. Showing the last loaded results. <button className="text-link" onClick={() => void loadApplications()}>Retry</button></p>}
-              {applications.map(application => <article key={application.volunteerId} className="flex flex-col gap-4 border-t border-slate-200 p-5 sm:flex-row sm:items-start sm:justify-between">
+              {applications.map(application => <article id={`application-${application.volunteerId}`} key={application.volunteerId} className="flex flex-col gap-4 border-t border-slate-200 p-5 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold text-slate-900">{application.name}</h3><StatusBadge status={application.status}/></div>
                   <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">

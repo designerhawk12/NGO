@@ -2,7 +2,8 @@ import { createHash } from 'crypto';
 import type { PoolClient } from 'pg';
 import { requireSharingForStart } from '../tracking/service';
 import { enqueueForPeople } from '../notifications/service';
-import { withTransaction } from '../../db/pool';
+import { enqueuePush } from '../push/service';
+import { getPool, withTransaction } from '../../db/pool';
 import { HttpError } from '../../middleware/errorHandler';
 import { requireActiveCenterAddress } from '../distribution/service';
 import {
@@ -77,8 +78,16 @@ export function toAssignmentDto(row: AssignmentRow, volunteerIds: string[]): Ass
     ...(row.pickup_address !== undefined && row.created_at ? { createdAt: row.created_at.toISOString() } : {}),
     ...(row.terminal_at ? { completedAt: row.terminal_at.toISOString() } : {}),
     ...(row.driver_acceptance ? { driverAcceptance: row.driver_acceptance } : {}),
+    ...(row.own_response ? { ownResponse: row.own_response } : {}),
     ...(row.delivery_address ? { deliveryAddress: row.delivery_address } : {}),
   };
+}
+
+async function enqueueCrewClosure(tx:PoolClient,assignment:AssignmentRow){
+  const crew=await tx.query<{id:string}>(`SELECT d.person_id AS id FROM app.drivers d WHERE d.id=$1 UNION
+    SELECT v.person_id AS id FROM app.assignment_members am JOIN app.volunteers v ON v.id=am.volunteer_id WHERE am.assignment_id=$2`,
+    [assignment.driver_id,assignment.id]);
+  if(crew.rows.length)await enqueuePush(tx,'ASSIGNMENT_CLOSED',assignment.id,`assignment-closed:${assignment.id}`,{personIds:crew.rows.map(row=>row.id)});
 }
 
 export function computeRequestHash(pickupId: string, body: unknown): string {
@@ -295,6 +304,9 @@ export async function createAssignment(
 
     await enqueueForPeople(txClient, 'driver_assignment', assignmentRow.id, [driver.personId], input.windowStartsAt);
     await enqueueForPeople(txClient, 'volunteer_assignment', assignmentRow.id, volunteerPersonIds, input.windowStartsAt);
+    await enqueuePush(txClient,'PICKUP_SCHEDULED',pickup.food_request_id,`pickup-scheduled:${assignmentRow.id}`,{donorFoodRequestId:pickup.food_request_id});
+    await enqueuePush(txClient,'DRIVER_ASSIGNED',assignmentRow.id,`driver-assigned:${assignmentRow.id}`,{personIds:[driver.personId]});
+    if(volunteerPersonIds.length)await enqueuePush(txClient,'VOLUNTEER_ASSIGNED',assignmentRow.id,`volunteer-assigned:${assignmentRow.id}`,{personIds:volunteerPersonIds});
 
     return {
       assignment: toAssignmentDto(assignmentRow, input.volunteerIds),
@@ -601,6 +613,35 @@ export async function transitionAssignmentStatus(
     }
 
     const driverAcceptance = assignment.driver_acceptance ?? 'NOT_REQUIRED';
+    if (actor.role === 'VOLUNTEER' && (input.action === 'ACCEPT' || input.action === 'REJECT')) {
+      if (assignment.status!=='PENDING') throw new HttpError(409,'INVALID_TRANSITION','This assignment is no longer open for a crew response.');
+      const member=await txClient.query(`UPDATE app.assignment_members am SET response=$3,responded_at=now(),response_reason=$4
+        FROM app.volunteers v JOIN app.people p ON p.id=v.person_id
+        WHERE am.assignment_id=$1 AND am.volunteer_id=v.id AND p.app_user_id=$2 AND am.response='PENDING'
+        RETURNING am.volunteer_id`,[assignmentId,actor.id,input.action==='ACCEPT'?'ACCEPTED':'DECLINED',input.reason??null]);
+      if(!member.rows[0])throw new HttpError(409,'INVALID_TRANSITION','You already responded or are no longer assigned.');
+      if(input.action==='REJECT') {
+        const reason='Volunteer declined the assignment';
+        const rejected=await pickupRepository.updateAssignmentStatus({assignmentId,fromStatus:assignment.status,toStatus:'REJECTED',actorUserId:actor.id,reason},txClient);
+        const pickup=await pickupRepository.findPickupForUpdate(assignment.pickup_id,txClient);
+        if(pickup && pickup.status!=='PLANNED')await pickupRepository.updatePickupStatus({pickupId:pickup.id,fromStatus:pickup.status,toStatus:'PLANNED',actorUserId:actor.id,reason},txClient);
+        await pickupRepository.releaseReservations(assignmentId,txClient);
+        await pickupRepository.releaseVesselIssuancesForPickup(assignment.pickup_id,txClient,reason);
+        await enqueuePush(txClient,'CREW_DECLINED',assignmentId,`crew-declined:${assignmentId}:${actor.id}`,'ADMINS');
+        await enqueueCrewClosure(txClient,assignment);
+        if(pickup)await enqueuePush(txClient,'PICKUP_STATUS',pickup.food_request_id,`pickup-status:${pickup.id}:PLANNED:${rejected.version}`,{donorFoodRequestId:pickup.food_request_id});
+        return toAssignmentDto(rejected,await pickupRepository.getAssignmentVolunteerIds(assignmentId,txClient));
+      }
+      const pending=await txClient.query("SELECT count(*)::int AS count FROM app.assignment_members WHERE assignment_id=$1 AND response<>'ACCEPTED'",[assignmentId]);
+      const allAccepted=pending.rows[0].count===0;
+      if(input.action==='ACCEPT' && allAccepted && driverAcceptance==='ACCEPTED' && assignment.status==='PENDING') {
+        const accepted=await pickupRepository.updateAssignmentStatus({assignmentId,fromStatus:'PENDING',toStatus:'ACCEPTED',actorUserId:actor.id,reason:'All assigned crew accepted'},txClient);
+        return toAssignmentDto(accepted,await pickupRepository.getAssignmentVolunteerIds(assignmentId,txClient));
+      }
+      const result=await txClient.query<AssignmentRow>(`UPDATE app.assignments SET version=version+1 WHERE id=$1
+        RETURNING id,pickup_id,team_id,driver_id,vehicle_id,role,status,version,created_at,driver_acceptance`,[assignmentId]);
+      return toAssignmentDto(result.rows[0],await pickupRepository.getAssignmentVolunteerIds(assignmentId,txClient));
+    }
     // Driver acknowledgement is recorded separately so it never stands in for the Volunteers' acceptance.
     if (actor.role === 'DRIVER' && input.action === 'ACCEPT') {
       if (!['PENDING', 'ACCEPTED'].includes(assignment.status) || driverAcceptance !== 'PENDING') {
@@ -611,10 +652,11 @@ export async function transitionAssignmentStatus(
       let accepted = await pickupRepository.setDriverAcceptance({
         assignmentId, acceptance: 'ACCEPTED', status: assignment.status, actorUserId: actor.id, reason: 'Driver accepted the job',
       }, txClient);
-      if (crew.length === 0 && assignment.status === 'PENDING') {
+      const pending=crew.length ? await txClient.query("SELECT count(*)::int AS count FROM app.assignment_members WHERE assignment_id=$1 AND response<>'ACCEPTED'",[assignmentId]) : null;
+      if ((!pending || pending.rows[0].count===0) && assignment.status === 'PENDING') {
         accepted = await pickupRepository.updateAssignmentStatus({
           assignmentId, fromStatus: 'PENDING', toStatus: 'ACCEPTED', actorUserId: actor.id,
-          reason: 'Driver-only pickup accepted; no Volunteer acceptance required',
+          reason: crew.length ? 'Driver and all assigned Volunteers accepted' : 'Driver-only pickup accepted; no Volunteer acceptance required',
         }, txClient);
       }
       return toAssignmentDto(accepted, await pickupRepository.getAssignmentVolunteerIds(assignmentId, txClient));
@@ -639,6 +681,9 @@ export async function transitionAssignmentStatus(
       }
       await pickupRepository.releaseReservations(assignmentId, txClient);
       await pickupRepository.releaseVesselIssuancesForPickup(assignment.pickup_id, txClient, reason);
+      await enqueuePush(txClient,'CREW_DECLINED',assignmentId,`crew-declined:${assignmentId}:${actor.id}`,'ADMINS');
+      await enqueueCrewClosure(txClient,assignment);
+      if(pickup)await enqueuePush(txClient,'PICKUP_STATUS',pickup.food_request_id,`pickup-status:${pickup.id}:PLANNED:${pickup.version+1}`,{donorFoodRequestId:pickup.food_request_id});
       return toAssignmentDto(rejected, await pickupRepository.getAssignmentVolunteerIds(assignmentId, txClient));
     }
     // Nobody starts the trip until the NGO driver has accepted the job.
@@ -692,6 +737,7 @@ export async function transitionAssignmentStatus(
           },
           txClient
         );
+        await enqueuePush(txClient,'PICKUP_STATUS',pickup.food_request_id,`pickup-status:${pickup.id}:${targetPickupStatus}:${pickup.version+1}`,{donorFoodRequestId:pickup.food_request_id});
       }
     }
 
@@ -702,6 +748,7 @@ export async function transitionAssignmentStatus(
         txClient,
         `Assignment ${input.action.toLowerCase()}`
       );
+      if(input.action==='CANCEL'||input.action==='FAIL')await enqueueCrewClosure(txClient,assignment);
     }
 
     const volunteerIds = await pickupRepository.getAssignmentVolunteerIds(assignmentId, txClient);
@@ -754,6 +801,7 @@ export async function cancelForFoodRequest(
         client
       );
       await pickupRepository.releaseReservations(assignment.id, client);
+      await enqueueCrewClosure(client,assignment);
     }
   }
 
@@ -768,6 +816,7 @@ export async function cancelForFoodRequest(
     },
     client
   );
+  await enqueuePush(client,'PICKUP_CANCELLED',pickup.food_request_id,`pickup-cancelled:${pickup.id}:${updatedPickup.version}`,{donorFoodRequestId:pickup.food_request_id});
 
   return toPickupDto(updatedPickup);
 }
@@ -796,7 +845,9 @@ export async function getActiveAssignmentForPickup(
 
   const assignmentRow = activeAssignments[0];
   const volunteerIds = await pickupRepository.getAssignmentVolunteerIds(assignmentRow.id, client);
-  return toAssignmentDto(assignmentRow, volunteerIds);
+  const responses=await (client??getPool()).query<{volunteer_id:string;response:'PENDING'|'ACCEPTED'|'DECLINED'|'CANCELLED'}>(
+    'SELECT volunteer_id,response FROM app.assignment_members WHERE assignment_id=$1 ORDER BY volunteer_id',[assignmentRow.id]);
+  return {...toAssignmentDto(assignmentRow, volunteerIds),crewResponses:responses.rows.map(row=>({volunteerId:row.volunteer_id,response:row.response}))};
 }
 export async function getPickupByFoodRequestId(
   foodRequestId: string,
@@ -956,6 +1007,7 @@ export async function updatePickup(
         ? pickup.operational_notes ?? null
         : (input.operationalNotes?.trim() || null),
     }, tx);
+    if(changesSchedule)await enqueuePush(tx,'PICKUP_RESCHEDULED',pickup.food_request_id,`pickup-rescheduled:${pickup.id}:${updated.version}`,{donorFoodRequestId:pickup.food_request_id});
     return toPickupDto(updated);
   };
   return client ? run(client) : withTransaction(run);
@@ -1011,6 +1063,8 @@ export async function cancelPickup(
       actorUserId: actor.id,
       reason,
     }, tx);
+    await enqueuePush(tx,'PICKUP_CANCELLED',pickup.food_request_id,`pickup-cancelled:${pickup.id}:${updated.version}`,{donorFoodRequestId:pickup.food_request_id});
+    if(assignment)await enqueueCrewClosure(tx,assignment);
     return { ...toPickupDto(updated), alreadyCancelled: false };
   };
   return client ? run(client) : withTransaction(run);

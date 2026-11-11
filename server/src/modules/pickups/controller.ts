@@ -12,6 +12,7 @@ import {
 import { HttpError } from '../../middleware/errorHandler';
 import { sendSuccess } from '../../utils/response';
 import * as pickupService from './service';
+import { dispatchBestEffort } from '../push/service';
 
 export const createPickupHandler: RequestHandler = async (_request, response, next) => {
   try {
@@ -48,6 +49,7 @@ export const createAssignmentHandler: RequestHandler = async (request, response,
       idempotencyKey.trim(),
       actor.id
     );
+    if(!result.isReplay)await dispatchBestEffort();
 
     sendSuccess(response, result.assignment, result.isReplay ? 200 : 201);
   } catch (error) {
@@ -114,6 +116,7 @@ export const updateAssignmentStatusHandler: RequestHandler = async (request, res
       input,
       actor,
     });
+    await dispatchBestEffort();
 
     sendSuccess(response, assignment);
   } catch (error) {
@@ -181,7 +184,9 @@ export const updatePickupHandler: RequestHandler = async (request, response, nex
   try {
     const pickupId = parsePickupId(request.params.id);
     const input = response.locals.validatedBody as UpdatePickup;
-    sendSuccess(response, await pickupService.updatePickup(pickupId, input, requireActor(response)));
+    const updated=await pickupService.updatePickup(pickupId, input, requireActor(response));
+    await dispatchBestEffort();
+    sendSuccess(response,updated);
   } catch (error) {
     next(error);
   }
@@ -191,7 +196,9 @@ export const cancelPickupHandler: RequestHandler = async (request, response, nex
   try {
     const pickupId = parsePickupId(request.params.id);
     const input = response.locals.validatedBody as CancelPickup;
-    sendSuccess(response, await pickupService.cancelPickup(pickupId, input, requireActor(response)));
+    const cancelled=await pickupService.cancelPickup(pickupId, input, requireActor(response));
+    await dispatchBestEffort();
+    sendSuccess(response,cancelled);
   } catch (error) {
     next(error);
   }
