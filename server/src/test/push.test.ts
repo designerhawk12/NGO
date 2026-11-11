@@ -25,6 +25,12 @@ describe('private push event construction',()=>{
     expect(query.mock.calls[0][0]).toContain('WHERE id=ANY($5::uuid[])');
     expect(query.mock.calls[0][1][4]).toEqual([id]);
   });
+  it('resolves the Donor through the canonical donor account link',async()=>{
+    const query=vi.fn().mockResolvedValue({rows:[]});
+    await enqueuePush({query} as never,'PICKUP_SCHEDULED',id,`pickup-scheduled:${id}`,{donorFoodRequestId:id});
+    expect(query.mock.calls[0][0]).toContain('d.app_user_id AS id');
+    expect(query.mock.calls[0][0]).not.toContain('d.person_id');
+  });
   it('sends visible high-priority Android notifications on the registered channel',()=>{
     expect(pushPayload({expo_token:'ExpoPushToken[abcde12345]',title:'New Food Request',body:'A donor submitted a request.',notification_id:id,kind:'FOOD_REQUEST',entity_id:id})).toMatchObject({
       sound:'default',priority:'high',channelId:'operations-v2',data:{notificationId:id,kind:'FOOD_REQUEST'},

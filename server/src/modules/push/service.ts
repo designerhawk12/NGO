@@ -29,8 +29,8 @@ export async function enqueuePush(client: PoolClient, kind: PushKind, entityId: 
     ? "SELECT id FROM app.app_users WHERE role='ADMIN' AND $5::uuid IS NULL"
     : recipients.appUserIds ? 'SELECT id FROM app.app_users WHERE id=ANY($5::uuid[])'
       : recipients.personIds ? 'SELECT DISTINCT app_user_id AS id FROM app.people WHERE id=ANY($5::uuid[]) AND app_user_id IS NOT NULL'
-        : `SELECT p.app_user_id AS id FROM app.food_requests fr JOIN app.donors d ON d.id=fr.donor_id
-           JOIN app.people p ON p.id=d.person_id WHERE fr.id=$5 AND p.app_user_id IS NOT NULL`;
+        : `SELECT d.app_user_id AS id FROM app.food_requests fr JOIN app.donors d ON d.id=fr.donor_id
+           WHERE fr.id=$5`;
   const recipientArg = recipients === 'ADMINS' ? null : recipients.appUserIds ?? recipients.personIds ?? recipients.donorFoodRequestId;
   await client.query(`WITH recipients AS (${recipientSql}), inserted AS (
       INSERT INTO app.push_notifications(event_key,recipient_user_id,kind,entity_id,title,body)
