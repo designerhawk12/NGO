@@ -5,8 +5,13 @@ import { AppState, Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
 import { ApiClientError, apiRequest } from './client';
 
-export function getCurrentAppUser(accessToken: string): Promise<AppUser> {
-  return apiRequest<AppUser>('me', { headers: { Authorization: `Bearer ${accessToken}` } });
+export async function getCurrentAppUser(accessToken: string): Promise<AppUser> {
+  try { return await apiRequest<AppUser>('me', { headers: { Authorization: `Bearer ${accessToken}` } }); }
+  catch (cause) {
+    if (!(cause instanceof ApiClientError) || cause.status !== 401) throw cause;
+    const fresh = await refreshAccessToken();
+    return apiRequest<AppUser>('me', { headers: { Authorization: `Bearer ${fresh}` } });
+  }
 }
 
 let client: SupabaseClient | undefined;
@@ -56,7 +61,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
   try {
     return await getCurrentAppUser(data.session.access_token);
   } catch (cause) {
-    await auth.auth.signOut();
+    if (cause instanceof ApiClientError && (cause.status === 401 || cause.status === 403)) await auth.auth.signOut();
     throw cause;
   }
 }
@@ -82,8 +87,9 @@ export async function restoreAppUser(): Promise<AppUser | null> {
   if (!isLiveAuthConfigured()) return null;
   const auth = getAuthClient();
   const { data, error } = await auth.auth.getSession();
-  if (error || !data.session) return null;
-  return getCurrentAppUser(data.session.access_token);
+  if (error) throw error;
+  if (!data.session) return null;
+  return getCurrentAppUser(await getCurrentAccessToken());
 }
 
 /** The API validates this session token and resolves the application role itself. */
@@ -92,7 +98,21 @@ export async function getCurrentAccessToken(): Promise<string> {
   const { data, error } = await getAuthClient().auth.getSession();
   if (error) throw error;
   if (!data.session?.access_token) throw new ApiClientError(401, 'UNAUTHENTICATED', 'Sign in again to continue.');
+  if (data.session.expires_at && data.session.expires_at <= Math.floor(Date.now() / 1000) + 60) {
+    return refreshAccessToken();
+  }
   return data.session.access_token;
+}
+
+let refreshPromise: Promise<string> | undefined;
+export function refreshAccessToken(): Promise<string> {
+  if (!refreshPromise) refreshPromise = (async () => {
+    const { data, error } = await getAuthClient().auth.refreshSession();
+    if (error) throw error;
+    if (!data.session?.access_token) throw new ApiClientError(401, 'UNAUTHENTICATED', 'Sign in again to continue.');
+    return data.session.access_token;
+  })().finally(() => { refreshPromise = undefined; });
+  return refreshPromise;
 }
 
 let signOutCleanup: (() => Promise<void>) | undefined;

@@ -81,6 +81,10 @@ export async function markRead(appUserId: string, notificationId: string) {
 }
 
 type Due = { id: string; notification_id: string; expo_token: string; title: string; body: string; kind: PushKind; entity_id: string; attempts: number };
+export function pushPayload(row: Pick<Due,'expo_token'|'title'|'body'|'notification_id'|'kind'|'entity_id'>) {
+  return {to:row.expo_token,title:row.title,body:row.body,sound:'default',priority:'high',ttl:3600,channelId:'operations-v2',
+    data:{notificationId:row.notification_id,kind:row.kind,entityId:row.entity_id}};
+}
 const cleanCode = (value: unknown) => typeof value === 'string' && /^[A-Za-z0-9_]{1,60}$/.test(value) ? value : 'PROVIDER_ERROR';
 function delay(attempts: number) { return Math.min(3600, 30 * 2 ** Math.min(attempts,6)); }
 async function failDelivery(id: string, code: string, retry: boolean, attempts: number, invalidateToken?: string) {
@@ -110,8 +114,7 @@ export async function dispatchPush(limit = 10) {
     try {
       const response = await fetch('https://exp.host/--/api/v2/push/send', {
         method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
-        body:JSON.stringify({to:row.expo_token,title:row.title,body:row.body,sound:'default',channelId:'assignments',
-          data:{notificationId:row.notification_id,kind:row.kind,entityId:row.entity_id}}),signal:AbortSignal.timeout(6500),
+        body:JSON.stringify(pushPayload(row)),signal:AbortSignal.timeout(6500),
       });
       if(response.status===429 || response.status>=500) { await failDelivery(row.id,`HTTP_${response.status}`,true,attempts); return; }
       if(!response.ok) { await failDelivery(row.id,`HTTP_${response.status}`,false,attempts); return; }

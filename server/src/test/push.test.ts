@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { enqueuePush, validExpoToken } from '../modules/push/service';
+import { enqueuePush, pushPayload, validExpoToken } from '../modules/push/service';
 const id='123e4567-e89b-42d3-a456-426614174000';
 describe('private push event construction',()=>{
   it('accepts Expo token formats and rejects arbitrary destinations',()=>{
@@ -24,5 +24,10 @@ describe('private push event construction',()=>{
     await enqueuePush({query} as never,'VOLUNTEER_ASSIGNED',id,`volunteer-assigned:${id}`,{personIds:[id]});
     expect(query.mock.calls[0][0]).toContain('WHERE id=ANY($5::uuid[])');
     expect(query.mock.calls[0][1][4]).toEqual([id]);
+  });
+  it('sends visible high-priority Android notifications on the registered channel',()=>{
+    expect(pushPayload({expo_token:'ExpoPushToken[abcde12345]',title:'New Food Request',body:'A donor submitted a request.',notification_id:id,kind:'FOOD_REQUEST',entity_id:id})).toMatchObject({
+      sound:'default',priority:'high',channelId:'operations-v2',data:{notificationId:id,kind:'FOOD_REQUEST'},
+    });
   });
 });

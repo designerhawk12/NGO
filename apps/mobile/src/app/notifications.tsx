@@ -4,20 +4,20 @@ import { router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-ro
 import { Button, Card, Header, Screen, T } from '../components/common/UI';
 import { C } from '../constants/theme';
 import { useApp } from '../context/AppContext';
-import { enableNotifications, listNotifications, markNotificationRead, notificationPermission, type PushNotification } from '../api/push';
+import { enableNotifications, listNotifications, markNotificationRead, notificationPermission, pushRegistrationError, type PushNotification } from '../api/push';
 import { adminWebsiteUrl, notificationDestination } from '../api/notificationDestination';
 import { ApiClientError } from '../api/client';
 
 export default function NotificationInbox(){
-  const app=useApp();const {role,mode}=app;const {selected}=useLocalSearchParams<{selected?:string}>();
+  const {role,mode}=useApp();const {selected}=useLocalSearchParams<{selected?:string}>();
   const [items,setItems]=useState<PushNotification[]>([]);const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');const [permission,setPermission]=useState('unknown');
   const [opened,setOpened]=useState<string|null>(null);
   const refresh=useCallback(async()=>{
     if(!role||mode!=='live')return;
     setLoading(true);setError('');
-    try{const [result,status]=await Promise.all([listNotifications(),notificationPermission()]);setItems(result.items);setPermission(status);}
-    catch(cause){if(cause instanceof ApiClientError && cause.status===401){app.logout();router.replace('/');return;}
+    try{const [result,status]=await Promise.all([listNotifications(),notificationPermission()]);setItems(result.items);setPermission(status);setError(pushRegistrationError()??'');}
+    catch(cause){if(cause instanceof ApiClientError && cause.status===401){setError('Your session could not be verified. Check your connection and retry.');return;}
       setError('Could not load notifications. Check your connection and retry.');}
     finally{setLoading(false);}
   },[role,mode]);
@@ -37,7 +37,7 @@ export default function NotificationInbox(){
   return <Screen><Header title="Notifications" subtitle="Requests and assignments" back />
     {!role||mode!=='live'?<Card><T>Sign in to view your notifications.</T><Button title="Go to sign in" onPress={()=>router.replace('/')} /></Card>:<>
       <Card style={{marginBottom:12}}><T color={C.muted} translate={false}>Permission: {permission}</T>
-        <Button title={permission==='granted'?'Refresh notification token':'Enable notifications'} variant="outline" onPress={()=>void enableNotifications().then(setPermission).catch(cause=>setError(cause instanceof Error?cause.message:'Notifications could not be enabled.'))} style={{marginTop:8}} />
+        <Button title={permission==='granted'?'Refresh notification token':'Enable notifications'} variant="outline" onPress={()=>void enableNotifications().then(status=>{setPermission(status);setError('');}).catch(cause=>setError(cause instanceof Error?cause.message:'Notifications could not be enabled.'))} style={{marginTop:8}} />
         <Button title="Notification settings" variant="quiet" onPress={()=>void Linking.openSettings()} /></Card>
       <Button title="Refresh" variant="outline" onPress={()=>void refresh()} style={{marginBottom:12}} />
       {error?<T color={C.red}>{error}</T>:null}{loading?<T>Loading notifications...</T>:items.length===0?<T color={C.muted}>No notifications yet.</T>:null}

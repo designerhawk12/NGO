@@ -5,11 +5,13 @@ import { Button, Card, Icon, LanguageSwitcher, Screen, T } from '../components/c
 import { C } from '../constants/theme';
 import { useApp } from '../context/AppContext';
 export default function Welcome() {
-  const { role, volunteerApplicationStatus } = useApp();
+  const { role, volunteerApplicationStatus, restoring, restoreError, retryRestore } = useApp();
   if (role === 'volunteer') return <Redirect href="/volunteer/(tabs)/home" />;
   if (role === 'donor') return <Redirect href="/donor/(tabs)/home" />;
   if (role === 'driver') return <Redirect href="/driver/(tabs)/jobs" />;
   if (role === 'admin') return <Redirect href="/admin" />;
+  if (restoring) return <Screen><T>Restoring your session...</T></Screen>;
+  if (restoreError) return <Screen><Card><T>Could not verify your saved session. Check your connection and retry.</T><Button title="Retry" onPress={retryRestore} /></Card></Screen>;
   return <Screen style={{ justifyContent: 'center' }}>
     <View style={{ alignItems: 'flex-end', marginBottom: 34 }}><LanguageSwitcher /></View>
     <View style={{ alignItems: 'center', marginBottom: 30 }}><View style={{ width: 70, height: 70, borderRadius: 21, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}><Icon name="heart" size={35} color={C.white} /></View>

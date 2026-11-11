@@ -4,7 +4,6 @@ import type { AppUser } from '@aaharaconnect/shared';
 import { View } from 'react-native';
 import { getCurrentAccessToken, getCurrentAppUser } from '../../api/auth';
 import ProfilePhoto from '../common/ProfilePhoto';
-import WhatsAppPreferences from '../common/WhatsAppPreferences';
 import { Button, Card, Header, LanguageSwitcher, Screen, T } from '../common/UI';
 import { C } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
@@ -32,7 +31,6 @@ export default function LiveDonorProfile() {
   }, [refresh]));
   return <Screen>
     <Header title="Profile" right={<LanguageSwitcher />} />
-    <WhatsAppPreferences />
     {loading ? <T>Loading profile...</T>
       : error ? <Card><T color={C.red}>{error}</T><Button title="Retry" variant="outline" onPress={() => void refresh()} /></Card>
         : <Card style={{ alignItems: 'center', marginBottom: 18, paddingVertical: 23 }}>

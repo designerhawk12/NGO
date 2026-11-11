@@ -4,7 +4,6 @@ import type { DriverSelfProfile } from '@aaharaconnect/shared';
 import { router } from 'expo-router';
 import { getOwnDriverProfile } from '../../api/driver';
 import ProfilePhoto from '../common/ProfilePhoto';
-import WhatsAppPreferences from '../common/WhatsAppPreferences';
 import { Button, Card, Header, InfoRow, LanguageSwitcher, Screen, T } from '../common/UI';
 import { C } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
@@ -27,7 +26,6 @@ export default function DriverProfile() {
   }, [refresh]);
 
   return <Screen><Header title="Profile" right={<LanguageSwitcher />} />
-    <WhatsAppPreferences />
     {loading ? <Card><T>Loading profile...</T></Card>
       : error || !profile ? <Card><T color={C.red}>{error ?? 'No driver profile found.'}</T><Button title="Retry" variant="outline" onPress={() => void refresh()} style={{ marginTop: 12 }} /></Card>
         : <>

@@ -20,7 +20,7 @@ export default function AdminHome(){
   return <Screen><Header title="AahaaraConnect" subtitle="Administrator" /><T color={C.muted} translate={false}>Signed in: {identity}</T>
     <NotificationBell />
     <Card style={{marginBottom:12}}><T color={C.muted} translate={false}>Notification permission: {permission}</T>
-      <Button title="Enable Notifications" variant="outline" onPress={()=>void enableNotifications().then(setPermission).catch(()=>app.notify('Notifications could not be enabled.'))} style={{marginTop:8}} />
+      <Button title="Enable Notifications" variant="outline" onPress={()=>void enableNotifications().then(setPermission).catch(cause=>app.notify(cause instanceof Error?cause.message:'Notifications could not be enabled.'))} style={{marginTop:8}} />
       <Button title="Notification Settings" variant="quiet" onPress={()=>void Linking.openSettings()} /></Card>
     <Card style={{marginTop:12,marginBottom:12}}><T weight="700">Admin notifications</T><T color={C.muted}>Review requests and crew changes from this phone.</T>
       {recent.length?recent.map(item=><T key={item.id} translate={false}>{item.readAt?'':'• '}{item.title}</T>):<T color={C.muted}>No recent notifications.</T>}

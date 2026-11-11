@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerDonorWithEmailConfirmation, signInWithEmail, validateDonorRegistrationInput } from './auth';
+import { getCurrentAccessToken, registerDonorWithEmailConfirmation, restoreAppUser, signInWithEmail, validateDonorRegistrationInput } from './auth';
 
 const { authMock, apiRequest } = vi.hoisted(() => ({
   authMock: {
-    signUp: vi.fn(), signInWithPassword: vi.fn(), signOut: vi.fn(), getSession: vi.fn(), startAutoRefresh: vi.fn(), stopAutoRefresh: vi.fn(),
+    signUp: vi.fn(), signInWithPassword: vi.fn(), signOut: vi.fn(), getSession: vi.fn(), refreshSession: vi.fn(), startAutoRefresh: vi.fn(), stopAutoRefresh: vi.fn(),
   },
   apiRequest: vi.fn(),
 }));
@@ -76,10 +76,24 @@ describe('Donor Auth', () => {
     ]);
   });
 
-  it('clears a newly authenticated session when its account cannot be resolved', async () => {
+  it('retains a newly authenticated session after a temporary API failure', async () => {
     authMock.signInWithPassword.mockResolvedValueOnce({ data: { session: { access_token: 'unlinked-token' } }, error: null });
     apiRequest.mockRejectedValueOnce(new Error('Application account unavailable'));
     await expect(signInWithEmail('new@example.com', 'password-one')).rejects.toThrow('Application account unavailable');
-    expect(authMock.signOut).toHaveBeenCalledOnce();
+    expect(authMock.signOut).not.toHaveBeenCalled();
+  });
+
+  it('refreshes an expiring token once for concurrent requests', async () => {
+    authMock.getSession.mockResolvedValue({ data: { session: { access_token: 'old', expires_at: Math.floor(Date.now()/1000)+5 } }, error: null });
+    authMock.refreshSession.mockResolvedValue({ data: { session: { access_token: 'fresh' } }, error: null });
+    await expect(Promise.all([getCurrentAccessToken(), getCurrentAccessToken()])).resolves.toEqual(['fresh','fresh']);
+    expect(authMock.refreshSession).toHaveBeenCalledOnce();
+  });
+
+  it('keeps an offline saved session for restoration retry', async () => {
+    authMock.getSession.mockResolvedValue({ data: { session: { access_token: 'saved', expires_at: Math.floor(Date.now()/1000)+3600 } }, error: null });
+    apiRequest.mockRejectedValueOnce(new Error('Network unavailable'));
+    await expect(restoreAppUser()).rejects.toThrow('Network unavailable');
+    expect(authMock.signOut).not.toHaveBeenCalled();
   });
 });

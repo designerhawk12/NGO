@@ -20,8 +20,10 @@ export default function PushLifecycle(){
       if(typeof id!=='string'||!uuid.test(id))return;
       if(handled.current===id)return;
       handled.current=id;
-      await AsyncStorage.setItem(PENDING_NOTIFICATION,id);
-      if(active && role && mode==='live')router.push({pathname:'/notifications',params:{selected:id}});
+      if(active && role && mode==='live'){
+        await AsyncStorage.removeItem(PENDING_NOTIFICATION);
+        router.push({pathname:'/notifications',params:{selected:id}});
+      }else await AsyncStorage.setItem(PENDING_NOTIFICATION,id);
     };
     const listener=Notifications.addNotificationResponseReceivedListener(response=>{void onResponse(response);});
     void Notifications.getLastNotificationResponseAsync().then(response=>{if(response)void onResponse(response);});

@@ -15,7 +15,7 @@ const kannada: Record<string, string> = {
   'SHA-256:':'SHA-256:', 'Version':'ಆವೃತ್ತಿ', '· Build':'· ನಿರ್ಮಾಣ',
   'Load notification status':'ಅಧಿಸೂಚನೆ ಸ್ಥಿತಿ ಲೋಡ್ ಮಾಡಿ',
   'UNKNOWN sends need reconciliation before retrying; the provider may already have accepted them.':'UNKNOWN ಸ್ಥಿತಿಯ ಸಂದೇಶಗಳನ್ನು ಮರುಕಳುಹಿಸುವ ಮೊದಲು ಪರಿಶೀಲಿಸಿ; ಸೇವಾದಾರರು ಅವನ್ನು ಈಗಾಗಲೇ ಸ್ವೀಕರಿಸಿರಬಹುದು.',
-  'WhatsApp delivery status':'ವಾಟ್ಸಾಪ್ ಸಂದೇಶ ವಿತರಣೆಯ ಸ್ಥಿತಿ', '· Attempts':'· ಪ್ರಯತ್ನಗಳು',
+
   'Close private preview':'ಖಾಸಗಿ ಮುನ್ನೋಟ ಮುಚ್ಚಿ', 'Mark identity Verified':'ಗುರುತನ್ನು ಪರಿಶೀಲಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ',
   'Private preview expires in two minutes. Reload to view again.':'ಖಾಸಗಿ ಮುನ್ನೋಟ ಎರಡು ನಿಮಿಷಗಳಲ್ಲಿ ಮುಕ್ತಾಯವಾಗುತ್ತದೆ. ಮತ್ತೆ ನೋಡಲು ಮರುಲೋಡ್ ಮಾಡಿ.',
   'Reject identity proof':'ಗುರುತಿನ ಪುರಾವೆ ತಿರಸ್ಕರಿಸಿ', 'Review identity proof':'ಗುರುತಿನ ಪುರಾವೆ ಪರಿಶೀಲಿಸಿ', 'Reviewed by':'ಪರಿಶೀಲಿಸಿದವರು',
