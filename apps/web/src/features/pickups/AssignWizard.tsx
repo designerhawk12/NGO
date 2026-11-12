@@ -21,8 +21,9 @@ import type {
 import { Modal } from '../../components/common/UI'
 import { isLiveAdmin, map409ErrorMessage } from './adapters'
 import { calculateAiLogistics, rankVolunteersForPickup } from './aiLogistics'
-import { createAssignment, fetchContainerOptions, fetchDriverOptions, fetchEligibleVolunteersForPickup } from './api'
+import { createAssignment, fetchContainerOptions, fetchDriverOptions } from './api'
 import { saveDemoAssignment, updateDemoPickupStatus, useAssignWizardResources } from './hooks'
+import { useVolunteerPickupEligibility } from './useVolunteerPickupEligibility'
 import type { LiveAssignment, Pickup } from './types'
 
 interface Props {
@@ -88,17 +89,12 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [volunteerEligibility, setVolunteerEligibility] = useState<{
-    windowStartsAt: string
-    windowEndsAt: string
-    volunteerIds: string[]
-    reservationConflictVolunteerIds: string[]
-    blockingReason: string | null
-    foodPickupDeadline: string
-    requiresNewDonorRequest: boolean
-  } | null>(null)
-  const [volunteerEligibilityError, setVolunteerEligibilityError] = useState<string | null>(null)
-  const [checkingVolunteerEligibility, setCheckingVolunteerEligibility] = useState(live)
+  const {
+    eligibility: volunteerEligibility,
+    error: volunteerEligibilityError,
+    loading: checkingVolunteerEligibility,
+    refresh: refreshVolunteerEligibility,
+  } = useVolunteerPickupEligibility(pickup.id, pickup.windowStartsAt, pickup.windowEndsAt, live)
 
   const [driverOptions, setDriverOptions] = useState<DriverAssignmentOptions | null>(null)
   const [driverOptionsError, setDriverOptionsError] = useState<string | null>(null)
@@ -109,31 +105,6 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
 
   const { volunteers, waitingTeam1 } = useAssignWizardResources()
   const activeVolunteers = volunteers.length > 0 ? volunteers : (live ? [] : demoVolunteersFallback)
-
-  useEffect(() => {
-    if (!live) return
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    if (!UUID_RE.test(pickup.id)) {
-      setCheckingVolunteerEligibility(false)
-      setVolunteerEligibility(null)
-      setVolunteerEligibilityError(
-        'This pickup has a demo ID and is not saved in the database. ' +
-        'Create the pickup via "Schedule Pickup" to enable live volunteer eligibility checks.'
-      )
-      return
-    }
-    let active = true
-    setCheckingVolunteerEligibility(true)
-    setVolunteerEligibility(null)
-    setVolunteerEligibilityError(null)
-    void fetchEligibleVolunteersForPickup(pickup.id)
-      .then(result => { if (active) setVolunteerEligibility(result) })
-      .catch((error: unknown) => {
-        if (active) setVolunteerEligibilityError(error instanceof Error ? error.message : 'Could not verify volunteer availability for this pickup window.')
-      })
-      .finally(() => { if (active) setCheckingVolunteerEligibility(false) })
-    return () => { active = false }
-  }, [pickup.id, live])
 
   // Every approved volunteer is crew; drivers are separate NGO employees chosen in step 2.
   const volunteersWithWindowEligibility = useMemo(() => activeVolunteers.map((volunteer: any) => {
@@ -146,7 +117,7 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
       : volunteerEligibilityError ? 'Not checked'
         : pickupWindowBlocked ? 'Window blocked'
           : reservationConflict ? 'Reserved'
-            : windowAvailable ? 'Schedule eligible' : 'Unavailable'
+            : windowAvailable ? 'Schedule eligible' : 'No covering slot'
     const windowAvailabilityReason = checkingVolunteerEligibility
       ? 'Checking this volunteer’s schedule and reservation for the pickup window.'
       : volunteerEligibilityError ? `Pickup-window eligibility was not checked: ${volunteerEligibilityError}`
@@ -321,6 +292,8 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
                 <h3>Select Volunteers</h3>
                 <p>Volunteers are optional for driver-only pickups.</p>
                 <p>Choose approved volunteers for packing, loading and food handling. The NGO driver is chosen in Step 2.</p>
+                <p>Availability must cover this pickup's full time window. An overlapping assignment can still reserve a volunteer who marked a slot Available.</p>
+                {live && <button type="button" className="text-link" onClick={refreshVolunteerEligibility} disabled={checkingVolunteerEligibility}>Refresh volunteer schedules</button>}
               </div>
               {waitingTeam1 && volunteers.length === 0 ? (
                 <div className="wizard-tip" style={{ marginBottom: '1rem' }}>

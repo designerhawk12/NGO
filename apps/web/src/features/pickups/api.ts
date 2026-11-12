@@ -46,6 +46,7 @@ export async function fetchEligibleVolunteersForPickup(
     requiresNewDonorRequest: boolean
   }>(`pickups/${pickupId}/eligible-volunteers`, {
     headers: await getAuthHeaders(),
+    cache: 'no-store',
   })
 }
 
