@@ -48,7 +48,11 @@ has **no** `GOOGLE_SERVICES_JSON` secret file, so the private Production push
 APK build is blocked pending an authorized Production Firebase Android file and
 matching FCM V1 credential verification. The app config now fails closed for
 missing or mismatched Firebase files in both preview and production-apk builds;
-its two focused tests, mobile typecheck and lint passed. No new APK was built.
+its focused tests (3/3), mobile typecheck and lint passed. No new APK was built.
+The public `/.well-known/assetlinks.json` currently returns 404 because the
+Production-only `ANDROID_SIGNING_CERT_SHA256` variable is absent. Configure it
+from the verified signer of the new private APK, then verify the public JSON
+association before Android acceptance. No signing identity was changed.
 
 ## FINAL WEB/API VERDICT: GO — 2026-11-10, 15:57 IST
 
