@@ -1,5 +1,55 @@
 # Final Production release gates — 2026-11-10
 
+## Notification and availability release — 2026-11-12
+
+Production project `pyzyxgpcfwpcqyqrihuo`; source commit
+`1635305d11a2cd6bdf12ad23dbcc599960ea8ee9` (built from an exact Git
+archive, with no working-tree files). The staging availability correction was
+verified with a reversible API/database Available → Unavailable → original
+round-trip. Staging web deployment `dpl_WZsspvyjb6VA4HWxHkbd6LNYvntw` is
+live. No mobile code change was needed for the availability correction.
+
+The pre-016 Production encrypted snapshot is stored privately at
+`C:\Users\desig\AppData\Local\AahaaraConnect-Production\pre-015-20261112T064434Z\database.dump.gcm`
+(legacy directory label), SHA-256
+`ebf772270d6ee21a60b0a8ad376a9d79a663e1b4dc5dfb0cbf3d2f5c96dd694f`.
+Archive integrity and local DPAPI key accessibility passed; this fresh archive
+has not had an isolated restore rehearsal or off-device transfer. The earlier
+historical archive had a successful isolated restoration. Independent key
+custody remains deferred by the owner.
+
+`016_push_notifications.sql` was applied once at 2026-11-12 06:48:48 UTC;
+read-back ledger checksum is
+`53654aa3bdf079a800d0f0dbcb8e5f19037ece152f121066992c75379a0f214c`.
+The three new push tables have RLS enabled; the existing restricted
+`aaharaconnect_runtime` login can read them. After migration, the database
+still had one Auth user, one application user with ADMIN role, zero assignment
+members and zero push records. Production Vercel `DATABASE_URL` was bound to
+the verified restricted runtime login; a server-only Production `CRON_SECRET`
+was added. No credential value is recorded here. Existing Production signup
+setting (`PUBLIC_VOLUNTEER_REGISTRATION_ENABLED=false`) and WhatsApp setting
+(`false`) were preserved.
+
+Candidate deployment `dpl_CbLhpiFMnKxY3qCxjYNz6vWgZD2z` was READY at
+`https://ngo-rim90pvxd-equinox10.vercel.app`; health and readiness passed,
+anonymous `/api/v1/me` and push inbox were denied, and unauthenticated
+dispatcher access was denied. The original Admin operator confirmed private
+candidate login and Dashboard/Pickups reads. This exact deployment was
+promoted to `https://ngo-eight-umber.vercel.app`; the alias read-back matched.
+Public homepage, health and readiness returned 200; anonymous `/api/v1/me`
+and push inbox returned 401. Canonical post-promotion Admin check was
+requested and remains pending at the time of this entry. Production Volunteer,
+Donor and Driver hosted checks are unavailable because the clean reset left
+only the original Admin; staging acceptance remains the evidence for them.
+
+Production EAS public configuration points to the canonical API and Production
+Supabase, with remote Android versionCode 10. The Production EAS environment
+has **no** `GOOGLE_SERVICES_JSON` secret file, so the private Production push
+APK build is blocked pending an authorized Production Firebase Android file and
+matching FCM V1 credential verification. The app config now fails closed for
+missing or mismatched Firebase files in both preview and production-apk builds;
+its two focused tests, mobile typecheck and lint passed. No new APK was built.
+
 ## FINAL WEB/API VERDICT: GO — 2026-11-10, 15:57 IST
 
 Scope: approved Production web/API release and bounded authenticated acceptance.

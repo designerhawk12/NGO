@@ -4,15 +4,16 @@ import { existsSync, readFileSync } from 'node:fs';
 /** Bind App Links to this build's existing public web origin (preview or production). */
 export default function appConfig({ config }: ConfigContext): ExpoConfig {
   const googleServicesFile = process.env.GOOGLE_SERVICES_JSON;
-  if (process.env.EAS_BUILD === 'true' && process.env.EAS_BUILD_PROFILE === 'preview') {
+  const buildProfile = process.env.EAS_BUILD_PROFILE;
+  if (process.env.EAS_BUILD === 'true' && (buildProfile === 'preview' || buildProfile === 'production' || buildProfile === 'production-apk')) {
     if (!googleServicesFile || !existsSync(googleServicesFile)) {
-      throw new Error('Preview Android build requires the GOOGLE_SERVICES_JSON file variable.');
+      throw new Error(`${buildProfile} Android build requires the GOOGLE_SERVICES_JSON file variable.`);
     }
     let clients: unknown;
     try { clients = JSON.parse(readFileSync(googleServicesFile, 'utf8')).client; }
-    catch { throw new Error('Preview Android Firebase client configuration is invalid.'); }
+    catch { throw new Error(`${buildProfile} Android Firebase client configuration is invalid.`); }
     if (!Array.isArray(clients) || !clients.some(client => client?.client_info?.android_client_info?.package_name === config.android?.package)) {
-      throw new Error('Preview Android Firebase package does not match the application ID.');
+      throw new Error(`${buildProfile} Android Firebase package does not match the application ID.`);
     }
   }
   const raw = process.env.EXPO_PUBLIC_WEB_BASE_URL ?? 'https://ngo-eight-umber.vercel.app';
