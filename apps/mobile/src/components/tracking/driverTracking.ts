@@ -55,7 +55,7 @@ async function upload(location: Location.LocationObject, force = false) {
       if (force) throw new Error('A current, accurate GPS reading is required. Move outdoors and try again.');
       return;
     }
-    await apiRequest(`vehicles/${session.vehicleId}/locations`, {
+    const result = await apiRequest<{ accepted: boolean; reason?: string }>(`vehicles/${session.vehicleId}/locations`, {
       method: 'POST', headers: await headers(), body: {
         pickupId: session.pickupId, latitude: location.coords.latitude, longitude: location.coords.longitude,
         recordedAt: new Date(location.timestamp).toISOString(),
@@ -63,6 +63,10 @@ async function upload(location: Location.LocationObject, force = false) {
         sessionStartedAt: session.startedAt,
       },
     });
+    if (!result.accepted) {
+      if (force) throw new Error('The server did not accept this GPS reading. Wait a few seconds and try again.');
+      return;
+    }
     lastSent = Date.now();
   } catch (cause) {
     if (cause instanceof ApiClientError && [401, 403, 404].includes(cause.status)) await stopDriverTracking();
@@ -93,8 +97,9 @@ export async function startDriverTracking(pickupId: string): Promise<Session> {
         deferredUpdatesInterval: movingMs, pausesUpdatesAutomatically: false,
         foregroundService: { notificationTitle: 'AaharaConnect location sharing', notificationBody: `Sharing ${session.registrationNumber} during NGO pickup duty. Open the app to Stop Sharing.`, killServiceOnDestroy: true },
       });
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       if ((location.coords.accuracy ?? Infinity) > 200) throw new Error('GPS is not accurate enough yet. Move outdoors and try again.');
+      if (location.timestamp < Date.parse(stored.startedAt) - 30_000) throw new Error('GPS returned an old position. Move outdoors and try again.');
       await upload(location, true);
     } catch (cause) { await stopDriverTracking(); throw cause; }
     return stored;
