@@ -37,22 +37,29 @@ dispatcher access was denied. The original Admin operator confirmed private
 candidate login and Dashboard/Pickups reads. This exact deployment was
 promoted to `https://ngo-eight-umber.vercel.app`; the alias read-back matched.
 Public homepage, health and readiness returned 200; anonymous `/api/v1/me`
-and push inbox returned 401. Canonical post-promotion Admin check was
-requested and remains pending at the time of this entry. Production Volunteer,
+and push inbox returned 401. Canonical post-promotion Admin login and
+Dashboard/Pickups reads were confirmed by the operator. Production Volunteer,
 Donor and Driver hosted checks are unavailable because the clean reset left
 only the original Admin; staging acceptance remains the evidence for them.
 
 Production EAS public configuration points to the canonical API and Production
-Supabase, with remote Android versionCode 10. The Production EAS environment
-has **no** `GOOGLE_SERVICES_JSON` secret file, so the private Production push
-APK build is blocked pending an authorized Production Firebase Android file and
-matching FCM V1 credential verification. The app config now fails closed for
+Supabase, with remote Android versionCode 10. The operator subsequently added
+`GOOGLE_SERVICES_JSON` as a Production Secret file. EAS credential metadata
+confirms an FCM V1 key for Firebase project `aahaaraconnect`, the existing
+package ID and unchanged signing certificate fingerprint. The app config now
+fails closed for
 missing or mismatched Firebase files in both preview and production-apk builds;
-its focused tests (3/3), mobile typecheck and lint passed. No new APK was built.
-The public `/.well-known/assetlinks.json` currently returns 404 because the
-Production-only `ANDROID_SIGNING_CERT_SHA256` variable is absent. Configure it
-from the verified signer of the new private APK, then verify the public JSON
-association before Android acceptance. No signing identity was changed.
+its focused tests (3/3), mobile typecheck and lint passed. No new APK was built
+at this checkpoint. The public `/.well-known/assetlinks.json` initially returned
+404 because the Production-only `ANDROID_SIGNING_CERT_SHA256` variable was
+absent. The matching public fingerprint was independently extracted from
+existing staging and Production APKs and confirmed by EAS credential metadata.
+It was added only to Production. A corrective deployment of the same exact
+web/API source, `dpl_4CLqzjhHz3bCfYSAK3JLiNPQkKbh`, was verified and
+promoted. The canonical homepage, health, readiness and assetlinks now return
+200, while anonymous `/api/v1/me` returns 401. No signing identity was changed.
+A new private Android APK remains to be built and physically tested; Production
+push delivery is not yet certified.
 
 ## FINAL WEB/API VERDICT: GO — 2026-11-10, 15:57 IST
 
