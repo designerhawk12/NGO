@@ -4,11 +4,11 @@ import { env } from '../config/env';
 import { HttpError } from '../middleware/errorHandler';
 import { reportInviteFailure } from '../utils/safeDiagnostics';
 
-export type VerifiedIdentity = { authUserId: string; email: string };
+export type VerifiedIdentity = { authUserId: string; email: string; displayName?: string };
 
 let adminClient: ReturnType<typeof createClient> | undefined;
 
-function getSupabaseAdminClient() {
+export function getSupabaseAdminClient() {
   if (!env.supabaseUrl || !env.supabaseSecretKey) {
     throw new HttpError(
       503,
@@ -51,7 +51,14 @@ export async function verifySupabaseToken(token: string): Promise<VerifiedIdenti
   if (error || !data.user?.id || !data.user.email || !data.user.email_confirmed_at) {
     throw new HttpError(401, 'UNAUTHENTICATED', 'A verified email session is required.');
   }
-  return { authUserId: data.user.id, email: data.user.email };
+  const metadata = data.user.user_metadata;
+  const rawDisplayName = metadata?.display_name ?? metadata?.name;
+  const displayName = typeof rawDisplayName === 'string'
+    && rawDisplayName.trim().length <= 200
+    && !/[\u0000-\u001f\u007f]/.test(rawDisplayName)
+    ? rawDisplayName.trim() || undefined
+    : undefined;
+  return { authUserId: data.user.id, email: data.user.email, ...(displayName ? { displayName } : {}) };
 }
 
 export type InvitedSupabaseUser = {

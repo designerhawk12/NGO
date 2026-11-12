@@ -1,0 +1,51 @@
+{
+  "startedUtc": "2026-11-10T05:17:23.671Z",
+  "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+  "teamId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+  "reason": "Hostname-based alias DELETE failed; use the documented alias UID after fresh exact mapping verification",
+  "actions": [
+    {
+      "host": "ngo-git-fix-ist-donation-times-equinox10.vercel.app",
+      "expectedDeploymentId": "dpl_8iH4tAHask8XWozdr62LUFRhcjZt",
+      "uid": "0527e1dc5b56154f44a4598d293f123e537285b838cd6213ff84797e9b22bb7156d1d0ccb0490eb418076522effed335a06f02ec4edc2188072dbcd1959a8a0c",
+      "status": "REMOVED_VERIFIED",
+      "requestedUtc": "2026-11-10T05:17:35.464Z",
+      "verifiedUtc": "2026-11-10T05:17:38.531Z"
+    },
+    {
+      "host": "ngo-git-codex-driver-details-equinox10.vercel.app",
+      "expectedDeploymentId": "dpl_AVW7JXsg3D3EWFVaVFTJCTxdW2so",
+      "uid": "591bab3cc10813df305c6b630a6c6d61693fdfe9f8174871eb23689e6bd8c1708bc32885adea5977e30b4f90154cd8c9b4b0ccc8edfe6025873a39f7e8a84912",
+      "status": "REMOVED_VERIFIED",
+      "requestedUtc": "2026-11-10T05:17:41.505Z",
+      "verifiedUtc": "2026-11-10T05:17:44.625Z"
+    },
+    {
+      "host": "ngo-git-feature-vehicle-tracking-equinox10.vercel.app",
+      "expectedDeploymentId": "dpl_CQwfGXfYdcYdaZKajajMhmyr8GKv",
+      "uid": "bafc7c52b1a7686dad7b80e3dcce52482c82e697c7ea1326f815faabe0f9929da6bff8ab0ee2c2b6a756614d11d88d78032e675c0a0e34efc9b346e77f33dca2",
+      "status": "REMOVED_VERIFIED",
+      "requestedUtc": "2026-11-10T05:17:48.358Z",
+      "verifiedUtc": "2026-11-10T05:17:51.549Z"
+    },
+    {
+      "host": "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app",
+      "expectedDeploymentId": "dpl_DtMkg6vTq3ZV9whRTKYvjACXH4DA",
+      "uid": "be3f13f4f64334900fc6004c595ff74dbe0d4cce3edb9460e5baee15eed71d219674d690c8436127a5088f8a7e6398aa62e0fd6ca5d32f2e1d381adfc308e535",
+      "status": "REMOVED_VERIFIED",
+      "requestedUtc": "2026-11-10T05:17:54.553Z",
+      "verifiedUtc": "2026-11-10T05:17:57.473Z"
+    },
+    {
+      "host": "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app",
+      "expectedDeploymentId": "dpl_wXbuVcN7v7riLGbPocXv7foETq99",
+      "uid": "a335316ecf83159d810b018c7ad52a6115fb77ef48c1895dcb5a0e983dfb9703104ed63e3afe5b3a90d650ef3c0796cc1473e39077032a6020429e811a30471b",
+      "status": "REMOVED_VERIFIED",
+      "requestedUtc": "2026-11-10T05:18:00.736Z",
+      "verifiedUtc": "2026-11-10T05:18:03.752Z"
+    }
+  ],
+  "failures": [],
+  "passed": true,
+  "completedUtc": "2026-11-10T05:18:03.753Z"
+}

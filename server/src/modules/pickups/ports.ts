@@ -96,6 +96,9 @@ export type DriverSummary = {
   licenceNumber: string;
   licenceExpiresOn: Date;
   status: 'ACTIVE' | 'INACTIVE';
+  driverType: 'LEGACY_VOLUNTEER' | 'EMPLOYEE';
+  /** The vehicle permanently linked to this driver in Assign Driver, if any. */
+  fixedVehicleId: string | null;
 };
 
 export interface DriverPort {
@@ -112,10 +115,14 @@ export class DefaultDriverPort implements DriverPort {
       licence_number: string;
       licence_expires_on: Date | string;
       status: 'ACTIVE' | 'INACTIVE';
+      driver_type: 'LEGACY_VOLUNTEER' | 'EMPLOYEE';
+      fixed_vehicle_id: string | null;
     }>(
-      `SELECT d.id, d.person_id, d.licence_number, d.licence_expires_on, d.status
+      `SELECT d.id, d.person_id, d.licence_number, d.licence_expires_on, d.status, d.driver_type,
+              (SELECT v.id FROM app.vehicles v WHERE v.assigned_driver_id = d.id) AS fixed_vehicle_id
        FROM app.drivers d
-       WHERE d.id = $1`,
+       WHERE d.id = $1
+       FOR UPDATE OF d`,
       [driverId]
     );
 
@@ -127,6 +134,8 @@ export class DefaultDriverPort implements DriverPort {
       licenceNumber: row.licence_number,
       licenceExpiresOn: new Date(row.licence_expires_on),
       status: row.status,
+      driverType: row.driver_type ?? 'LEGACY_VOLUNTEER',
+      fixedVehicleId: row.fixed_vehicle_id ?? null,
     };
   }
 }
@@ -137,6 +146,7 @@ export type VehicleSummary = {
   kind: string;
   capacityKg: number;
   status: 'ACTIVE' | 'MAINTENANCE' | 'RETIRED';
+  indicativeMaxVessels?: number | null;
   isReady?: boolean;
   reasons?: Array<{ code: string; message: string; severity: 'BLOCKING' | 'WARNING' }>;
 };
@@ -155,6 +165,7 @@ export class DefaultVehiclePort implements VehiclePort {
       kind: string;
       capacity_kg: string | number;
       status: 'ACTIVE' | 'MAINTENANCE' | 'RETIRED';
+      indicative_max_vessels?: number | null;
       has_active_downtime?: boolean;
       latest_condition?: 'GOOD' | 'NEEDS_SERVICE' | 'UNSAFE' | null;
       latest_next_service_due_on?: Date | string | null;
@@ -165,6 +176,7 @@ export class DefaultVehiclePort implements VehiclePort {
          v.kind,
          v.capacity_kg,
          v.status,
+         v.indicative_max_vessels,
          COALESCE(downtime.has_active_downtime, false) AS has_active_downtime,
          latest_maint.condition AS latest_condition,
          latest_maint.next_service_due_on AS latest_next_service_due_on
@@ -209,6 +221,7 @@ export class DefaultVehiclePort implements VehiclePort {
       kind: row.kind,
       capacityKg: Number(row.capacity_kg),
       status: row.status,
+      indicativeMaxVessels: row.indicative_max_vessels ?? null,
       isReady: readiness.isReady,
       reasons: readiness.reasons,
     };

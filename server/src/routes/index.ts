@@ -7,6 +7,11 @@ import { pickupRoutes, vehicleAssignmentRoutes } from '../modules/pickups/routes
 import { vehicleRoutes } from '../modules/vehicles/routes';
 import { pickupTrackingRoutes, vehicleTrackingRoutes } from '../modules/tracking/routes';
 import { vesselRoutes } from '../modules/vessels/routes';
+import { distributionRoutes } from '../modules/distribution/routes';
+import { profilePhotoRoutes } from '../modules/profilePhotos/routes';
+import { notificationRoutes } from '../modules/notifications/routes';
+import { pushRoutes } from '../modules/push/routes';
+import { releaseRoutes } from '../modules/releases/routes';
 
 export const apiRouter = Router();
 apiRouter.use('/health', healthRouter);
@@ -23,3 +28,8 @@ apiRouter.use('/vehicles', vehicleTrackingRoutes);
 apiRouter.use('/vehicles', vehicleRoutes);
 apiRouter.use('/drivers', vehicleRoutes);
 apiRouter.use('/vessels', vesselRoutes);
+apiRouter.use('/distribution-centers', distributionRoutes);
+apiRouter.use('/profile-photos', profilePhotoRoutes);
+apiRouter.use('/notifications', notificationRoutes);
+apiRouter.use('/push', pushRoutes);
+apiRouter.use('/releases', releaseRoutes);

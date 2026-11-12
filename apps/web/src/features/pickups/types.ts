@@ -28,6 +28,7 @@ export interface Pickup {
   deliveryAddress: string
   version: number
   createdAt: string
+  operationalNotes?: string | null
   donorName?: string
   donorLocation?: string
   foods?: FoodItemSummary[]
@@ -38,13 +39,13 @@ export interface CreatePickupInput {
   foodRequestId: string
   windowStartsAt: string
   windowEndsAt: string
-  deliveryAddress: string
+  distributionCenterId: string
 }
 
 export interface ContainerPlan {
   containerType: string
   count: number
-  estimatedLoadKg?: number
+  estimatedLoadKg?: number | null
 }
 
 export interface CreateAssignmentInput {
@@ -52,7 +53,7 @@ export interface CreateAssignmentInput {
   volunteerIds: string[]
   vesselIds?: string[]
   driverId: string
-  vehicleId: string
+  vehicleId?: string
   role: string
   windowStartsAt: string
   windowEndsAt: string
@@ -68,6 +69,9 @@ export interface LiveAssignment {
   teamId?: string | null
   driverId: string
   vehicleId: string
+  /** The NGO employee driver's own response, separate from the crew status. */
+  driverAcceptance?: 'NOT_REQUIRED' | 'PENDING' | 'ACCEPTED' | 'DECLINED'
+  crewResponses?: Array<{volunteerId:string;response:'PENDING'|'ACCEPTED'|'DECLINED'|'CANCELLED'}>
 }
 
 export interface VehicleAssignmentSummary {

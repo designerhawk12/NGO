@@ -7,6 +7,7 @@ import { createPickup, reviewFoodSafety } from './api'
 import { localDateTimeInputToUtcIso, toLocalDateTimeInputValue } from './dateTime'
 import { saveDemoPickup, useFoodRequests } from './hooks'
 import type { Pickup } from './types'
+import DistributionCenterSelect from '../distribution/DistributionCenterSelect'
 
 interface Props {
   onClose: () => void
@@ -18,7 +19,8 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
   const { foodRequests, loading: loadingRequests, isDemoFallback, error: foodRequestsError } = useFoodRequests()
 
   const firstEligibleId = useMemo(() => {
-    const eligible = foodRequests.find(r => !r.pickup && r.status === 'SUBMITTED')
+    const eligible = foodRequests.find(r => !r.pickup && r.status === 'SUBMITTED'
+      && Number.isFinite(Date.parse(r.pickupDeadline)) && Date.parse(r.pickupDeadline) > Date.now())
     return eligible?.id || foodRequests[0]?.id || ''
   }, [foodRequests])
 
@@ -41,10 +43,16 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
 
   useEffect(() => {
     if (selectedRequest?.readyAt) {
-      setWindowStartsAt(toLocalDateTimeInputValue(selectedRequest.readyAt))
+      const readyAt = Date.parse(selectedRequest.readyAt)
+      const start = Number.isFinite(readyAt) ? Math.max(readyAt, Date.now() + 15 * 60 * 1000) : Date.now() + 60 * 60 * 1000
+      setWindowStartsAt(toLocalDateTimeInputValue(new Date(start)))
     }
     if (selectedRequest?.pickupDeadline) {
-      setWindowEndsAt(toLocalDateTimeInputValue(selectedRequest.pickupDeadline))
+      const deadline = Date.parse(selectedRequest.pickupDeadline)
+      const readyAt = selectedRequest.readyAt ? Date.parse(selectedRequest.readyAt) : NaN
+      const start = Math.max(Number.isFinite(readyAt) ? readyAt : Date.now(), Date.now() + 15 * 60 * 1000)
+      const end = Number.isFinite(deadline) ? Math.min(deadline, start + 3 * 60 * 60 * 1000) : start + 3 * 60 * 60 * 1000
+      setWindowEndsAt(toLocalDateTimeInputValue(new Date(end)))
     }
   }, [selectedRequest?.id, selectedRequest?.readyAt, selectedRequest?.pickupDeadline])
 
@@ -58,9 +66,8 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
     [selectedRequest]
   )
 
-  const [deliveryAddress, setDeliveryAddress] = useState(
-    'AaharaConnect Distribution Center, Indiranagar'
-  )
+  const [deliveryAddress, setDeliveryAddress] = useState('AaharaConnect Distribution Center, Indiranagar')
+  const [centerId, setCenterId] = useState('')
   const [windowStartsAt, setWindowStartsAt] = useState(() => {
     return toLocalDateTimeInputValue(new Date(Date.now() + 3600000))
   })
@@ -106,7 +113,7 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!foodRequestId || !deliveryAddress.trim()) {
+    if (!foodRequestId || !deliveryAddress.trim() || (isLiveAdmin() && !centerId)) {
       notify('Please fill in all required fields.', 'error')
       return
     }
@@ -124,13 +131,31 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
       notify(msg, 'error')
       return
     }
+    const now = Date.now()
+    const readyAt = selectedRequest?.readyAt ? Date.parse(selectedRequest.readyAt) : NaN
+    const pickupDeadline = selectedRequest?.pickupDeadline ? Date.parse(selectedRequest.pickupDeadline) : NaN
+    let timingError: string | null = null
+    if (Number.isFinite(pickupDeadline) && pickupDeadline <= now) {
+      timingError = 'The food request pickup deadline has expired. Ask the donor to submit a new request; this request cannot be extended or reused.'
+    } else if (Date.parse(startsAt) <= now) {
+      timingError = 'Pickup window must start in the future.'
+    } else if (Number.isFinite(readyAt) && Date.parse(startsAt) < readyAt) {
+      timingError = 'Pickup window cannot start before the food is ready.'
+    } else if (Number.isFinite(pickupDeadline) && Date.parse(endsAt) > pickupDeadline) {
+      timingError = 'Pickup window cannot end after the food request deadline.'
+    }
+    if (timingError) {
+      setError(timingError)
+      notify(timingError, 'error')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
       if (isLiveAdmin()) {
         const created = await createPickup({
           foodRequestId,
-          deliveryAddress: deliveryAddress.trim(),
+          distributionCenterId: centerId,
           windowStartsAt: startsAt,
           windowEndsAt: endsAt,
         })
@@ -174,7 +199,7 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
       <form
         onSubmit={handleSubmit}
         className="dialog-form"
-        style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}
+        style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '0.5rem 0.25rem', maxHeight: 'min(75vh, 720px)', overflowY: 'auto' }}
       >
         {error && (
           <div style={{ color: '#dc2626', fontSize: '0.875rem' }}>
@@ -217,13 +242,15 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
             {foodRequests.map(fr => {
               const isScheduled = Boolean(fr.pickup)
               const isNotSubmitted = fr.status !== 'SUBMITTED'
+              const expired = !Number.isFinite(Date.parse(fr.pickupDeadline)) || Date.parse(fr.pickupDeadline) <= Date.now()
               let suffix = ''
               if (isScheduled) suffix = ' — Already Scheduled'
               else if (isNotSubmitted) suffix = ` — ${fr.status}`
+              else if (expired) suffix = ' — Deadline expired; new donor request required'
               else if (fr.safetyReview === 'PENDING') suffix = ' — Safety Pending'
 
               return (
-                <option key={fr.id} value={fr.id} disabled={isScheduled || isNotSubmitted}>
+                <option key={fr.id} value={fr.id} disabled={isScheduled || isNotSubmitted || expired}>
                   {`${fr.donorName} (${fr.location})${suffix}`}
                 </option>
               )
@@ -476,17 +503,13 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
         </div>
 
         <label className="field">
-          <span>Delivery Address</span>
-          <input
-            type="text"
-            value={deliveryAddress}
-            onChange={e => setDeliveryAddress(e.target.value)}
-            placeholder="Enter destination address"
-            required
-          />
+          <span>Delivery destination (Distribution Center)</span>
+          {isLiveAdmin()
+            ? <DistributionCenterSelect value={centerId} onChange={(id, center) => { setCenterId(id); setDeliveryAddress(center?.address ?? '') }} />
+            : <input type="text" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Enter destination address" required />}
         </label>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '0.75rem' }}>
           <label className="field">
             <span>Window Start</span>
             <input
@@ -513,7 +536,11 @@ export function CreatePickupDialog({ onClose, onSuccess, notify }: Props) {
             display: 'flex',
             justifyContent: 'flex-end',
             gap: '0.75rem',
-            marginTop: '1rem',
+            marginTop: '0.25rem',
+            position: 'sticky',
+            bottom: 0,
+            background: '#fff',
+            paddingTop: '0.75rem',
           }}
         >
           <button type="button" className="button button-secondary" onClick={onClose}>

@@ -1,0 +1,199 @@
+# Final pilot release runbook
+
+2026-11-10 isolation checkpoint: the narrowly approved Vercel Git disconnect/environment
+scope correction passed; see [evidence](PRODUCTION_PREVIEW_ISOLATION_CORRECTION.md).
+This changes no database/Auth/SMTP/Storage or application deployment and grants no
+release authority. Historical previews retain a separate risk; Production remainsNO-GO.
+
+Latest decision/checklist: [FINAL_PRODUCTION_GO_NO_GO.md](FINAL_PRODUCTION_GO_NO_GO.md).
+The recovery candidate is frozen; no Production release is authorized by documentation
+or the recovery-branch push. Off-device custody, isolation, runtime, Auth/SMTP and operator
+gates remain open; exact guarded permission SQL is a proposal outside the migration stream.
+
+2026-11-10 update: staging final physical/SMTP acceptance is now owner-reported passed.
+The historical gate statements below describe earlier checkpoints. Production readiness
+is governed by [PRODUCTION_RELEASE_READINESS.md](PRODUCTION_RELEASE_READINESS.md):
+Production release remains **NO-GO**. The separately authorized encrypted Production
+backup and isolated restore now pass45/45 checks; see
+[recovery evidence](PRODUCTION_BACKUP_RECOVERY_VERIFICATION.md). No Production writes
+are authorized or executed. Only migration015 is pending and historical001–014 match exactly. Preserve
+original identities/history; never substitute staging data or publish the staging APK.
+The existing integration-branch Vercel auto-deploy guard must remain enabled for the
+authorized preparation-only push. No merge, deployment or new build is included.
+
+Status: approved staging rollout and hosted verification completed; existing Android preview ready for physical testing. Migration 015, restricted runtime role, private buckets and both designated staging deployments are complete. 584 local tests and 130 hosted checks plus GPS/security supplement passed. Preview build `69224e2c-8e03-4ca0-836e-90108f6061b6` from `c6eea23` passed artifact inspection. See the newest handoff checkpoint and operator phone checklist; earlier gate-closed/proposed-migration text below is historical, not instructions to repeat rollout. No Pilot GO: physical Android and SMTP delivery remain unverified. Production, live WhatsApp and public APK publication remain untouched/disabled. Do not rebuild, redeploy or reapply migrations without a demonstrated defect and appropriate authorization.
+
+## Review and environment gates
+
+LATEST EXECUTION: user explicitly approved backup/isolated restore and the exact staging015/runtime/configuration rollout. Recovery passed for69 tables and all14 pre-migration ledger checksums. Final015 is now in `server/db/migrations/015_final_pilot.sql`, SHA256 `28D70F15FC4E45E18F85130FBB76ABDBC0A2A1D881A8AEB2FCA9F1C8AB0788E1`, applied once on staging through the existing runner;15 ledger entries verified. Separate restricted runtime login and both private buckets are provisioned. Both named staging projects' settings were replaced with verified staging-only values. Latest handoff has private backup location/limitations and actual results. Earlier gate-closed/proposal-only text is historical. Final local regression passed584 tests with1 existing TODO. Hosted verification and the one permitted preview build are next; Production/live sending/publication remain unapproved.
+
+Current execution supplement (2026-11-09): Supabase MCP is now functional;001–014 are verified. The user-supplied private staging.env connection passed TLS/target/role checks, and its newly supplied server secret passed read-only staging Auth/Storage checks. SMTP is unavailable. The user explicitly declined creating/restoring a backup, so remote-write gates remain closed pending acceptable existing recovery evidence. Browser automation remains unavailable; do not bypass it. See the latest handoff execution checkpoint for actual tests and changes.
+
+Current proposed015 SHA-256: `F7A12DADDAA62654A548899C9E4E6254FA1B6B566F54A4C03282009EA82C6A89`. It adds the tested NOLOGIN `aaharaconnect_api` permission group and explicit RLS policies for trusted Express access. Before rollout, securely provision a separate non-owner/non-BYPASSRLS INHERIT runtime login and grant only this group; keep the verified `postgres` connection for migration administration. Test the actual runtime connection can use required RLS tables and cannot read the ledger/create tables/truncate/rewrite audit events. Do not deploy with migration credentials simply to bypass RLS. Role password and runtime connection belong only in private local/provider configuration, never SQL source or chat. No runtime membership is granted to anon/authenticated/authenticator/service_role.
+
+Required two private buckets and their previously documented MIME/size/access rules are unchanged. The photo service now refuses public/unverifiable buckets, including preview issuance; deployment must include that fix. All later production planning remains separately gated and is not authorized by this staging request.
+
+Affected owners: Volunteer, Food/Donor, Pickup/Logistics, Tracking, Vehicle Details, and integration maintainers. Shared DTOs, auth exception, dependency lockfile, Vercel routing, CI, native permissions and SQL require integration review. PR 26 stays open/unmerged.
+
+1. Confirm branch `integration/ngo-recovery`, starting commit `b7b321c`, and review all uncommitted changes. Preserve the pre-existing untracked `docs/STAGING_CHECKPOINT.md`.
+2. Obtain authorized staging Supabase read access. The connector denied the staging ledger/bucket/policy read again during final review. Read **name**, checksum and applied_at from `app.schema_migrations`; compare every recorded checksum with the immutable source. Do not assume the last applied migration from an old checkpoint. Production verification belongs to a separately approved Production release; no Production database query is needed for this staging preparation.
+3. Review `server/db/proposed/015_final_pilot.sql`. Its number is provisional; it is outside the migration runner. Choose the actual next unused number only after ledger confirmation, then move the reviewed file into the existing `server/db/migrations` stream. No second migration system is introduced.
+4. Confirm staging database `tughgqggsndtraaymtvf` and Production `pyzyxgpcfwpcqyqrihuo` are isolated. Check Vercel Preview environment settings and Git-triggered deployments before any push. `.vercel/project.json` points at Production project `ngo`.
+5. Verify backup timestamps and restore a backup into a separate isolated environment. Database backup alone does not prove that private Storage object bytes are backed up. Establish restricted, encrypted object recovery and deletion rules with the NGO.
+6. Obtain explicit staging migration/push/deployment approval. Deploy only the named staging web/API projects. Verify readiness, Auth redirects, SMTP, private storage, authorization and hosted synthetic end-to-end flows before proposing an APK build.
+
+## Rollout configuration
+
+All values below belong to Express/Vercel server configuration unless marked public. Never paste credentials into chat. Enter secrets directly into the provider's secret settings.
+
+| Setting | Before staging clearance | Enable only after |
+| --- | --- | --- |
+| `VOLUNTEER_IDENTITY_REQUIRED` | `false` | Reviewed schema and private bucket/security tests; then `true` for new onboarding |
+| `PUBLIC_VOLUNTEER_REGISTRATION_ENABLED` | Existing approved policy | Identity flow, invitation delivery and rate limits verified |
+| `FOOD_REQUEST_IDEMPOTENCY_ENABLED` | `false` | Proposed idempotency table applied; then `true` for retry-safe mobile donations |
+| `DRIVER_TRACKING_REQUIRED` | `false` | Hosted GPS + physical Android tests; then `true` so server START requires Driver sharing |
+| `TRACKING_GEOCODING_ENABLED` | `false` | NGO approves sending rounded approximate positions to Nominatim; contact User-Agent configured |
+| `NOTIFICATION_OUTBOX_ENABLED` | `false` | Private outbox schema and staged event tests pass |
+| `WHATSAPP_SENDING_ENABLED` | `false` | Business setup, approved templates, opt-ins, costs and a controlled real-send test approved |
+| `IDENTITY_DELETION_APPROVED` | `false` | NGO approves retention and the specific operational deletion job |
+| `ANDROID_RELEASE_APPROVED` | `false` | Final APK and publication separately approved |
+
+Tracking uses 30-second moving / 90-second stationary pacing by default; public mobile build settings `EXPO_PUBLIC_GPS_MOVING_MS` and `EXPO_PUBLIC_GPS_STATIONARY_MS` can adjust it within bounded limits. Android may suppress callbacks. No timer guarantees tracking after force-stop or reboot.
+
+Identity and notification UIs intentionally report setup unavailable until their server flags/schema/storage are ready. Do not deploy the new mobile onboarding screen against an unprepared server.
+
+## Private identity bucket and retention
+
+1. Open the **staging** project in [Supabase Dashboard](https://supabase.com/dashboard), then **Storage → New bucket**.
+2. Name it exactly `volunteer-identity-private`. Leave **Public bucket OFF**. Restrict upload MIME types to `image/jpeg`; the server re-encodes accepted JPEG/PNG inputs to JPEG. Use a bucket limit of 2 MB; the API caps source images at 500,000 bytes and decoded input at 16 million pixels.
+3. Do not grant anonymous or general authenticated insert/select/list policies. Upload and preview issuance go through Express with its existing server-only Supabase admin client. Review all existing Storage policies, including broad policies that might accidentally cover the new bucket.
+4. Try anonymous listing, direct object retrieval, another applicant, Donor and Driver access on staging. They must fail. Admin-issued private preview URLs expire after 120 seconds. Do not share them or include them in WhatsApp.
+5. Prove a missing/failed upload never produces a successful application, and a rejected/unverified proof cannot be approved through either API or direct constrained SQL.
+6. NGO approval is still needed for the notice, lawful processing basis, acceptable masked documents, access staff, retention, deletion requests and incident response. No claim of UIDAI/legal compliance is made. Masking is applicant-attested and manually checked; there is no OCR or third-party KYC. Image decoding strips metadata/payloads but is not a malware-scanning service.
+7. Proposed retention: expired unattached uploads after one day; document bytes 30 days after a final application decision/review. Pending proofs remain for review. The audit metadata is retained; no unrestricted Aadhaar number or biometric field is collected.
+8. Run `npm run prune:identity --workspace server` first: it is dry-run by default. After explicit NGO and operational approval, set `IDENTITY_DELETION_APPROVED=true` in the approved job environment and run `npm run prune:identity --workspace server -- --apply`. Never run this against real Production documents merely to test cleanup.
+9. Schedule the approved retention job only after testing it on staging. Run existing `npm run prune:locations --workspace server` at least daily; uploads additionally retain only the latest vehicle point and perform bounded expired-point deletion. GPS points expire for reads after 15 minutes. A scheduled cleanup is still required when uploads cease; do not promise automatic database TTL deletion without it.
+
+Registration retries reuse a random submission ID and exact request hash. A stored Auth identity allows recovery after database failure. If invitation delivery outcome is ambiguous before its identity is saved, the system fails closed for maintainer reconciliation: inspect the attempt and Auth email securely, link the correct existing identity, then retry. Do not create or delete real Auth accounts blindly. The upload manifest permits orphan cleanup after interrupted operations.
+
+## Official WhatsApp setup — disabled until approved
+
+Meta account UI could not be inspected here (official documentation returned HTTP 429). The following is the required operator sequence; confirm the current labels in your own business account before enabling sending.
+
+1. Open [Meta for Developers](https://developers.facebook.com/apps/) using the NGO-controlled account. Choose **Create App**, the business/WhatsApp use case, and the NGO's business portfolio. Do not accept paid terms or register billing without the user's approval.
+2. Open the app's **WhatsApp → API Setup** (or the WhatsApp use-case setup panel). Add/verify the NGO-owned business sender number. Complete required business verification and display-name review.
+3. In **Business Settings → Users → System users**, provision an appropriate server credential with only the required WhatsApp business messaging/management access to this app and WhatsApp Business Account. Store the access token server-side as `WHATSAPP_ACCESS_TOKEN`; enter `WHATSAPP_PHONE_NUMBER_ID`, the app secret (`WHATSAPP_APP_SECRET`) and the currently supported `WHATSAPP_GRAPH_VERSION` directly in Vercel secrets/settings. Do not use the temporary test token for the pilot.
+4. Open **WhatsApp Manager → Message templates → Create template**. Request approval for four operational templates, with static NGO identity and these three BODY parameters in order: short reference, scheduled time/status, secure app/Admin URL. Configure their approved names in `WHATSAPP_TEMPLATE_DONATION_RECEIVED`, `WHATSAPP_TEMPLATE_VOLUNTEER_ASSIGNMENT`, `WHATSAPP_TEMPLATE_DRIVER_ASSIGNMENT`, and `WHATSAPP_TEMPLATE_VOLUNTEER_APPLICATION`. Set the exact approved language code in `WHATSAPP_TEMPLATE_LANGUAGE`.
+5. Suggested template intent: donor receipt and donation-status link; Volunteer pickup time and Accept/Reject link; Driver pickup time and own job link; Admin new-application reference, pending-review status and authenticated Volunteer Applications link. Never include identity images, signed proof URLs, beneficiary details or fleet GPS.
+6. In **WhatsApp → Configuration → Webhooks → Edit**, set the approved API callback to `/api/v1/notifications/webhook`. Generate a private verify token in the provider settings and store the same value as `WHATSAPP_WEBHOOK_VERIFY_TOKEN`. Subscribe to **messages** events. Prove GET verification, raw-body HMAC signatures, replay handling and delivery-state updates in staging.
+7. Configure `PUBLIC_APP_ORIGIN` as the approved web origin. Put the Admin's E.164 number in `WHATSAPP_ADMIN_PHONE` and set `WHATSAPP_ADMIN_OPTED_IN=true` only after their consent. Donors, Volunteers and Drivers opt in individually in their app Profile. Disabled/withdrawn consent prevents queued sends; a signed inbound STOP/UNSUBSCRIBE also opts out.
+8. With explicit messaging/cost approval, send a bounded controlled test to consenting test recipients. Only then enable real sending. Existing in-app/email flows continue when Meta is down.
+9. A disabled GitHub Actions dispatcher is prepared in `.github/workflows/whatsapp-dispatch.yml`; no account or paid worker was created. In GitHub **repository Settings → Secrets and variables → Actions**, add secret `AAHARA_NOTIFICATION_DISPATCH_SECRET` matching server `NOTIFICATION_DISPATCH_SECRET`, and variable `AAHARA_API_ORIGIN` matching the approved allowlisted staging or Production origin. Keep `AAHARA_WHATSAPP_DISPATCH_ENABLED` unset/false until deployment approval. If staging protection requires an extra credential, arrange a reviewed service integration; do not disable Deployment Protection globally.
+10. After approval, enable the variable, open **Actions → Bounded WhatsApp outbox dispatch → Run workflow**, and verify counters. Scheduled runs process at most ten messages every five minutes with a DB-wide rate gate. GitHub schedules can be delayed; measure hosted alert latency and approve that tradeoff for the pilot. Check billing/Actions allowance before enabling. No workflow has been pushed or activated here.
+
+Explicit 429/5xx responses retry with bounded backoff (six attempts maximum). A network timeout/crashed or ambiguous send becomes **UNKNOWN**, not an automatic duplicate. Operations must reconcile the provider outcome before any manual resend. Savepoints isolate outbox failures from core transactions; an enqueue failure is logged with a sanitized code and requires operational reconciliation. Exactly-once external delivery is not claimed.
+
+## Android build, links and download publication
+
+1. Recheck EAS project `6406b528-a2ba-4abb-a356-6bfb405c3957`, package `com.rajashishpatil10.aaharaconnect`, current signing certificate, remote versionCode and all build environment classifications. Preserve the existing keystore and package. Source app version `1.0.0` is not evidence of a final released artifact version.
+2. Preview API/Auth/web EAS values were read-only verified on 2026-11-09 (see inventory below). `app.config.ts` now selects the HTTPS intent host from that build's `EXPO_PUBLIC_WEB_BASE_URL`, preserving package and native settings. Verify the staging domain's public association response before testing HTTPS links. Custom-scheme fallback and malformed-link protection still need phone tests.
+3. After hosted staging checks and explicit build-quota approval, build **one** `preview` APK. Use it for permissions, foreground notification, Maps background reporting, stop/revoke/offline/restart and deep-link tests. Do not infer real-device success from unit tests or Expo config introspection.
+4. Get the **actual existing signing certificate SHA-256 fingerprint** from the approved signing credential/artifact. Put it in server `ANDROID_SIGNING_CERT_SHA256`. Verify public `/.well-known/assetlinks.json` returns HTTP 200, the correct package/certificate and no authentication/redirect. Its endpoint intentionally returns 404 before a real fingerprint is configured. Use [Expo's Android App Links guide](https://docs.expo.dev/linking/android-app-links/) to verify association on the phone.
+5. After Production release/build approval, create only the necessary `production-apk` build. Confirm Production Express URL, public Supabase project/key, package, certificate, version/versionCode and upgrade over an existing installation. Inspect the APK for server credentials. If `sb_secret_` appears, inspect boundaries and dependency origin; a prefix literal alone does not establish a secret or clear the artifact automatically.
+6. Record final version, EAS build ID and `Get-FileHash -Algorithm SHA256 -LiteralPath <approved-apk>` result. None is available for a final APK in this session.
+7. After separate public-publication approval, use Supabase **Storage → New bucket** named `mobile-releases` (public, APK files only), or verify that existing approved bucket. Never reuse the identity bucket. Upload the verified immutable filename `aaharaconnect-<version>-<build-id>.apk` with content type `application/vnd.android.package-archive`. Verify any storage quota/file-size limits before uploading; no paid upgrade is authorized.
+8. Download it without a login on desktop and Android Chrome. Check bytes, checksum, content type and installation/update behavior. The release endpoint accepts only an HTTPS public `mobile-releases` path on the configured Supabase project, not temporary EAS or arbitrary third-party URLs.
+9. Enter the verified immutable URL and metadata in `ANDROID_RELEASE_URL`, `ANDROID_RELEASE_VERSION`, `ANDROID_RELEASE_BUILD_ID`, `ANDROID_RELEASE_SHA256`. Only after explicit approval set `ANDROID_RELEASE_APPROVED=true`, redeploy the approved target, and retest `/api/v1/releases/android/download` from a signed-out browser. It remains a stable public endpoint while each underlying APK is immutable.
+10. Future releases repeat verification and replace those five values. Keep the prior artifact/deployment for rollback. Do not overwrite an old APK under the same filename or change signing identity.
+
+## Production approval packet and rollback
+
+Before requesting Production approval, attach actual hosted test results, dependency-risk disposition, physical-device checklist, final migration number/checksum, backup+restore evidence, exact staged commit/deployments, changed server variables, template readiness, APK metadata, user impact and the proposed smoke test sequence.
+
+Smoke sequence: health/readiness → signed-out rejection → Admin/role checks → donor creation/retry/ownership → private proof + verify/deny → driver/vehicle/container dispatch → Driver-only and assisted completion → GPS start/report/private selection/stale/stop → notification consent/dispatch/webhook → APK/App Links/upgrade.
+
+Rollback keeps additive tables and audits. Disable public registration and new dispatch creation, disable sending/dispatcher and download publication, and restore the approved prior web/API deployment. Old code must not bypass the new identity approval trigger. New required-proof pending applications and crew-free PENDING jobs may need the new service or a reviewed forward fix; do not drop the gate, invent crew, alter historical assignments or delete documents to make old code work. Rehearse this on staging before Production.
+
+Separate approvals: staging push/migration/deployment; Meta business setup; paid messaging; NGO identity policy/retention; Android EAS build; Production migration; Production Vercel deployment; public APK publication; final NGO pilot handover. None is inferred from local test success.
+
+## Final-review infrastructure inventory — 2026-11-09
+
+**Recovery correction:** the stable staging web alias currently redirects signed-out clients to Vercel login; the HTML200 previously observed was not a public homepage/API success. Web deployment is `eb966632b58c2ac3f9a2aee6e8f43351b6c29a46`; API deployment is `0d6e1d0ebdaf01ec2e7136c4b7376fa538e32224`. New release API routes are404 on the older API. See the appended recovery checkpoint in the handoff for exact current results. Keep protection unchanged until a reviewed staging-specific access/association plan is agreed. User independently reports ledger001–014 and no buckets; Codex's own read calls still deny access despite the approved Allow-read plugin setting, so migration/storage/deployment execution remains blocked.
+
+The recovery adds a branch-only automatic-deployment guard in `vercel.json`: `git.deploymentEnabled["integration/ngo-recovery"]=false`. This prevents Git push-triggered Vercel deployments for this branch, including Production-project Previews; other branches are unaffected. Use explicit verified staging project IDs for approved manual deployment. A combined local commit/push attempt was rejected before execution by automatic approval review; verify Git state and renewed push approval before proceeding. [Vercel documents the branch guard here](https://vercel.com/docs/project-configuration/git-configuration#git.deploymentenabled).
+
+Reviewed implementation commit: `4cc7430f8b4c0af6634a13df8966fc9d61246926`; documentation preservation commit is discoverable with `git log -- docs/FINAL_PILOT_RELEASE_RUNBOOK.md`. Neither commit has been pushed. Proposal SHA-256: `7FB9A46146C65DEF7C5332D61F0BB1AD1EAD51DC986D370A7D67ACF5032C47F2`, number still provisional.
+
+Read-only checks only; environment values/settings and deployments were not changed. Vercel scope is `equinox10`, organization `team_lRAI0kP7NNOxCUPBitJQ3d95`.
+
+| Staging resource | Verified / remaining limit |
+| --- | --- |
+| Supabase intended project | `tughgqggsndtraaymtvf`, corroborated by EAS preview public Auth URL. Connector ledger/bucket/policy query denied with `MCP error -32600: You do not have permission to perform this action`. Actual server DB target, ledger, bucket existence and Storage policies remain UNCONFIRMED. |
+| Web Vercel project | `aaharaconnect-ngo-staging`, `prj_W1MrwAqFsWTFohHs6UXR2fo1EEIL`, Node 22, root `.`, Vite/build:web, output `apps/web/dist`. Stable public alias `https://aaharaconnect-ngo-staging.vercel.app` still points to older Nov 3 deployment `dpl_245LXpXkK6GmeLw18cgAq6wAuGeB`. Root GET 200 does not verify new features. |
+| API Vercel project | `aaharaconnect-ngo-staging-api`, `prj_Nd3YLsJkOYjlZMPLmFZw9MFG88Ul`, Node 22. Stable alias `https://aaharaconnect-ngo-staging-api.vercel.app`, Nov 6 deployment `dpl_bHe4YQABt5BUT6rJPxt5kjm7ScPW`, READY; readiness GET 200. Project defaults differ from web; confirm effective repository `vercel.json` routing/build on the approved deployment. |
+| Deployment targets | Both stable staging aliases currently use the **Production target of their separate staging projects**. Vercel Preview variables alone do not configure these aliases. Never run release commands against repository-linked Production project `ngo`. Check Git auto-deploy hooks before any authorized push. |
+| Web staging env metadata | Preview and Production targets list `DATABASE_URL`, `DATABASE_SSL`, `DATABASE_SSL_CA`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `CORS_ORIGIN`, `VOLUNTEER_INVITE_REDIRECT_URL`, `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`. Secret values not retrieved; opaque public-value wrappers did not verify actual targets. |
+| API staging env metadata | Production target lists DB/SSL/CA, Supabase URL/publishable key, CORS, invitation redirect, location retention and NODE_ENV. **`SUPABASE_SECRET_KEY` is missing**; secure setup is required for invitations/private Storage. No new feature flags/provider credentials appeared in either project's metadata. |
+| EAS preview public values | API `https://aaharaconnect-ngo-staging-api.vercel.app/api/v1`; Auth `https://tughgqggsndtraaymtvf.supabase.co`; web `https://aaharaconnect-ngo-staging.vercel.app`. Publishable-key variable exists; contents withheld. |
+| EAS Production public values | API `https://ngo-eight-umber.vercel.app/api/v1`; Auth `https://pyzyxgpcfwpcqyqrihuo.supabase.co`; web `https://ngo-eight-umber.vercel.app`. Read-only; no build requested. |
+
+Use the provider's secure UI to confirm actual server `DATABASE_URL` and `SUPABASE_URL` reference **staging**, public keys are genuinely publishable, CORS includes staging web only as appropriate, and invitation redirect is the approved staging password-setup URL. Do not copy secret values into this document. The identity bucket name is a code constant, `volunteer-identity-private`, not an environment variable. New settings required for staged rollout: the flags above, `PUBLIC_APP_ORIGIN=https://aaharaconnect-ngo-staging.vercel.app`, and the real Android signing fingerprint when available. Sending/dispatcher, deletion, geocoding and release approval stay OFF. If geocoding is later approved, configure `TRACKING_GEOCODER_CONTACT` with the NGO contact URL/email for the Nominatim User-Agent; no paid geocoder subscription/key is required by this adapter. Metadata presence is not proof of correctness.
+
+## Exact staging execution sequence — pending approval
+
+1. Resolve the denied staging read and API secret prerequisite. Verify complete migration ledger/checksums, DB role ownership/bypass needed by the Express service, Auth configuration, existing Storage grants, backup and isolated restore. Integration maintainer reviews the cross-module/auth/DDL changes. Record the final numbered proposal checksum before promotion into the existing migration stream. No Production database access is part of this step.
+2. Obtain approval naming the local commit(s), the two project IDs above, staging-only DB ref, migration checksum, private bucket and exact environment changes. Confirm a push cannot trigger Production deployment. Keep `.vercel/project.json` untouched and use explicitly linked staging projects. Choose one approved release, not repeated exploratory deployments.
+3. Pause public Volunteer registration before applying additive DDL and until identity setup is ready, preventing a schema/API gap admitting new grandfathered applications. Apply the reviewed migration once through the existing runner against the verified staging connection; check ledger/checksum and idempotent status. Do not apply the unnumbered/unverified proposal remotely.
+4. Provision/verify the private identity bucket and restrictions described above; no anonymous/authenticated broad Storage policies. Confirm RLS and revoked direct grants on identity/outbox and existing `vehicle_locations`/`vehicle_tracking_consents`; Express uses the reviewed privileged server role. Set the missing API service secret securely. Leave existing approved accounts, applications, vehicle/driver registry and role model intact.
+5. Deploy approved API/web to the separate staging projects/targets, checking effective install/build/routes and aliases. Enable identity requirement, food idempotency and outbox only after schema/bucket readiness. Leave WhatsApp sending, Actions dispatcher, Admin opt-in, geocoding, deletion and public APK approval false. Enable public registration only for synthetic staged tests with working invitation delivery. Test GPS-required START under a controlled staging flag, then leave enforcement off until phone verification/rollout approval.
+6. Synthetic auth/privacy: Admin, two applicants, Donor, two Drivers and five linked vehicles. Confirm signed-out/wrong-role/inactive/unapproved denials, applicant-own replacement only, cross-applicant document/assignment denial, no anonymous direct DB/Storage list/download, signed proof expiry after 120 seconds, Admin audited review and rejection/approval SQL gate. Existing approved and legacy pending records retain the documented migration policy. Do not import real identity documents or message real contacts.
+7. Driver-only journey: donation → safety-reviewed pickup → mandatory Driver/fixed vehicle/containers with empty Volunteers → Driver acceptance → START → check-in → collection → delivery. Check resource release/history, assisted pickup acceptance and decline/reassignment. Five-vehicle GPS: separate authenticated sessions/consents; timestamp skew, order, throttle, active assignment ownership, reassignment invalidates old duty consent, inactive Driver, expiry/revoke and terminal stops. Admin selector shows only authorized latest positions, readable timestamp/coordinates, stale/offline and retention. Record hosted request latency; local five-vehicle timing is not hosted capacity proof.
+8. Synthetic notification events: donor confirmation, Volunteer assignment, Driver assignment and Admin new application. Inspect Admin outbox with sending OFF; no provider call. Check rollback, duplicate prevention, current opt-in, retry/backoff, UNKNOWN reconciliation, signed webhook replay/invalid signature and opt-out using the existing **local mocked-provider tests** against isolated `_test` PostgreSQL. Do not deploy a public fake-provider endpoint or enable live Meta sending for this test. Hosted real-provider webhook/delivery requires separate external setup/approval.
+9. Regression smoke: existing donor/auth/profile/availability/team, centres, vehicles/maintenance, containers/reservations, pickup editing/cancellation, assisted dispatch/delivery and account ownership. Homepage is Admin-first; unapproved download is unavailable; approved synthetic release config cannot be used to publish unverified bytes. After separately approved actual artifact publication, signed-out GET download must redirect to public immutable APK without Auth, and checksum/content type must match. App Links association must be public independently of Admin authentication.
+10. Save actual hosted evidence and deployment IDs. Rehearse rollback with registration/new dispatch paused and additive approval/audit protections retained. Only then request the one staging phone build. Pilot remains NO-GO until hosted staging, physical Android and security risk acceptance/remediation pass.
+
+## Minimum physical Android verification
+
+After the hosted gates and explicit build approval: from `apps/mobile`, `eas build --platform android --profile preview` once. Existing profile selects preview environment, internal APK and the existing EAS project/package. No Expo Go substitute; no Production APK yet. Preserve existing signing credentials and verify signing fingerprint/remote versionCode before building. Confirm no server secret in the built artifact and record EAS build ID/checksum.
+
+On the phone verify fine + background permissions, foreground-service location notification, explicit Turn On GPS consent, five-vehicle backend selection (one physical Driver plus four synthetic sessions), movement while Google Maps is foreground, offline/reconnect, stale/offline Admin display, stop/logout/completion/revocation and battery/reboot/force-stop limitations. Verify JPEG/PNG selection, masked-proof confirmation, replacement, pending review and signed preview; invitation/login recovery and cold/warm authenticated own-object links; wrong-role/other-person links and malformed/oversized URI rejection; install/update with the existing signing identity. Association tests need staging `assetlinks.json` with the real signing certificate and Android `pm verify-app-links`/`pm get-app-links`. A later Production APK requires separate approval and Production environment checks.
+
+## Dependency/security disposition — final local review
+
+Compatible lockfile updates remediate `source-map-js` to 1.2.2, `node-forge` to 1.4.3 and `qs` to 6.16.2. Production-dependency audit moved from **20 (7 high/10 moderate/3 low)** to **17 (5 high/9 moderate/3 low), zero critical**. Full including-dev audit is **30 (2 critical/6 high/19 moderate/3 low)**. These are package/advisory counts with inherited duplication, not 30 independent remotely exploitable API flaws. No forced SDK/tooling major upgrade was performed.
+
+| Originally reported package | Registry severity | Actual exposure and disposition |
+| --- | --- | --- |
+| `source-map-js` | High | Malicious source-map parsing in build/PostCSS; fixed 1.2.2. |
+| `node-forge` | High | Crypto/ASN.1 issues in Expo CLI signing/dev-certificate tooling, not Express Auth; fixed 1.4.3. |
+| `qs` | Moderate | Comma-stringify noncallable toString DoS; app accepts parsed HTTP queries, no identified attacker-controlled comma stringify call; fixed 6.16.2. |
+| `decode-uri-component` | High | Malformed percent-encoded external URI CPU DoS in Router query parsing; reachable phone input. New bounded native-intent hook rejects percent-encoded/control/oversized external links before standalone native routing. Not a dependency fix; Expo Go/Web not covered and physical cold/warm rejection remains a release test. |
+| `query-string` | High | Inherits decoder; same single URI chain, same mitigation/residual. Patched decoder 0.5.1 is ESM while installed query-string 7 requires CJS ^0.2.2; an override would break runtime. Seek compatible upstream patch or separately tested SDK migration. |
+| `expo-router` | High | Inherits query-string/decoder. New links use ASCII object UUIDs; authenticated authorization still required. Controlled SDK update or accepted residual after phone verification required before pilot clearance. |
+| `zod` | High | Vulnerable 3.25.76 in Expo CLI/React Hooks lint tooling; collection-memory DoS needs attacker-controlled validation. Server/shared/app imports resolve patched Zod 4.6.7; Express body bounded. No public Zod3 handler identified. Keep separate tooling upgrade queued. |
+| `@expo/cli` | High | Inherits Zod3/config/glob; trusted local build/dev input, not deployed Express endpoint. Do not expose Metro/CLI to untrusted networks; resolve in compatible Expo upgrade. |
+| `@expo/config` | Moderate | Build config inherits glob/deepmerge; trusted repository configuration. Compatible Expo upgrade. |
+| `@expo/config-plugins` | Moderate | Native build configuration inherits glob/xcode. Same build-only controls; Expo upgrade. |
+| `@expo/fingerprint` | Moderate | Build file scans inherit glob/minimatch. Untrusted pattern/file-tree prerequisite; Expo upgrade. |
+| `@expo/metro-config` | Moderate | Bundler config inheritance, not API runtime. Expo upgrade. |
+| `expo` | Moderate | Config/fingerprint inheritance, not an independent flaw in GPS APIs. Expo upgrade. |
+| `glob` | Moderate | AbortSignal bypass filesystem traversal + minimatch amplification DoS; local/build patterns, no public API pattern endpoint found. Compatible toolchain update. |
+| `minimatch` | Moderate | Globparts amplification DoS; build/lint inputs. Compatible toolchain update. |
+| `uuid` | Moderate | v3/v5/v6 caller-supplied buffer bounds issue, transitive Xcode tooling. Runtime uses crypto UUIDv4, no vulnerable supplied-buffer call found. Compatible tooling update. |
+| `xcode` | Moderate | Inherits uuid; iOS build tooling, not Android/Express runtime. Compatible Expo upgrade. |
+| `deepmerge` | Low | Prototype poisoning via crafted keys in build config; no public merge endpoint identified. Compatible Expo update, trusted configuration only. |
+| `@expo/local-build-cache-provider` | Low | Inherits config; build-only, same remediation. |
+| `@expo/prebuild-config` | Low | Inherits config; build-only, same remediation. |
+
+Additional including-dev findings are explicitly retained:
+
+| Package(s) | Registry severity | Actual exposure / remediation |
+| --- | --- | --- |
+| `tinypool`, `vitest` | **Critical** | Prototype-polluted worker options can execute code; Vitest inherits worker flaw. Local trusted `vitest run` only, no exposed test UI/API or untrusted worker options. Not deployed by Express. Do not run untrusted tests with secrets; controlled Vitest/worker migration (patched tinypool >=2.1.2; compatible Vitest version must also fix mock handling), followed by regression testing, is outstanding. Do not override to incompatible majors blindly or mark Critical resolved. |
+| `@vitest/mocker` | Moderate | Mock redirect traversal / unauthenticated mock-registration injection with exposed test tooling. No exposed test server in this session. Fix with the controlled Vitest migration. |
+| `vite` | High | Dev-server path/deny bypass, editor invocation/Windows credential risks and inherited esbuild. Static build is deployed, not Vite dev server. Keep dev server loopback/trusted; upgrade Vite in a separate controlled compatibility check before untrusted-network development. |
+| `esbuild` | Moderate | Development server cross-origin reads. No public dev server used; compatible Vite/esbuild update. |
+| `postcss-selector-parser` | Moderate | Quadratic flat-selector parsing on crafted CSS; trusted source builds only; compatible lint/build update. |
+| `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser`, `@typescript-eslint/type-utils`, `@typescript-eslint/typescript-estree`, `@typescript-eslint/utils`, `eslint-config-expo`, `eslint-plugin-expo` | Moderate each | Transitive minimatch/lint parser chain; trusted repository lint input, not HTTP runtime. Compatible Expo/ESLint toolchain update. |
+
+Advisory references: [decoder quadratic DoS](https://github.com/advisories/GHSA-qr28-fpjm-wq7f), [decoder exponential DoS](https://github.com/advisories/GHSA-vcc3-ghjq-m6fr), [Zod collections](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5), [Tinypool worker options](https://github.com/advisories/GHSA-5gmw-xhrv-c9v3), [Tinypool run options](https://github.com/advisories/GHSA-85c8-ppgw-ccpr). Native hook behavior follows [Expo native-intent](https://docs.expo.dev/router/advanced/native-intent/) and was checked against installed SDK57 source; only a physical APK verifies actual OS dispatch. This disposition permits preparation of a controlled staging candidate; it does not grant security or Pilot GO.

@@ -5,10 +5,12 @@ import { Badge, Button, Card, Header, Icon, InfoRow, Screen, Sheet, T, dateLabel
 import { C } from '../../../constants/theme';
 import { useApp } from '../../../context/AppContext';
 import { useLanguage } from '../../../context/LanguageContext';
+import LiveAssignments from '../../../components/volunteer/LiveAssignments';
 export default function AssignmentDetail() {
   const { id } = useLocalSearchParams<{ id: string }>(); const app = useApp(); const { language, t } = useLanguage();
   const [rejectOpen, setRejectOpen] = useState(false); const [reason, setReason] = useState('');
   if (app.role !== 'volunteer') return <Redirect href="/" />;
+  if (app.mode === 'live') return <LiveAssignments assignmentId={id} />;
   const item = app.assignments.find(assignment => assignment.id === id);
   if (!item) return <Screen><Header title="Not found" back /></Screen>;
   const next = item.status === 'Pending' ? { title: 'Accept assignment', status: 'Accepted' as const } : item.status === 'Accepted' ? { title: 'Start pickup', status: 'In Progress' as const } : item.status === 'In Progress' ? { title: 'Check in at pickup', status: 'Checked In' as const } : item.status === 'Checked In' ? { title: 'Mark completed', status: 'Completed' as const } : null;

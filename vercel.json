@@ -1,7 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "integration/ngo-recovery": false
+    }
+  },
   "framework": "vite",
-  "installCommand": "npm ci",
+  "installCommand": "npm ci --include=dev",
   "buildCommand": "npm run build:web",
   "outputDirectory": "apps/web/dist",
   "functions": {
@@ -9,7 +14,9 @@
       "maxDuration": 30
     }
   },
+  "crons": [{ "path": "/api/v1/push/dispatch", "schedule": "0 2 * * *" }],
   "routes": [
+    { "src": "^/\\.well-known/assetlinks\\.json$", "dest": "/api/index", "transforms": [{ "type": "request.headers", "op": "set", "target": { "key": "x-ac-original-api-path" }, "args": "v1/releases/android/assetlinks" }] },
     {
       "src": "^/api/v1/(.*)$",
       "dest": "/api/index",
@@ -26,8 +33,17 @@
     }
   ],
   "rewrites": [
+    { "source": "/open/:kind/:id", "destination": "/index.html" },
     {
       "source": "/accept-invite",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/forgot-password",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/reset-password",
       "destination": "/index.html"
     }
   ]

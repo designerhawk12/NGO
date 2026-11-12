@@ -10,7 +10,8 @@
     "test": "vitest run",
     "migrate:up": "tsx src/db/migrate.ts up",
     "migrate:status": "tsx src/db/migrate.ts status",
-    "prune:locations": "tsx src/db/pruneLocations.ts"
+    "prune:locations": "tsx src/db/pruneLocations.ts",
+    "prune:identity": "tsx src/db/pruneIdentity.ts"
   },
   "dependencies": {
     "@aaharaconnect/shared": "*",
@@ -19,6 +20,7 @@
     "dotenv": "^16.6.0",
     "express": "^4.21.2",
     "pg": "^8.0.0",
+    "sharp": "^0.35.5",
     "zod": "^4.0.0"
   },
   "devDependencies": {

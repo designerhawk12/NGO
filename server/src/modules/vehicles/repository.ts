@@ -44,6 +44,9 @@ export function handleVehicleDbError(error: unknown): never {
           'Cannot schedule vehicle downtime during an active reservation window.'
         );
       }
+      if (msg.includes('fixed NGO employee driver') || msg.includes('fixed driver-to-vehicle')) {
+        throw new HttpError(409, 'VEHICLE_HAS_FIXED_DRIVER', msg);
+      }
       if (msg.includes('next_service_due_on')) {
         throw new HttpError(
           400,
@@ -81,6 +84,14 @@ export interface VehicleDbRow {
   curr_driver_name?: string | null;
   curr_driver_phone?: string | null;
   curr_driver_licence?: string | null;
+  fixed_driver_id?: string | null;
+  fixed_driver_name?: string | null;
+  fixed_driver_phone?: string | null;
+  fixed_driver_licence?: string | null;
+  fixed_driver_licence_expires_on?: string | null;
+  fixed_driver_status?: 'ACTIVE' | 'INACTIVE' | null;
+  fixed_driver_type?: 'LEGACY_VOLUNTEER' | 'EMPLOYEE' | null;
+  fixed_driver_employee_code?: string | null;
   latest_serviced_on?: Date | string | null;
   latest_condition?: 'GOOD' | 'NEEDS_SERVICE' | 'UNSAFE' | null;
   latest_summary?: string | null;
@@ -147,6 +158,19 @@ function mapVehicleRow(row: VehicleDbRow) {
           licenceNumber: row.curr_driver_licence ?? '',
         }
       : null,
+    // The fixed driver link set from Assign Driver (null until a driver is linked).
+    assignedDriver: row.fixed_driver_id
+      ? {
+          driverId: row.fixed_driver_id,
+          name: row.fixed_driver_name ?? '',
+          phone: row.fixed_driver_phone ?? null,
+          licenceNumber: row.fixed_driver_licence ?? '',
+          licenceExpiresOn: row.fixed_driver_licence_expires_on ? row.fixed_driver_licence_expires_on.slice(0, 10) : null,
+          status: row.fixed_driver_status ?? 'ACTIVE',
+          driverType: row.fixed_driver_type ?? 'LEGACY_VOLUNTEER',
+          employeeCode: row.fixed_driver_employee_code ?? null,
+        }
+      : null,
     currentAssignment: row.curr_assignment_id
       ? {
           assignmentId: row.curr_assignment_id,
@@ -197,6 +221,14 @@ const VEHICLE_SELECT_FRAGMENT = `
     COALESCE(curr_assign.driver_name, adp.name) AS curr_driver_name,
     COALESCE(curr_assign.driver_phone, adp.phone_e164) AS curr_driver_phone,
     COALESCE(curr_assign.driver_licence, ad.licence_number) AS curr_driver_licence,
+    ad.id AS fixed_driver_id,
+    adp.name AS fixed_driver_name,
+    adp.phone_e164 AS fixed_driver_phone,
+    ad.licence_number AS fixed_driver_licence,
+    ad.licence_expires_on::text AS fixed_driver_licence_expires_on,
+    ad.status AS fixed_driver_status,
+    ad.driver_type AS fixed_driver_type,
+    ad.employee_code AS fixed_driver_employee_code,
     latest_maint.serviced_on AS latest_serviced_on,
     latest_maint.condition AS latest_condition,
     latest_maint.summary AS latest_summary,
@@ -355,9 +387,8 @@ export async function createVehicle(data: CreateVehicle, client?: PoolClient) {
         status,
         size_category,
         indicative_max_vessels,
-        assigned_driver_id,
         photo_data_url
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *`,
       [
         data.registrationNumber,
@@ -366,7 +397,6 @@ export async function createVehicle(data: CreateVehicle, client?: PoolClient) {
         data.status ?? 'ACTIVE',
         data.sizeCategory ?? null,
         data.indicativeMaxVessels ?? null,
-        data.assignedDriverId ?? null,
         data.photoDataUrl ?? null,
       ]
     );
@@ -413,10 +443,6 @@ export async function updateVehicle(
   if (patch.indicativeMaxVessels !== undefined) {
     values.push(patch.indicativeMaxVessels);
     setClauses.push(`indicative_max_vessels = $${values.length}`);
-  }
-  if (patch.assignedDriverId !== undefined) {
-    values.push(patch.assignedDriverId);
-    setClauses.push(`assigned_driver_id = $${values.length}`);
   }
 
   if (setClauses.length === 0) {
@@ -702,9 +728,18 @@ export async function listDrivers(client?: PoolClient) {
 export async function deleteVehicle(id: string, client?: PoolClient) {
   const db = client ?? getPool();
   try {
-    const vehCheck = await db.query('SELECT id FROM app.vehicles WHERE id = $1', [id]);
+    const vehCheck = await db.query<{ id: string; assigned_driver_id: string | null }>(
+      'SELECT id, assigned_driver_id FROM app.vehicles WHERE id = $1', [id]
+    );
     if (vehCheck.rows.length === 0) {
       throw new HttpError(404, 'NOT_FOUND', `Vehicle ${id} not found.`);
+    }
+    if (vehCheck.rows[0].assigned_driver_id) {
+      throw new HttpError(
+        409,
+        'VEHICLE_HAS_FIXED_DRIVER',
+        'This vehicle is permanently linked to a driver and cannot be deleted. Set its status to Retired instead.'
+      );
     }
 
     await db.query('DELETE FROM app.vehicles WHERE id = $1', [id]);

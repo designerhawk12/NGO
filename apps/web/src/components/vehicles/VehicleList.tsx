@@ -2,6 +2,7 @@ import { Edit2, Plus, Search, Trash2, Wrench, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Driver, Vehicle, VehicleMaintenanceRecord } from '../../types'
 import { EmptyState, StatusBadge } from '../common/UI'
+import { isLiveAdmin } from '../../features/pickups/adapters'
 
 type Props = {
   vehicles: Vehicle[]
@@ -109,7 +110,7 @@ export default function VehicleList({
       const regUpper = v.registrationNumber.toUpperCase()
       const canonical = CANONICAL_FLEET[regUpper]
       const driver = drivers.find(d => d.driverId === v.driverId || (v.driverName && d.name.toLowerCase() === v.driverName.toLowerCase()))
-      const driverDisplayName = v.driverName || driver?.name || canonical?.driverName || ''
+      const driverDisplayName = isLiveAdmin() ? v.driverName || '' : v.driverName || driver?.name || canonical?.driverName || ''
       const displayId = v.vehicleId.startsWith('V') ? v.vehicleId : canonical?.shortId || v.vehicleId
 
       if (query) {
@@ -278,8 +279,9 @@ export default function VehicleList({
                 const regUpper = v.registrationNumber.toUpperCase()
                 const canonical = CANONICAL_FLEET[regUpper]
                 const driver = drivers.find(d => d.driverId === v.driverId || (v.driverName && d.name.toLowerCase() === v.driverName.toLowerCase()))
-                const driverName = v.driverName || driver?.name || canonical?.driverName
-                const driverPhone = v.driverPhone || driver?.phone || canonical?.driverPhone
+                const live = isLiveAdmin()
+                const driverName = live ? v.driverName : v.driverName || driver?.name || canonical?.driverName
+                const driverPhone = live ? v.driverPhone : v.driverPhone || driver?.phone || canonical?.driverPhone
 
                 const displayStatus =
                   v.status === 'MAINTENANCE' || v.readiness?.dispatchStatus === 'MAINTENANCE_RESTRICTED'
@@ -313,7 +315,7 @@ export default function VehicleList({
                           )}
                         </div>
                       ) : (
-                        <span className="text-slate-400 italic">Unassigned</span>
+                        <span className="text-slate-400 italic">Driver not assigned</span>
                       )}
                     </td>
                     <td className="py-3 px-4">

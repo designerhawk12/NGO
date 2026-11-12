@@ -1,0 +1,34 @@
+{
+  "unchanged": {
+    "appUsers": true,
+    "authUsers": true,
+    "roleCounts": true,
+    "authSessions": true,
+    "authIdentities": true,
+    "orphanAppLinks": true,
+    "migrationLedger": true,
+    "authRefreshTokens": true
+  },
+  "authUserCount": 14,
+  "appUserCount": 11,
+  "roleCounts": [
+    {
+      "role": "ADMIN",
+      "count": 1
+    },
+    {
+      "role": "DONOR",
+      "count": 5
+    },
+    {
+      "role": "DRIVER",
+      "count": 1
+    },
+    {
+      "role": "VOLUNTEER",
+      "count": 4
+    }
+  ],
+  "orphanAppLinks": 0,
+  "ledgerEntries": 14
+}

@@ -1,8 +1,13 @@
 import { AlertCircle, CheckCircle2, ChevronRight, X } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 export function initials(name: string) { return name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase() }
-export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' | 'lg' }) { return <span className={`avatar avatar-${size}`} aria-hidden="true">{initials(name)}</span> }
+export function Avatar({ name, size = 'md', src }: { name: string; size?: 'sm' | 'md' | 'lg'; src?: string | null }) {
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [src])
+  if (src && !failed) return <span className={`avatar avatar-${size} avatar-photo`}><img src={src} alt="" onError={() => setFailed(true)} /></span>
+  return <span className={`avatar avatar-${size}`} aria-hidden="true">{initials(name)}</span>
+}
 export function displayStatus(status: string) { return status.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase()) }
 export function StatusBadge({ status }: { status: string }) { return <span className={`status-badge status-${status.toLowerCase().replaceAll(/[_ ]/g, '-')}`}><span className="status-dot" />{displayStatus(status)}</span> }
 export function formatTime(date: string) { return new Date(date).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }) }

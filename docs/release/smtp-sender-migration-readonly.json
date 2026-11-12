@@ -1,0 +1,17 @@
+{
+  "inspectedUtc": "2026-11-10T06:01:49.035Z",
+  "projectId": "pyzyxgpcfwpcqyqrihuo",
+  "customSmtpEnabled": true,
+  "host": "smtp.gmail.com",
+  "port": 587,
+  "senderDisplayName": "AahaaraConnect NGO",
+  "senderAddressRedacted": true,
+  "smtpCredentialsRetrieved": false,
+  "userControlsExistingSenderAccounts": false,
+  "userHasDomainAndDns": false,
+  "newSenderProvided": false,
+  "smtpChangeApproved": false,
+  "emailsSent": 0,
+  "settingsChanged": 0,
+  "gate": "BLOCKED pending newly controlled sender, app-password availability, explicit cutover approval and controlled delivery"
+}

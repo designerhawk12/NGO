@@ -57,4 +57,21 @@ describe('pickup API authentication', () => {
     })
     expect(getCurrentAppUser).not.toHaveBeenCalled()
   })
+
+  it.each(['DONOR', 'VOLUNTEER'])('does not grant website Admin access to a valid %s login', async role => {
+    signInWithPassword.mockResolvedValue({data:{session:{access_token:'verified-session'}},error:null})
+    getCurrentAppUser.mockResolvedValue({id:'existing-user',role})
+    signOut.mockResolvedValue({error:null})
+    const { signInAsAdmin } = await import('./auth')
+    await expect(signInAsAdmin('synthetic@example.test','test-only')).rejects.toThrow('Administrator access is required.')
+    expect(signOut).toHaveBeenCalledOnce()
+  })
+
+  it('accepts website sign-in only after the API confirms the Admin role', async () => {
+    signInWithPassword.mockResolvedValue({data:{session:{access_token:'verified-session'}},error:null})
+    getCurrentAppUser.mockResolvedValue({id:'existing-admin',role:'ADMIN'})
+    const { signInAsAdmin } = await import('./auth')
+    await expect(signInAsAdmin('synthetic@example.test','test-only')).resolves.toMatchObject({role:'ADMIN'})
+    expect(signOut).not.toHaveBeenCalled()
+  })
 })

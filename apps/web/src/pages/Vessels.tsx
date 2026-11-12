@@ -41,6 +41,7 @@ import type {
 import type { Vehicle } from '../types'
 import { fetchVehicles as apiFetchVehicles } from '../features/vehicles/api'
 import { vehicles as mockVehiclesList } from '../data/mockData'
+import { isLiveAdmin } from '../features/pickups/adapters'
 import {
   apiAddVesselLog,
   apiCreateVessel,
@@ -183,6 +184,7 @@ type Props = {
 
 export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
   const [vessels, setVessels] = useState<VesselItem[]>(() => {
+    if (isLiveAdmin()) return []
     if (typeof window !== 'undefined') {
       const stored = window.localStorage.getItem('aaharaconnect_vessels')
       if (stored) {
@@ -200,6 +202,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
 
   // Fleet vehicles from Vehicle Details
   const [registeredVehicles, setRegisteredVehicles] = useState<Vehicle[]>(() => {
+    if (isLiveAdmin()) return []
     if (vehiclesProp && vehiclesProp.length > 0) return vehiclesProp
     if (typeof window !== 'undefined') {
       const stored = window.localStorage.getItem('aaharaconnect_vehicles')
@@ -214,14 +217,14 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
   })
 
   useEffect(() => {
-    if (vehiclesProp && vehiclesProp.length > 0) {
+    if (!isLiveAdmin() && vehiclesProp && vehiclesProp.length > 0) {
       setRegisteredVehicles(vehiclesProp)
     }
   }, [vehiclesProp])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem('aaharaconnect_vessels', JSON.stringify(vessels))
+      if (!isLiveAdmin()) window.localStorage.setItem('aaharaconnect_vessels', JSON.stringify(vessels))
     }
   }, [vessels])
 
@@ -336,7 +339,11 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
           reason?.code === 'MISSING_API_URL' ||
           String(reason?.message || '').toLowerCase().includes('reach the api')
         ) {
-          // Graceful fallback to local storage / seeded vessels - do not show error banner
+          if (isLiveAdmin()) {
+            setVessels([])
+            setRegisteredVehicles([])
+            setError('Could not load live vessels. Check your administrator session and retry.')
+          }
           return
         }
         setError(reason?.message || 'Failed to connect to vessels API.')
@@ -346,7 +353,7 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
         setSummary(summaryRes.value)
       }
 
-      if (fleetRes.status === 'fulfilled' && fleetRes.value.items && fleetRes.value.items.length > 0) {
+      if (fleetRes.status === 'fulfilled' && fleetRes.value.items) {
         const mappedFleet: Vehicle[] = fleetRes.value.items.map(item => ({
           vehicleId: item.id,
           registrationNumber: item.registrationNumber,
@@ -360,9 +367,15 @@ export default function Vessels({ vehicles: vehiclesProp, notify }: Props) {
           readiness: item.readiness,
         }))
         setRegisteredVehicles(mappedFleet)
+      } else if (isLiveAdmin()) {
+        setRegisteredVehicles([])
       }
     } catch (err: any) {
-      if (
+      if (isLiveAdmin()) {
+        setVessels([])
+        setRegisteredVehicles([])
+        setError(err?.message || 'Could not load live vessel data.')
+      } else if (
         err?.status !== 0 &&
         err?.code !== 'NETWORK_ERROR' &&
         err?.code !== 'UNAUTHENTICATED' &&

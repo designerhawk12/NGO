@@ -1,0 +1,185 @@
+{
+  "startedUtc": "2026-11-10T04:40:26.301Z",
+  "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+  "teamId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+  "changes": [
+    {
+      "id": "XEaUlJAI1QvOSjdQ",
+      "key": "DATABASE_URL",
+      "before": [
+        "production",
+        "preview"
+      ],
+      "after": [
+        "production"
+      ],
+      "type": "sensitive",
+      "valueFieldUnchanged": true,
+      "requestFields": [
+        "target"
+      ]
+    },
+    {
+      "id": "unbnh6CbXWAQL2Y8",
+      "key": "DATABASE_SSL_CA",
+      "before": [
+        "production",
+        "preview"
+      ],
+      "after": [
+        "production"
+      ],
+      "type": "sensitive",
+      "valueFieldUnchanged": true,
+      "requestFields": [
+        "target"
+      ]
+    },
+    {
+      "id": "T1ZjRkakWsbhvO0V",
+      "key": "SUPABASE_URL",
+      "before": [
+        "production",
+        "preview"
+      ],
+      "after": [
+        "production"
+      ],
+      "type": "encrypted",
+      "valueFieldUnchanged": true,
+      "requestFields": [
+        "target"
+      ]
+    },
+    {
+      "id": "ZVukaEfCjuKeWFSx",
+      "key": "SUPABASE_PUBLISHABLE_KEY",
+      "before": [
+        "production",
+        "preview"
+      ],
+      "after": [
+        "production"
+      ],
+      "type": "encrypted",
+      "valueFieldUnchanged": true,
+      "requestFields": [
+        "target"
+      ]
+    },
+    {
+      "id": "tVKo9LotOTshCACb",
+      "key": "VITE_SUPABASE_URL",
+      "before": [
+        "production",
+        "preview"
+      ],
+      "after": [
+        "production"
+      ],
+      "type": "encrypted",
+      "valueFieldUnchanged": true,
+      "requestFields": [
+        "target"
+      ]
+    },
+    {
+      "id": "psm91a4WWEMXgQO1",
+      "key": "VITE_SUPABASE_PUBLISHABLE_KEY",
+      "before": [
+        "production",
+        "preview"
+      ],
+      "after": [
+        "production"
+      ],
+      "type": "encrypted",
+      "valueFieldUnchanged": true,
+      "requestFields": [
+        "target"
+      ]
+    },
+    {
+      "id": "eWjHd1Aky7vpT0bN",
+      "key": "CORS_ORIGIN",
+      "before": [
+        "production",
+        "preview"
+      ],
+      "after": [
+        "production"
+      ],
+      "type": "sensitive",
+      "valueFieldUnchanged": true,
+      "requestFields": [
+        "target"
+      ]
+    }
+  ],
+  "failures": [],
+  "valueReplacementRequested": false,
+  "gitDisconnected": true,
+  "previewApiRemoved": {
+    "id": "tJ2TDxYr24T5ywMX",
+    "key": "VITE_API_BASE_URL",
+    "target": [
+      "preview"
+    ]
+  },
+  "productionApiPreserved": {
+    "id": "noi9qOYMarVxDRTJ",
+    "key": "VITE_API_BASE_URL",
+    "target": [
+      "production"
+    ],
+    "type": "encrypted",
+    "gitBranch": null
+  },
+  "unrelatedEnvironmentEntriesPreserved": true,
+  "noPreviewEnvironmentBindingsRemain": true,
+  "activeDeployment": "dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR",
+  "protectionUnchanged": true,
+  "aliases": [
+    "ngo-eight-umber.vercel.app",
+    "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+  ],
+  "aliasesUnchanged": true,
+  "deploymentInventoryUnchanged": true,
+  "newDeploymentIds": [],
+  "promotionsObserved": [],
+  "historicalPreviewReadyCount": 42,
+  "inventoryTotal": 74,
+  "inventoryComplete": true,
+  "staging": [
+    {
+      "id": "prj_W1MrwAqFsWTFohHs6UXR2fo1EEIL",
+      "name": "aaharaconnect-ngo-staging",
+      "metadataUnchanged": true
+    },
+    {
+      "id": "prj_Nd3YLsJkOYjlZMPLmFZw9MFG88Ul",
+      "name": "aaharaconnect-ngo-staging-api",
+      "metadataUnchanged": true
+    }
+  ],
+  "health": [
+    {
+      "path": "/",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/health",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/health/ready",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    }
+  ],
+  "completedUtc": "2026-11-10T04:41:01.058Z",
+  "passed": true
+}

@@ -1,193 +1,82 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { Map as LeafletMap, Marker } from 'leaflet'
+import type { FleetLocation } from '@aaharaconnect/shared'
+import 'leaflet/dist/leaflet.css'
+import { apiRequest } from '../api/client'
+import { getAdminAccessToken } from '../api/auth'
+import { selectTrackedVehicle, updateTrackingMap, type TrackingFocus } from './trackingMapFocus'
 
 export default function VehicleTracking() {
-  const [tracking, setTracking] = useState(false)
-  const [latitude, setLatitude] = useState<number | null>(null)
-  const [longitude, setLongitude] = useState<number | null>(null)
-  const [accuracy, setAccuracy] = useState<number | null>(null)
+  const [fleet, setFleet] = useState<FleetLocation[]>([])
+  const [selected, setSelected] = useState('')
   const [error, setError] = useState('')
-
+  const [now, setNow] = useState(Date.now())
+  const container = useRef<HTMLDivElement>(null)
+  const map = useRef<LeafletMap | null>(null)
+  const marker = useRef<Marker | null>(null)
+  const focus = useRef<TrackingFocus>({ selected: '', focused: false })
+  const manualSelection = useRef(false)
+  const [mapReady, setMapReady] = useState(false)
+  const vehicle = fleet.find(item => item.id === selected)
   useEffect(() => {
-    if (!tracking) return
-
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by this browser.')
-      return
+    let disposed = false
+    let timer: ReturnType<typeof setTimeout>
+    const load = async () => {
+      try {
+        const token = await getAdminAccessToken()
+        if (!token) throw new Error('Sign in as an administrator to see vehicle locations.')
+        const result = await apiRequest<{ items: FleetLocation[] }>('vehicles/tracking', { headers: { Authorization: `Bearer ${token}` } })
+        if (disposed) return
+        setFleet(result.items); setError(''); setNow(Date.now())
+        setSelected(current => selectTrackedVehicle(result.items,current,manualSelection.current || focus.current.focused))
+      } catch (cause) {
+        if (!disposed) { setError(cause instanceof Error ? cause.message : 'Location updates unavailable.'); setNow(Date.now()) }
+      } finally { if (!disposed) timer = setTimeout(() => void load(), 15_000) }
     }
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setLatitude(position.coords.latitude)
-        setLongitude(position.coords.longitude)
-        setAccuracy(position.coords.accuracy)
-        setError('')
-      },
-      () => {
-        setError('Location permission was denied. Please allow location access.')
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 10000,
-      }
-    )
-
-    return () => navigator.geolocation.clearWatch(watchId)
-  }, [tracking])
-
-  const startTracking = () => {
-    setError('')
-    setTracking(true)
-  }
-
-  const stopTracking = () => {
-    setTracking(false)
-  }
-
-  const mapUrl =
-    latitude !== null && longitude !== null
-      ? `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.01}%2C${latitude - 0.01}%2C${longitude + 0.01}%2C${latitude + 0.01}&layer=mapnik&marker=${latitude}%2C${longitude}`
-      : ''
-
-  return (
-    <div className="tracking-page">
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ margin: 0, fontSize: '28px' }}>Vehicle Tracking</h1>
-        <p style={{ color: '#667085', marginTop: '8px' }}>
-          Preview this device's location. Vehicle trip history is not available in the admin API yet.
-        </p>
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '16px',
-          marginBottom: '20px',
-        }}
-      >
-        <div style={cardStyle}>
-          <small>Location source</small>
-          <h2>This browser</h2>
-          <span>This preview is not linked to a vehicle or driver.</span>
-        </div>
-
-        <div style={cardStyle}>
-          <small>Preview status</small>
-          <h2>{tracking ? '● Active' : '○ Stopped'}</h2>
-          <span>{tracking ? 'Reading this device location' : 'Location preview inactive'}</span>
-        </div>
-      </div>
-
-      <div className="tracking-grid">
-        <div style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>This device location</h2>
-
-          {latitude !== null && longitude !== null ? (
-            <iframe
-              title="This device location map"
-              src={mapUrl}
-              style={{
-                width: '100%',
-                height: '430px',
-                border: 0,
-                borderRadius: '12px',
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                height: '430px',
-                borderRadius: '12px',
-                background: '#f2f4f7',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#667085',
-              }}
-            >
-              Start preview to display this device location
-            </div>
-          )}
-        </div>
-
-        <div style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Location Details</h2>
-
-          <div style={detailStyle}>
-            <span>Latitude</span>
-            <strong>{latitude?.toFixed(6) ?? '--'}</strong>
-          </div>
-
-          <div style={detailStyle}>
-            <span>Longitude</span>
-            <strong>{longitude?.toFixed(6) ?? '--'}</strong>
-          </div>
-
-          <div style={detailStyle}>
-            <span>Accuracy</span>
-            <strong>
-              {accuracy !== null ? `${accuracy.toFixed(1)} m` : '--'}
-            </strong>
-          </div>
-
-          <div
-            style={{
-              marginTop: '24px',
-              padding: '14px',
-              background: '#f2f4f7',
-              borderRadius: '10px',
-              fontSize: '14px',
-            }}
-          >
-            Your browser will ask for location permission. This preview does not report a vehicle location to the API.
-          </div>
-
-          {!tracking ? (
-            <button style={buttonStyle} onClick={startTracking}>
-              Start Preview
-            </button>
-          ) : (
-            <button
-              style={{ ...buttonStyle, background: '#b42318' }}
-              onClick={stopTracking}
-            >
-              Stop Preview
-            </button>
-          )}
-
-          {error && (
-            <p style={{ color: '#b42318', fontSize: '14px' }}>{error}</p>
-          )}
-        </div>
-      </div>
+    void load()
+    return () => { disposed = true; clearTimeout(timer) }
+  }, [])
+  useEffect(() => {
+    let disposed = false
+    void import('leaflet').then(L => {
+      if (disposed || !container.current) return
+      map.current = L.map(container.current).setView([12.97, 77.59], 11)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map.current)
+      marker.current = L.marker([12.97, 77.59], { icon: L.divIcon({ html: '<span style="font-size:28px" aria-label="Vehicle">🚚</span>', className: '', iconSize: [32, 32] }) })
+      setMapReady(true)
+    }).catch(() => setError('The map could not load. Use the coordinate map link below.'))
+    return () => { disposed = true; map.current?.remove(); map.current = null }
+  }, [])
+  useEffect(() => {
+    if (!mapReady || !map.current || !marker.current) return
+    focus.current = updateTrackingMap(map.current, marker.current, focus.current, selected, vehicle?.latitude, vehicle?.longitude)
+  }, [vehicle?.latitude, vehicle?.longitude, selected, mapReady])
+  const age = vehicle?.recordedAt ? Math.max(0, now - Date.parse(vehicle.recordedAt)) : Infinity
+  const status = !vehicle?.sharing || age >= 300_000 ? 'Offline' : age >= 120_000 ? 'Stale' : 'Recent'
+  return <div className="tracking-page">
+    <h1>Vehicle Tracking</h1>
+    <p>Driver phone reports during authorized NGO duty. Phone GPS does not independently prove vehicle position.</p>
+    {error && <p role="alert">{error} Previously received positions may be out of date.</p>}
+    <label htmlFor="tracked-vehicle">Vehicle</label>{' '}
+    <select id="tracked-vehicle" value={selected} onChange={event => { manualSelection.current = true; setSelected(event.target.value) }}>
+      {fleet.length === 0 && <option value="">No registered vehicles available</option>}
+      {fleet.map(item => <option key={item.id} value={item.id}>{item.registrationNumber} · {item.driverName ?? 'No fixed Driver'}</option>)}
+    </select>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,320px),1fr))', gap: 20, marginTop: 20 }}>
+      <div><div ref={container} style={{ height: 420, borderRadius: 12, zIndex: 0 }} aria-label="Selected vehicle location map" />
+        {vehicle?.latitude == null && <p>No recent GPS position exists for this vehicle.</p>}</div>
+      {vehicle && <section className="panel" style={{ padding: 20 }}>
+        <h2>{vehicle.registrationNumber}</h2>
+        <p>Driver: {vehicle.driverName ?? 'No fixed Driver'}</p>
+        <p>Location Sharing: {vehicle.sharing ? 'ON' : 'OFF'} · {status}</p>
+        <p>Last reported: {vehicle.recordedAt ? new Date(vehicle.recordedAt).toLocaleString('en-IN') : 'No position available'}</p>
+        <p>Latitude: {vehicle.latitude ?? '—'}<br />Longitude: {vehicle.longitude ?? '—'}</p>
+        <p>{vehicle.locality ?? 'Locality unavailable. Use coordinates or the map link.'}</p>
+        <p>GPS accuracy: {vehicle.accuracyMeters != null ? `about ${Math.round(vehicle.accuracyMeters)} metres` : 'Not reported'}</p>
+        <p>Speed: {vehicle.speedMps != null ? `${Math.round(vehicle.speedMps*3.6)} km/h · ${vehicle.speedMps>1?'Moving':'Stationary'}` : 'Not reported'}</p>
+        {vehicle.latitude != null && vehicle.longitude != null && <a target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${vehicle.latitude}&mlon=${vehicle.longitude}#map=16/${vehicle.latitude}/${vehicle.longitude}`}>Open location map</a>}
+        <p>Reports may stop when the phone is offline, GPS permissions are revoked, battery restrictions apply or Android force-stops the app.</p>
+      </section>}
     </div>
-  )
-}
-
-const cardStyle: React.CSSProperties = {
-  background: 'white',
-  border: '1px solid #e4e7ec',
-  borderRadius: '14px',
-  padding: '20px',
-  boxShadow: '0 2px 8px rgba(16, 24, 40, 0.05)',
-}
-
-const detailStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  padding: '14px 0',
-  borderBottom: '1px solid #eaecf0',
-}
-
-const buttonStyle: React.CSSProperties = {
-  width: '100%',
-  marginTop: '24px',
-  padding: '13px',
-  border: 0,
-  borderRadius: '9px',
-  background: '#16803c',
-  color: 'white',
-  fontWeight: 600,
-  cursor: 'pointer',
+  </div>
 }

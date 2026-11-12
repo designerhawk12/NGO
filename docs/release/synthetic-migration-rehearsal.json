@@ -1,0 +1,131 @@
+{
+  "productionDataCopied": false,
+  "realBackupRestoreTest": false,
+  "checks": [
+    {
+      "name": "fresh local database has no app schema",
+      "passed": true
+    },
+    {
+      "name": "source checksum 001_core.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 002_modules.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 003_vehicle_details.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 004_vessels.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 005_vehicle_assigned_driver.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 006_vehicle_photo.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 007_vessel_photo.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 008_volunteer_applications.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 009_food_cancellation_timestamp.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 010_food_item_measurements.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 011_volunteer_registration_rate_limits.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 012_employee_drivers_and_pickup_admin.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 013_driver_login_and_acknowledgement.sql",
+      "passed": true
+    },
+    {
+      "name": "source checksum 014_distribution_centers_and_profile_photos.sql",
+      "passed": true
+    },
+    {
+      "name": "Production metadata equals fresh 001-014 columns",
+      "passed": true,
+      "count": 256,
+      "differences": []
+    },
+    {
+      "name": "Production metadata equals fresh 001-014 constraints",
+      "passed": true,
+      "count": 177,
+      "differences": []
+    },
+    {
+      "name": "Production metadata equals fresh 001-014 indexes",
+      "passed": true,
+      "count": 69,
+      "differences": []
+    },
+    {
+      "name": "Production metadata equals fresh 001-014 functions",
+      "passed": true,
+      "count": 6,
+      "differences": []
+    },
+    {
+      "name": "Production metadata equals fresh 001-014 triggers",
+      "passed": true,
+      "count": 6,
+      "differences": []
+    },
+    {
+      "name": "015 exact reviewed checksum",
+      "passed": true
+    },
+    {
+      "name": "all pre-existing synthetic rows unchanged across 015",
+      "passed": true,
+      "tables": 31
+    },
+    {
+      "name": "old approval states grandfathered",
+      "passed": true
+    },
+    {
+      "name": "new applications require proof",
+      "passed": true
+    },
+    {
+      "name": "SQL approval protection blocks unverified new proof",
+      "passed": true
+    },
+    {
+      "name": "runtime group cannot create/read ledger/rewrite audit",
+      "passed": true
+    },
+    {
+      "name": "non-owner runtime group reads all application tables through RLS",
+      "passed": true,
+      "tables": 42,
+      "applications": 4
+    },
+    {
+      "name": "only 015 appended to ledger",
+      "passed": true
+    }
+  ]
+}

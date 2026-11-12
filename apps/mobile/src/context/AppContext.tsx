@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { AppState, Text, View } from 'react-native';
 import { C, font, shadow } from '../constants/theme';
 import { donorProfile, initialAssignments, initialAvailability, initialRequests, volunteerProfile } from '../data/mockData';
 import { AssignmentStatus, AvailabilitySlot, DonorProfile, DonorRequest, Role, VolunteerAssignment, VolunteerProfile } from '../types';
@@ -8,6 +8,7 @@ import { restoreAppUser, signOut } from '../api/auth';
 
 type AppValue = {
   role: Role; mode: 'demo' | 'live' | null; login: (role: Exclude<Role, null>) => void; loginAuthenticated: (role: Exclude<Role, null>) => void; logout: () => void;
+  restoring: boolean; restoreError: boolean; retryRestore: () => void;
   volunteerApplicationStatus: 'PENDING' | 'DENIED' | null;
   setVolunteerApplicationStatus: (status: 'PENDING' | 'DENIED' | null) => void;
   assignments: VolunteerAssignment[]; updateAssignment: (id: string, status: AssignmentStatus, reason?: string) => void;
@@ -24,22 +25,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<'demo' | 'live' | null>(null);
   const [volunteerApplicationStatus, setVolunteerApplicationStatus] = useState<'PENDING' | 'DENIED' | null>(null);
   const demoChosen = useRef(false);
+  const generation = useRef(0);
+  const [restoring, setRestoring] = useState(true);
+  const [restoreError, setRestoreError] = useState(false);
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
   useEffect(() => {
     let active = true;
+    const current = generation.current;
     restoreAppUser().then(user => {
-      if (!active || demoChosen.current) return;
+      if (!active || demoChosen.current || current !== generation.current) return;
       if (user?.role === 'VOLUNTEER' && (user.volunteerApplicationStatus === 'PENDING' || user.volunteerApplicationStatus === 'DENIED')) {
         setVolunteerApplicationStatus(user.volunteerApplicationStatus === 'DENIED' ? 'DENIED' : 'PENDING');
-        return;
+        setRestoring(false); return;
       }
-      if (user?.role === 'DONOR' || user?.role === 'VOLUNTEER') {
+      // The role always comes from the server; an NGO employee driver restores to the Driver screens.
+      if (user?.role === 'ADMIN' || user?.role === 'DONOR' || user?.role === 'VOLUNTEER' || user?.role === 'DRIVER') {
         setVolunteerApplicationStatus(null);
         setMode('live');
-        setRole(user.role === 'DONOR' ? 'donor' : 'volunteer');
+        setRole(user.role === 'ADMIN' ? 'admin' : user.role === 'DONOR' ? 'donor' : user.role === 'DRIVER' ? 'driver' : 'volunteer');
       }
-    }).catch(() => {});
+      setRestoreError(false); setRestoring(false);
+    }).catch(cause => { if(active && current === generation.current && !demoChosen.current){
+      const status=(cause as {status?:unknown})?.status;
+      if(status===400||status===401){void signOut();setRestoreError(false);}else setRestoreError(true);
+      setRestoring(false);
+    } });
     return () => { active = false; };
-  }, []);
+  }, [restoreAttempt]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active' && restoreError && !role && !demoChosen.current) {
+        setRestoring(true); setRestoreAttempt(value => value + 1);
+      }
+    });
+    return () => subscription.remove();
+  }, [restoreError, role]);
   const [assignments, setAssignments] = useState(initialAssignments);
   const [slots, setSlots] = useState(initialAvailability);
   const [volunteer, setVolunteer] = useState(volunteerProfile);
@@ -69,11 +89,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     notify('Request cancelled'); return true;
   };
   const value = {
-    role, mode,
+    role, mode, restoring, restoreError,
+    retryRestore: () => { setRestoring(true); setRestoreAttempt(value => value + 1); },
     volunteerApplicationStatus, setVolunteerApplicationStatus,
-    login: (next: Exclude<Role, null>) => { demoChosen.current = true; setVolunteerApplicationStatus(null); void signOut(); setMode('demo'); setRole(next); },
-    loginAuthenticated: (next: Exclude<Role, null>) => { demoChosen.current = false; setVolunteerApplicationStatus(null); setMode('live'); setRole(next); },
-    logout: () => { demoChosen.current = false; setVolunteerApplicationStatus(null); setMode(null); setRole(null); void signOut(); },
+    login: (next: Exclude<Role, null>) => { generation.current++; demoChosen.current = true; setRestoring(false); setVolunteerApplicationStatus(null); void signOut(); setMode('demo'); setRole(next); },
+    loginAuthenticated: (next: Exclude<Role, null>) => { generation.current++; demoChosen.current = false; setRestoring(false); setRestoreError(false); setVolunteerApplicationStatus(null); setMode('live'); setRole(next); },
+    logout: () => { generation.current++; demoChosen.current = true; setRestoring(false); setRestoreError(false); setVolunteerApplicationStatus(null); setMode(null); setRole(null); void signOut(); },
     assignments: mode === 'live' && role === 'volunteer' ? [] : assignments, updateAssignment,
     slots: mode === 'live' && role === 'volunteer' ? [] : slots, saveSlot, deleteSlot,
     volunteer, saveVolunteer, donor, saveDonor, requests: mode === 'live' && role === 'donor' ? [] : requests, submitRequest, cancelRequest, notify };

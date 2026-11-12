@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 
-const { query, verify } = vi.hoisted(() => ({ query: vi.fn(), verify: vi.fn() }));
-vi.mock('../db/pool', () => ({ getPool: () => ({ query }), withTransaction: vi.fn() }));
+const { query, verify, withTransaction } = vi.hoisted(() => ({ query: vi.fn(), verify: vi.fn(), withTransaction: vi.fn() }));
+vi.mock('../db/pool', () => ({ getPool: () => ({ query }), withTransaction }));
 vi.mock('../auth/supabase', () => ({ verifySupabaseToken: verify }));
 
 import { app } from '../app';
@@ -12,6 +12,7 @@ const adminId = '76b128ea-58d8-4d81-a031-74018056dcf5';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  withTransaction.mockImplementation((run: (client: { query: typeof query }) => Promise<unknown>) => run({ query }));
   verify.mockResolvedValue({ authUserId, email: 'admin@example.test' });
 });
 

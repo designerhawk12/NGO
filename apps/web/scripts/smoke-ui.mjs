@@ -86,9 +86,12 @@ try {
   assert.ok(adminLinks.length >= 2)
   assert.ok(adminLinks.every(link => /admin/i.test(link.textContent)), 'Web workspace links must describe the admin app')
   assert.doesNotMatch(document.querySelector('.landing').textContent, /Open volunteer workspace/)
-  assert.ok(document.querySelector('.landing a[href$="donor/index.html"]'), 'Landing page should offer donor entry')
+  assert.equal(document.querySelector('.landing a[href$="donor/index.html"]'), null, 'Landing page must not promote donor joining')
+  assert.match(document.querySelector('.landing').textContent, /Install the Mobile App/)
+  assert.ok(document.querySelector('.landing-cta.large[href="#/workspace"]'), 'Admin dashboard must be the primary CTA')
+  assert.ok(document.querySelector('#install-app button[disabled]'), 'Unverified APK must not expose a broken download link')
 
-  const adminLink = document.querySelector('.landing-link')
+  const adminLink = document.querySelector('.landing-cta.large[href="#/workspace"]')
   assert.ok(adminLink, 'Expected admin dashboard link')
   const hashChanged = new Promise((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error('Admin link did not trigger hash navigation')), 2000)
@@ -100,21 +103,28 @@ try {
   for (const label of ['Volunteers', 'Food & Donors', 'Pickup & Logistics', 'Vehicle Tracking', 'Vehicle Details', 'Vessels']) {
     assert.ok([...document.querySelectorAll('.side-nav button')].some(item => item.textContent.trim() === label), `${label} module should be visible`)
   }
+  const assertAdminGate = () => {
+    assert.match(document.querySelector('main').textContent, /Administrator sign-in required|Verifying administrator access/)
+    assert.doesNotMatch(document.querySelector('main').textContent, /Sharma Wedding|Ramesh Kumar|Team Alpha|Royal Orchid/)
+  }
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Volunteers')))
-  assert.match(document.querySelector('main h1').textContent, /Volunteers/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Food & Donors')))
-  assert.match(document.querySelector('main').textContent, /Live Food Requests from Donors|Food & Donors/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Pickup & Logistics')))
-  assert.match(document.querySelector('main h1').textContent, /Pickup & Logistics/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vehicle Tracking')))
-  assert.match(document.querySelector('main').textContent, /This device location/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vehicle Details')))
-  assert.match(document.querySelector('main').textContent, /Fleet Registry/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vessels')))
-  assert.match(document.querySelector('main h1').textContent, /Vessels/)
+  assertAdminGate()
   await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Dashboard')))
   const openDemo = button('Open demo dashboard')
-  if (openDemo) await click(openDemo)
+  assert.ok(!openDemo, 'Production dashboard must not offer demo data')
+  assert.ok(button('Refresh'), 'Live dashboard must offer an explicit refresh action')
+  if (openDemo) {
+    await click(openDemo)
 
   await click(button('ಕನ್ನಡ'))
   assert.match(document.body.textContent, /ಸ್ವಯಂಸೇವಕರ ನಿರ್ವಹಣೆ/)
@@ -201,12 +211,14 @@ try {
   await click(document.querySelector('.drawer-header .icon-button'))
   await click([...document.querySelectorAll('.sidebar-bottom button')].find(item => item.textContent.includes('ಸೆಟ್ಟಿಂಗ್‌ಗಳು')))
   assert.match(document.body.textContent, /ಘಟಕದ ಮಾಹಿತಿ/)
+  }
 
   await act(async () => root.unmount())
 
   // Exercise the live admin Volunteer form with a local, deterministic API stub.
   const liveRequests = []
-  let liveRoster = []
+  // Volunteers now join through mobile registration and approval; the roster starts with one.
+  let liveRoster = [{ id:'7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5', personId:'f50a3e0e-9f8c-4293-bb2b-fc55e4b3d3d8', registrationCode:'VOL-002', name:'Kavya Iyer', phoneE164:'+919876543210', skills:['Driving','Packing'], status:'ACTIVE' }]
   let liveTeams = []
   let failNextEdit = false
   let failNextTeamCreate = false
@@ -233,12 +245,6 @@ try {
       liveTeams = liveTeams.map(team => team.id === path.split('/').at(-1) ? { ...team, ...input } : team)
       return apiReply(liveTeams[0])
     }
-    if (method === 'POST' && path.endsWith('/volunteers')) {
-      const input = JSON.parse(options.body)
-      const created = { id:'7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5', personId:'f50a3e0e-9f8c-4293-bb2b-fc55e4b3d3d8', registrationCode:input.registrationCode, name:input.name, phoneE164:input.phoneE164, skills:input.skills, status:input.status }
-      liveRoster = [created, ...liveRoster]
-      return apiReply(created, 201)
-    }
     if (method === 'PATCH' && path.includes('/volunteers/')) {
       if (failNextEdit) {
         failNextEdit = false
@@ -255,45 +261,38 @@ try {
   const flush = async () => { await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) }) }
   await act(async () => liveRoot.render(React.createElement(LiveVolunteers, { token:'test-access-token' })))
   await flush()
-  await click(button('Add Volunteer'))
-  assert.ok(document.querySelector('.modal input[type="email"]'), 'Create needs an email field')
-  assert.equal(document.querySelector('.modal input[type="password"]'), null)
-  assert.equal(document.querySelector('.modal select[name="role"]'), null)
+  // The Admin page no longer creates Volunteers or drivers.
+  assert.equal(button('Add Volunteer'), undefined, 'Volunteers register in the mobile app; there is no Admin create button')
+  assert.match(document.body.textContent, /Volunteers join through the mobile app/)
+  assert.match(document.querySelector('.volunteer-table').textContent, /Kavya Iyer/)
+  await click(button('Edit volunteer'))
+  await flush()
+  assert.equal(document.querySelector('.modal input[type="email"]'), null, 'Email is immutable on edit')
+  assert.equal(document.querySelector('.modal input[type="date"]'), null, 'No licence expiry field for Volunteers')
+  assert.equal(document.querySelector('.modal .driver-skill-toggle'), null, 'No Driver role toggle for Volunteers')
+  assert.doesNotMatch(document.querySelector('.modal').textContent, /licen[cs]e|Vehicle Registration/i, 'No driver fields on the Volunteer form')
+  await setInput(document.querySelector('.modal input[placeholder="e.g. Kavya Iyer"]'), '')
   await click(document.querySelector('.modal button[type="submit"]'))
   assert.match(document.querySelector('.modal [role="alert"]').textContent, /name/)
-  await setInput(document.querySelector('.modal input[placeholder="e.g. Kavya Iyer"]'), 'Kavya Iyer')
-  await click(document.querySelector('.modal button[type="submit"]'))
-  assert.match(document.querySelector('.modal [role="alert"]').textContent, /registration code/)
-  await setInput(document.querySelector('.modal input[placeholder="VOL-002"]'), 'VOL-002')
-  await click(document.querySelector('.modal button[type="submit"]'))
-  assert.match(document.querySelector('.modal [role="alert"]').textContent, /valid email/)
-  await setInput(document.querySelector('.modal input[type="email"]'), 'kavya@example.com')
-  await setInput(document.querySelector('.modal input[type="tel"]'), '+919876543210')
-  await setInput(document.querySelector('.modal input[placeholder="Driving, Packing"]'), 'Driving, Packing')
-  await click(document.querySelector('.modal button[type="submit"]'))
-  await flush()
-  const createRequest = liveRequests.find(item => item.method === 'POST')
-  assert.deepEqual(createRequest.body, { email:'kavya@example.com', name:'Kavya Iyer', phoneE164:'+919876543210', registrationCode:'VOL-002', skills:['Driving','Packing'], status:'ACTIVE' })
-  assert.equal(createRequest.headers.get('Authorization'), 'Bearer test-access-token')
-  assert.match(document.querySelector('.volunteer-table').textContent, /Kavya Iyer/)
-  assert.match(document.querySelector('.toast').textContent, /invitation sent/)
-  assert.ok(liveRequests.filter(item => item.method === 'GET' && item.path.endsWith('/volunteers')).length >= 2, 'Create refreshes the roster')
-  await click(button('Edit volunteer'))
-  assert.equal(document.querySelector('.modal input[type="email"]'), null, 'Email is immutable on edit')
   await setInput(document.querySelector('.modal input[placeholder="e.g. Kavya Iyer"]'), 'Kavya Nair')
+  await click([...document.querySelectorAll('.modal .skill-picker label')].find(item => item.textContent.trim() === 'Loading').querySelector('input'))
   await click(document.querySelector('.modal button[type="submit"]'))
   await flush()
   const editRequest = liveRequests.find(item => item.method === 'PATCH')
   assert.equal(editRequest.body.name, 'Kavya Nair')
-  assert.equal('email' in editRequest.body, false)
-  assert.equal('role' in editRequest.body, false)
+  assert.deepEqual(editRequest.body.skills, ['Driving', 'Packing', 'Loading'])
+  assert.equal(editRequest.headers.get('Authorization'), 'Bearer test-access-token')
+  for (const key of ['email', 'role', 'driverDetails', 'driverStatus']) assert.equal(key in editRequest.body, false, `${key} must not be sent`)
   assert.match(document.querySelector('.volunteer-table').textContent, /Kavya Nair/)
+  assert.match(document.querySelector('.toast').textContent, /updated successfully/)
   await click(button('Edit volunteer'))
+  await flush()
   failNextEdit = true
   await click(document.querySelector('.modal button[type="submit"]'))
   await flush()
   assert.match(document.querySelector('.modal [role="alert"]').textContent, /already in use/)
   await click(document.querySelector('.modal .dialog-footer .button-secondary'))
+  assert.equal(liveRequests.filter(item => item.method === 'POST' && item.path.endsWith('/volunteers')).length, 0, 'No Volunteer create requests')
   await act(async () => liveRoot.unmount())
 
   // The live Team editor uses the Admin token and roster; successful writes refresh the list.
@@ -389,7 +388,7 @@ try {
   assert.equal(liveRequests.length, requestsBeforeInvite, 'Password must never go to Express')
   await act(async () => releaseUpdate({ data:{ user:inviteUser }, error:null }))
   await flush()
-  assert.match(document.querySelector('.invite-page').textContent, /Your Volunteer account is ready/)
+  assert.match(document.querySelector('.invite-page').textContent, /Your AaharaConnect account is ready/)
   assert.deepEqual(inviteCalls.signOut, [{ scope:'local' }])
   await act(async () => inviteRoot.unmount())
 
@@ -426,7 +425,7 @@ try {
   // Verify Requirement: Donor page has no misleading Pickup assignment action
   const { readFileSync } = await import('node:fs')
   const { resolve } = await import('node:path')
-  const donorHtml = readFileSync(resolve(process.cwd(), 'public/donor/index.html'), 'utf8')
+  const donorHtml = readFileSync(resolve(process.cwd(), 'donor/index.html'), 'utf8')
   assert.doesNotMatch(donorHtml, /🚚 Open Pickup &amp; Logistics/, 'Donor page must not contain header pickup action')
   assert.doesNotMatch(donorHtml, /Open in Pickup &amp; Logistics/, 'Donor page must not contain status pickup action')
   assert.doesNotMatch(donorHtml, /Go to Volunteer Workspace/, 'Donor page must not link to volunteer workspace')
@@ -502,7 +501,7 @@ try {
     assert.equal(fnError.code, 'UNAUTHENTICATED', `${name} must return UNAUTHENTICATED code`)
   }
 
-  console.log('Smoke check passed: bilingual demo UI, live Volunteer create/edit/error flows, donor isolation, logistics recommendations, auth propagation and team flows.')
+  console.log('Smoke check passed: production dashboard has no demo entry, live Volunteer flows, donor isolation, logistics recommendations, auth propagation and team flows.')
 } finally {
   dom.window.close()
   await server.close()

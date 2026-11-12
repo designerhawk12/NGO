@@ -206,8 +206,60 @@ describe('Pickup volunteer window eligibility', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.data.volunteerIds).toEqual([]);
+      expect(response.body.data.blockingReason).toContain('starts before food is ready');
       expect(response.body.data.blockingReason).toContain("within the food request's valid window");
       expect(listEligibleVolunteerRows).not.toHaveBeenCalled();
+    });
+
+    it('explains a pickup ending after the food deadline without querying volunteers', async () => {
+      query.mockImplementation(async (sql: string) => sql.includes('FROM app.food_requests')
+        ? { rows: [{
+          id: pickup.food_request_id, status: 'SUBMITTED', safety_review: 'APPROVED',
+          ready_at: new Date(windowStartsAt.getTime() - 60_000),
+          pickup_deadline: new Date(windowEndsAt.getTime() - 1),
+        }] }
+        : { rows: [] });
+      const response = await request(app).get(`/api/v1/pickups/${pickupId}/eligible-volunteers`)
+        .set('Authorization', 'Bearer test-token');
+      expect(response.status).toBe(200);
+      expect(response.body.data.volunteerIds).toEqual([]);
+      expect(response.body.data.blockingReason).toContain('ends after the food request deadline');
+      expect(listEligibleVolunteerRows).not.toHaveBeenCalled();
+    });
+
+    it('allows exact readyAt and pickupDeadline boundaries for a future pickup', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(windowStartsAt.getTime() - 60_000));
+      try {
+        query.mockImplementation(async (sql: string) => sql.includes('FROM app.food_requests')
+          ? { rows: [{
+            id: pickup.food_request_id, status: 'SUBMITTED', safety_review: 'APPROVED',
+            ready_at: windowStartsAt, pickup_deadline: windowEndsAt,
+          }] }
+          : { rows: [] });
+        const response = await request(app).get(`/api/v1/pickups/${pickupId}/eligible-volunteers`)
+          .set('Authorization', 'Bearer test-token');
+        expect(response.status).toBe(200);
+        expect(response.body.data.blockingReason).toBeNull();
+        expect(listEligibleVolunteerRows).toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('blocks eligibility at the exact pickup start without querying volunteers', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(windowStartsAt);
+      try {
+        const response = await request(app).get(`/api/v1/pickups/${pickupId}/eligible-volunteers`)
+          .set('Authorization', 'Bearer test-token');
+        expect(response.status).toBe(200);
+        expect(response.body.data.volunteerIds).toEqual([]);
+        expect(response.body.data.blockingReason).toContain('Pickup window has started or expired');
+        expect(listEligibleVolunteerRows).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('returns 409 for a pickup that is not PLANNED', async () => {
