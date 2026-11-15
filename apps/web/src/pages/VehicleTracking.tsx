@@ -52,7 +52,7 @@ export default function VehicleTracking() {
     focus.current = updateTrackingMap(map.current, marker.current, focus.current, selected, vehicle?.latitude, vehicle?.longitude)
   }, [vehicle?.latitude, vehicle?.longitude, selected, mapReady])
   const age = vehicle?.recordedAt ? Math.max(0, now - Date.parse(vehicle.recordedAt)) : Infinity
-  const status = !vehicle?.sharing || age >= 300_000 ? 'Offline' : age >= 120_000 ? 'Stale' : 'Recent'
+  const status = error ? 'Location updates unavailable' : !vehicle?.recordedAt ? 'No recent location' : !vehicle.sharing || age >= 300_000 ? 'Offline' : age >= 120_000 ? 'Stale' : 'Live'
   return <div className="tracking-page">
     <h1>Vehicle Tracking</h1>
     <p>Driver phone reports during authorized NGO duty. Phone GPS does not independently prove vehicle position.</p>
@@ -62,10 +62,10 @@ export default function VehicleTracking() {
       {fleet.length === 0 && <option value="">No registered vehicles available</option>}
       {fleet.map(item => <option key={item.id} value={item.id}>{item.registrationNumber} · {item.driverName ?? 'No fixed Driver'}</option>)}
     </select>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,320px),1fr))', gap: 20, marginTop: 20 }}>
-      <div><div ref={container} style={{ height: 420, borderRadius: 12, zIndex: 0 }} aria-label="Selected vehicle location map" />
+    <div className="tracking-grid">
+      <div><div ref={container} className="tracking-map" aria-label="Selected vehicle location map" />
         {vehicle?.latitude == null && <p>No recent GPS position exists for this vehicle.</p>}</div>
-      {vehicle && <section className="panel" style={{ padding: 20 }}>
+      {vehicle && <section className="panel tracking-details">
         <h2>{vehicle.registrationNumber}</h2>
         <p>Driver: {vehicle.driverName ?? 'No fixed Driver'}</p>
         <p>Location Sharing: {vehicle.sharing ? 'ON' : 'OFF'} · {status}</p>

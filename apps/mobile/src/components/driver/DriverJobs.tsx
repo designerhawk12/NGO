@@ -6,6 +6,7 @@ import { currentDestination, isClosedJob, listDriverJobs, nextDriverStep, update
 import { pickupNavigationUrl, pickupSearchUrl } from '../volunteer/pickupNavigation';
 import { Badge, Button, Card, Empty, Header, Icon, InfoRow, Screen, Sheet, T } from '../common/UI';
 import { C } from '../../constants/theme';
+import { useLanguage } from '../../context/LanguageContext';
 import NotificationBell from '../common/NotificationBell';
 import { activeDriverTracking, requireDriverTracking, startDriverTracking, stopDriverTracking, trackingSession } from '../tracking/driverTracking';
 
@@ -30,6 +31,7 @@ const errorText: Record<string, string> = {
 const timeLabel = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 
 export default function DriverJobs({ historyOnly = false, assignmentId }: { historyOnly?: boolean; assignmentId?: string }) {
+  const { t } = useLanguage();
   const [jobs, setJobs] = useState<DriverJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,10 +70,10 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
     return () => clearInterval(timer);
   }, [refresh]);
 
-  const startSharing = (job: DriverJob) => Alert.alert('Share your phone GPS during NGO duty?',
-    'The NGO Admin can see the reported location of your fixed vehicle during this pickup. Android will ask for foreground and background location; choose Allow all the time in Settings so Google Maps can stay open. A persistent notification shows sharing. You can stop at any time. Android force-stop and battery restrictions can interrupt reports.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Start Location Sharing', onPress: () => {
+  const startSharing = (job: DriverJob) => Alert.alert(t('Share your phone GPS during NGO duty?'),
+    t('The NGO Admin can see the reported location of your fixed vehicle during this pickup. Android will ask for foreground and background location; choose Allow all the time in Settings so Google Maps can stay open. A persistent notification shows sharing. You can stop at any time. Android force-stop and battery restrictions can interrupt reports.'), [
+      { text: t('Cancel'), style: 'cancel' },
+      { text: t('Start Location Sharing'), onPress: () => {
         void (async () => {
           try { await startDriverTracking(job.pickupId); setSharingPickup(job.pickupId); setMessage({ text: 'Location Sharing Active', ok: true }); }
           catch (cause) { setSharingPickup(null); setMessage({ text: cause instanceof Error ? cause.message : 'Could not start location sharing.', ok: false }); }

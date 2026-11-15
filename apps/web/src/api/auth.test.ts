@@ -58,7 +58,7 @@ describe('pickup API authentication', () => {
     expect(getCurrentAppUser).not.toHaveBeenCalled()
   })
 
-  it.each(['DONOR', 'VOLUNTEER'])('does not grant website Admin access to a valid %s login', async role => {
+  it.each(['DONOR', 'VOLUNTEER', 'DRIVER'])('does not grant website Admin access to a valid %s login', async role => {
     signInWithPassword.mockResolvedValue({data:{session:{access_token:'verified-session'}},error:null})
     getCurrentAppUser.mockResolvedValue({id:'existing-user',role})
     signOut.mockResolvedValue({error:null})
@@ -73,5 +73,22 @@ describe('pickup API authentication', () => {
     const { signInAsAdmin } = await import('./auth')
     await expect(signInAsAdmin('synthetic@example.test','test-only')).resolves.toMatchObject({role:'ADMIN'})
     expect(signOut).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid credentials before requesting the application role', async () => {
+    const error = new Error('Invalid login credentials')
+    signInWithPassword.mockResolvedValue({ data: { session: null }, error })
+    const { signInAsAdmin } = await import('./auth')
+    await expect(signInAsAdmin('synthetic@example.test', 'wrong-password')).rejects.toBe(error)
+    expect(getCurrentAppUser).not.toHaveBeenCalled()
+  })
+
+  it('restores a verified Admin with a refreshed session when the token is expiring', async () => {
+    getSession.mockResolvedValue({ data: { session: { access_token: 'expiring', expires_at: Math.floor(Date.now() / 1000) } }, error: null })
+    refreshSession.mockResolvedValue({ data: { session: { access_token: 'refreshed' } }, error: null })
+    getCurrentAppUser.mockResolvedValue({ id: 'existing-admin', role: 'ADMIN' })
+    const { restoreAdminSession } = await import('./auth')
+    await expect(restoreAdminSession()).resolves.toMatchObject({ role: 'ADMIN' })
+    expect(getCurrentAppUser).toHaveBeenCalledWith('me', { headers: { Authorization: 'Bearer refreshed' } })
   })
 })

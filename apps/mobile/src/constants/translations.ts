@@ -1,4 +1,13 @@
 export const kn: Record<string, string> = {
+  'Turn on phone Location/GPS in Android Settings.': 'ಆಂಡ್ರಾಯ್ಡ್ ಸೆಟ್ಟಿಂಗ್\u200cಗಳಲ್ಲಿ ಫೋನ್\u200cನ ಸ್ಥಳ ಅಥವಾ ಜಿಪಿಎಸ್ ಆನ್ ಮಾಡಿ.',
+  'Allow location access before starting this tracked pickup.': 'ಈ ಪಿಕಪ್ ಪ್ರಾರಂಭಿಸುವ ಮೊದಲು ಸ್ಥಳ ಪ್ರವೇಶಕ್ಕೆ ಅನುಮತಿಸಿ.',
+  'Start Location Sharing': 'ಸ್ಥಳ ಹಂಚಿಕೆ ಪ್ರಾರಂಭಿಸಿ',
+  'Share your phone GPS during NGO duty?': 'ಎನ್‌ಜಿಒ ಕರ್ತವ್ಯದ ವೇಳೆ ನಿಮ್ಮ ಫೋನ್‌ನ ಜಿಪಿಎಸ್ ಸ್ಥಳವನ್ನು ಹಂಚಿಕೊಳ್ಳಬೇಕೇ?',
+  'The NGO Admin can see the reported location of your fixed vehicle during this pickup. Android will ask for foreground and background location; choose Allow all the time in Settings so Google Maps can stay open. A persistent notification shows sharing. You can stop at any time. Android force-stop and battery restrictions can interrupt reports.': 'ಈ ಪಿಕಪ್ ವೇಳೆ ನಿಮ್ಮ ವಾಹನದ ವರದಿಯಾದ ಸ್ಥಳವನ್ನು ಎನ್‌ಜಿಒ ನಿರ್ವಾಹಕರು ನೋಡಬಹುದು. ಗೂಗಲ್ ನಕ್ಷೆ ತೆರೆದಿದ್ದರೂ ಸ್ಥಳ ಹಂಚಿಕೆ ಮುಂದುವರಿಯಲು ಆಂಡ್ರಾಯ್ಡ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಸ್ಥಳ ಅನುಮತಿಗೆ ಯಾವಾಗಲೂ ಅನುಮತಿಸಿ ಆಯ್ಕೆಮಾಡಿ. ಸ್ಥಳ ಹಂಚಿಕೆಯನ್ನು ಶಾಶ್ವತ ಅಧಿಸೂಚನೆ ತೋರಿಸುತ್ತದೆ. ನೀವು ಯಾವಾಗ ಬೇಕಾದರೂ ನಿಲ್ಲಿಸಬಹುದು. ಆ್ಯಪ್ ಅನ್ನು ಬಲವಂತವಾಗಿ ನಿಲ್ಲಿಸಿದರೆ ಅಥವಾ ಬ್ಯಾಟರಿ ನಿರ್ಬಂಧಗಳಿದ್ದರೆ ವರದಿಗಳು ನಿಲ್ಲಬಹುದು.',
+  'The server did not accept this GPS reading. Wait a few seconds and try again.': 'ಸರ್ವರ್ ಈ ಜಿಪಿಎಸ್ ಸ್ಥಳವನ್ನು ಸ್ವೀಕರಿಸಲಿಲ್ಲ. ಕೆಲವು ಸೆಕೆಂಡು ಕಾಯ್ದು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  'GPS returned an old position. Move outdoors and try again.': 'ಜಿಪಿಎಸ್ ಹಳೆಯ ಸ್ಥಳವನ್ನು ನೀಡಿದೆ. ಹೊರಗೆ ಹೋಗಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  'Location Sharing Active': 'ಸ್ಥಳ ಹಂಚಿಕೆ ಸಕ್ರಿಯವಾಗಿದೆ',
+  'Location Sharing Off': 'ಸ್ಥಳ ಹಂಚಿಕೆ ಆಫ್ ಆಗಿದೆ',
   'Volunteer registration is currently by invitation only. Please contact the NGO administrator.': 'ಸ್ವಯಂಸೇವಕರ ನೋಂದಣಿ ಪ್ರಸ್ತುತ ಆಹ್ವಾನದ ಮೂಲಕ ಮಾತ್ರ ಲಭ್ಯವಿದೆ. ದಯವಿಟ್ಟು NGO ನಿರ್ವಾಹಕರನ್ನು ಸಂಪರ್ಕಿಸಿ.',
   'Forgot password?': 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?',
   'Password recovery is not configured for this app.': 'ಈ ಆ್ಯಪ್‌ಗೆ ಪಾಸ್‌ವರ್ಡ್ ಮರುಪಡೆಯುವಿಕೆ ಹೊಂದಿಸಲಾಗಿಲ್ಲ.',

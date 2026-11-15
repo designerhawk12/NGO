@@ -12,12 +12,10 @@ body { background:#faf9f6; font-size:15px; line-height:1.5; }
 .live-pickups .data-table td:first-child { overflow-wrap:anywhere; }
 .live-status { display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid #dbe5dc; background:#f6f9f6; color:#28563b; font-size:13px; font-weight:700; }
 .tracking-page { max-width:1200px; margin:0 auto; padding:4px 0 24px; }
-.tracking-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,320px); gap:20px; align-items:start; }
 .metric-card { display:flex; flex-direction:column; gap:5px; min-width:0; padding:18px 20px; border:1px solid #e1e8e0; border-radius:14px; background:#fff; box-shadow:0 2px 9px #1c3f2b0a; }
 .metric-label { font-size:14px; font-weight:600; color:#607263; }
 .metric-value { font-size:32px; line-height:1.15; font-weight:750; color:#193d2b; }
 .metric-sub { color:#718275; font-size:13px; line-height:1.4; }
-@media (max-width:900px) { .tracking-grid { grid-template-columns:1fr; } }
 @media (max-width:600px) { .live-pickups-heading { flex-direction:column; } .module-placeholder { padding:24px; } .breadcrumbs { display:none; } .topbar-right { margin-left:auto; gap:8px; } .page-heading { flex-wrap:wrap; } .page-heading > .flex { flex-wrap:wrap; max-width:100%; } }
 @media (max-width:800px) { body { min-width:0; } .app-shell,.main-area,.content { min-width:0; max-width:100%; } }
 h1,h2,h3 { letter-spacing:-.025em; }
@@ -351,3 +349,17 @@ h1,h2,h3 { letter-spacing:-.025em; }
 .field-error { margin-top: 12px; color: #b42318; font-size: 13px; line-height: 1.4; }
 .dialog-form .field { min-width: 0; }
 @media (max-width: 640px) { .dialog-form .form-grid { grid-template-columns: 1fr; } }
+
+.admin-login { background: #f8f7f2; min-height: 100dvh; display: grid; place-items: center; padding: 1.25rem; }
+.admin-login-form { width: min(100%, 30rem); display: grid; gap: 0.75rem; }
+.admin-login-form > .language-switch { justify-self: end; }
+.admin-login .button-primary { background: #08643b; }
+.admin-login .button-primary:hover:not(:disabled) { background: #064f30; }
+
+.tracking-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr); gap: 1.5rem; margin-top: 1.5rem; }
+.tracking-map { height: clamp(22rem, 54vh, 38rem); border-radius: 0.875rem; z-index: 0; }
+.tracking-details { min-width: 0; padding: 1.25rem; overflow-wrap: anywhere; }
+.notification-popover { width: min(22rem, calc(100vw - 2rem)); }
+.notification-popover li { border: 1px solid #e3ebe5; border-radius: 0.625rem; margin-bottom: 0.5rem; overflow-wrap: anywhere; }
+.notification-popover li button { display: grid; gap: 0.375rem; padding: 0.75rem; text-align: start; width: 100%; }
+@media (max-width: 780px) { .tracking-grid { grid-template-columns: minmax(0, 1fr); } }

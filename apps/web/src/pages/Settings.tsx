@@ -6,6 +6,7 @@ import { ApiClientError } from '../api/client'
 
 function adminSignInError(cause: unknown): string {
   const generic = 'Sign in failed or administrator access is unavailable.'
+  if ((cause instanceof ApiClientError && cause.status === 403) || (cause instanceof Error && cause.message === 'Administrator access is required.')) return 'Administrator access is required.'
   if (!import.meta.env.DEV) return generic
 
   if (cause instanceof ApiClientError) {
@@ -31,7 +32,7 @@ function adminSignInError(cause: unknown): string {
   return 'SIGN_IN_FAILED: Check Supabase Auth configuration and the API response.'
 }
 
-function CoordinatorAuth({ onAdminSignIn }: { onAdminSignIn: () => void }) {
+export function CoordinatorAuth({ onAdminSignIn, onAdminSignOut, loginOnly = false }: { onAdminSignIn?: () => void; onAdminSignOut?: () => void; loginOnly?: boolean }) {
   const sessionMarker = 'aaharaconnect-admin-session'
   const configured = isLiveAuthConfigured()
   const [user, setUser] = useState<AppUser | null>(null)
@@ -42,7 +43,7 @@ function CoordinatorAuth({ onAdminSignIn }: { onAdminSignIn: () => void }) {
 
   useEffect(() => {
     let active = true
-    if (configured && window.localStorage.getItem(sessionMarker)) restoreAdminSession().then(next => {
+    if (!loginOnly && configured && window.localStorage.getItem(sessionMarker)) restoreAdminSession().then(next => {
       if (active) setUser(next)
       if (!next) window.localStorage.removeItem(sessionMarker)
     }).catch(() => {
@@ -52,7 +53,7 @@ function CoordinatorAuth({ onAdminSignIn }: { onAdminSignIn: () => void }) {
       }
     })
     return () => { active = false }
-  }, [configured])
+  }, [configured, loginOnly])
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -63,7 +64,7 @@ function CoordinatorAuth({ onAdminSignIn }: { onAdminSignIn: () => void }) {
       setUser(next)
       window.localStorage.setItem(sessionMarker, '1')
       setPassword('')
-      onAdminSignIn()
+      onAdminSignIn?.()
     } catch (cause) {
       setMessage(adminSignInError(cause))
     } finally { setBusy(false) }
@@ -71,13 +72,13 @@ function CoordinatorAuth({ onAdminSignIn }: { onAdminSignIn: () => void }) {
 
   const leave = async () => {
     setBusy(true)
-    try { await signOutAdmin(); setUser(null); window.localStorage.removeItem(sessionMarker); setMessage('Signed out.') }
+    try { await signOutAdmin(); setUser(null); window.localStorage.removeItem(sessionMarker); setMessage('Signed out.'); onAdminSignOut?.() }
     catch { setMessage('Could not sign out. Try again.') }
     finally { setBusy(false) }
   }
 
   return <section className="panel settings-card"><div className="settings-icon"><ShieldCheck size={22}/></div>
-    <h2>Administrator account</h2><p>Use a current Admin account for this environment. Volunteer and Driver accounts use the mobile app; Donors can also use the Donor portal. Credentials from another environment do not grant access here.</p>
+    {loginOnly ? <h1>Administrator sign-in</h1> : <h2>Administrator account</h2>}<p>Use a current Admin account for this environment. Volunteer and Driver accounts use the mobile app; Donors can also use the Donor portal. Credentials from another environment do not grant access here.</p>
     {!configured ? <div className="settings-note"><Info size={17}/><span>Live sign in is not configured on this device.</span></div>
       : user ? <><div className="settings-row"><span>API role</span><strong>{user.role}</strong></div><button type="button" className="button button-secondary" disabled={busy} onClick={() => { void leave() }}>Sign out</button></>
         : <form className="settings-auth-form" onSubmit={event => { void submit(event) }}>
@@ -86,10 +87,11 @@ function CoordinatorAuth({ onAdminSignIn }: { onAdminSignIn: () => void }) {
           <button type="submit" className="button button-primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
         </form>}
     {message && <p className="settings-auth-message" role="status">{message}</p>}
-    <div className="settings-note"><Info size={17}/><span>Volunteer and team lists load live after administrator sign-in. Assignment changes remain demo data.</span></div>
+    {loginOnly && <p><a href="/forgot-password">Forgot password?</a></p>}
+    {!loginOnly && <div className="settings-note"><Info size={17}/><span>Volunteer and team lists load live after administrator sign-in. Assignment changes remain demo data.</span></div>}
   </section>
 }
 
-export default function Settings({ notifications, onNotificationsChange, onAdminSignIn }: { notifications: boolean; onNotificationsChange: (enabled: boolean) => void; onAdminSignIn: () => void }) {
-  return <><div className="page-heading"><div><span className="eyebrow">WORKSPACE</span><h1>Settings</h1><p>Coordinator preferences for this volunteer management demo.</p></div></div><div className="settings-grid"><section className="panel settings-card"><div className="settings-icon"><Building2 size={22}/></div><h2>Chapter information</h2><p>The operational context shown throughout this prototype.</p><div className="settings-row"><span>Organisation</span><strong>AaharaConnect</strong></div><div className="settings-row"><span>Chapter</span><strong>Bengaluru</strong></div><div className="settings-row"><span>Coordinator</span><strong>Admin</strong></div></section><section className="panel settings-card"><div className="settings-icon"><Bell size={22}/></div><h2>Coordinator preferences</h2><p>Adjust how this local demo presents updates.</p><label className="settings-toggle"><span><strong>Show success notifications</strong><small>Confirm when local records are changed</small></span><input type="checkbox" checked={notifications} onChange={e => onNotificationsChange(e.target.checked)}/><i>{notifications && <Check size={14}/>}</i></label><div className="settings-note"><Info size={17}/><span>Volunteer, team and assignment changes are kept in this browser session.</span></div></section><CoordinatorAuth onAdminSignIn={onAdminSignIn}/></div><div className="settings-footer"><Leaf size={18}/> AaharaConnect · Food Rescue Network</div></>
+export default function Settings({ notifications, onNotificationsChange, onAdminSignOut }: { notifications: boolean; onNotificationsChange: (enabled: boolean) => void; onAdminSignOut: () => void }) {
+  return <><div className="page-heading"><div><span className="eyebrow">WORKSPACE</span><h1>Settings</h1><p>Coordinator preferences for this volunteer management demo.</p></div></div><div className="settings-grid"><section className="panel settings-card"><div className="settings-icon"><Building2 size={22}/></div><h2>Chapter information</h2><p>The operational context shown throughout this prototype.</p><div className="settings-row"><span>Organisation</span><strong>AaharaConnect</strong></div><div className="settings-row"><span>Chapter</span><strong>Bengaluru</strong></div><div className="settings-row"><span>Coordinator</span><strong>Admin</strong></div></section><section className="panel settings-card"><div className="settings-icon"><Bell size={22}/></div><h2>Coordinator preferences</h2><p>Adjust how this local demo presents updates.</p><label className="settings-toggle"><span><strong>Show success notifications</strong><small>Confirm when local records are changed</small></span><input type="checkbox" checked={notifications} onChange={e => onNotificationsChange(e.target.checked)}/><i>{notifications && <Check size={14}/>}</i></label><div className="settings-note"><Info size={17}/><span>Volunteer, team and assignment changes are kept in this browser session.</span></div></section><CoordinatorAuth onAdminSignOut={onAdminSignOut}/></div><div className="settings-footer"><Leaf size={18}/> AaharaConnect · Food Rescue Network</div></>
 }

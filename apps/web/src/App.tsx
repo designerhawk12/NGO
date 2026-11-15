@@ -6,7 +6,7 @@ import { drivers as initialDrivers, events, initialAssignments, initialMaintenan
 import Volunteers from './pages/Volunteers'
 import Teams from './pages/Teams'
 import PickupsLogistics from './pages/PickupsLogistics'
-import Settings from './pages/Settings'
+import Settings, { CoordinatorAuth } from './pages/Settings'
 import VehicleTracking from './pages/VehicleTracking'
 import Vehicles from './pages/Vehicles'
 import FoodDonor from './pages/FoodDonor'
@@ -38,22 +38,18 @@ export default function App() {
   }
   const [page, setPage] = useState<Page>(resolvePageFromUrl)
   const [workspaceAccess, setWorkspaceAccess] = useState<'checking' | 'allowed' | 'denied'>('checking')
-  const [workspaceRetry, setWorkspaceRetry] = useState(0)
-
   useEffect(() => {
-    if (page === 'dashboard' || page === 'settings') { setWorkspaceAccess('allowed'); return }
     let active = true
-    setWorkspaceAccess('checking')
     void restoreAdminSession().then(user => {
       if (active) setWorkspaceAccess(user?.role === 'ADMIN' ? 'allowed' : 'denied')
     }).catch(() => { if (active) setWorkspaceAccess('denied') })
     return () => { active = false }
-  }, [page, workspaceRetry])
+  }, [])
 
   useEffect(() => {
     const handleNav = () => {
       const p = resolvePageFromUrl()
-      if (p !== 'dashboard') setPage(p)
+      setPage(p)
     }
     window.addEventListener('hashchange', handleNav)
     return () => window.removeEventListener('hashchange', handleNav)
@@ -109,12 +105,18 @@ export default function App() {
   }
   const createAssignment = (assignment: Assignment) => { setAssignments(current => [assignment, ...current]); setAssignmentOpen(false); setPage('pickups'); notify('Assignment Created Successfully · Pending') }
   const changeLanguage = (next: Language) => { setLanguage(next); window.localStorage.setItem('aaharaconnect-language', next) }
-  const requiresAdmin = page !== 'dashboard' && page !== 'settings'
+  if (workspaceAccess !== 'allowed') return <main className="admin-login">
+    {workspaceAccess === 'checking'
+      ? <p role="status">Verifying administrator access…</p>
+      : <div className="admin-login-form">
+        <div className="language-switch" role="group" aria-label="Language">
+          <button type="button" aria-pressed={language === 'en'} onClick={() => changeLanguage('en')}>English</button>
+          <button type="button" aria-pressed={language === 'kn'} onClick={() => changeLanguage('kn')}>ಕನ್ನಡ</button>
+        </div>
+        <CoordinatorAuth onAdminSignIn={() => setWorkspaceAccess('allowed')} loginOnly />
+      </div>}
+  </main>
   return <Layout page={page} onPage={setPage} language={language} onLanguageChange={changeLanguage}>
-    {requiresAdmin && workspaceAccess !== 'allowed' ? <section className="panel" role="status" style={{ padding: 22 }}>
-      {workspaceAccess === 'checking' ? <><h2>Verifying administrator access…</h2><p>Live module data is shown only after the API confirms an Admin account.</p></>
-        : <><h2>Administrator sign-in required</h2><p>Sample records are not shown in this workspace. Sign in under Settings to load live data.</p><div className="flex gap-2"><button className="button button-primary" onClick={() => setPage('settings')}>Open Settings</button><button className="button button-secondary" onClick={() => setWorkspaceRetry(value => value + 1)}>Retry</button></div></>}
-    </section> : <>
     {page === 'dashboard' && <LiveDashboard onSettings={() => setPage('settings')} onPickups={() => setPage('pickups')}/>}
     {page === 'volunteers' && <Volunteers volunteers={volunteers} teams={teams} assignments={assignments} setVolunteers={setVolunteers} onAssignTeam={assignTeam} onCreateAssignment={openAssignment} notify={notify}/>}
     {page === 'teams' && <Teams volunteers={volunteers} teams={teams} setTeams={setTeams} onAssignTeam={assignTeam} notify={notify}/>}
@@ -125,9 +127,8 @@ export default function App() {
     {page === 'drivers' && <AssignDriver notify={notify} onOpenVehicles={() => setPage('vehicles')}/>}
     {page === 'vessels' && <Vessels vehicles={vehicles} notify={notify} />}
     {page === 'distribution' && <DistributionCenters notify={notify} />}
-    {page === 'settings' && <Settings notifications={showSuccessNotifications} onNotificationsChange={setShowSuccessNotifications} onAdminSignIn={() => setPage('dashboard')}/>}
+    {page === 'settings' && <Settings notifications={showSuccessNotifications} onNotificationsChange={setShowSuccessNotifications} onAdminSignOut={() => { setAssignmentOpen(false); setToast(null); setWorkspaceAccess('denied') }}/>}
     {assignmentOpen && <CreateAssignmentDialog volunteers={volunteers} teams={teams} assignments={assignments} initialVolunteerId={initialVolunteerId} onClose={() => setAssignmentOpen(false)} onCreate={createAssignment} notify={notify}/>}
-    </>}
     {toast && <Toast message={toast.message} kind={toast.kind} onClose={() => setToast(null)}/>}
   </Layout>
 }

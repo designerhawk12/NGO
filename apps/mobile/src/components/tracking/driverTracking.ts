@@ -46,7 +46,10 @@ async function upload(location: Location.LocationObject, force = false) {
   uploading = true;
   try {
     const session = await trackingSession();
-    if (!session) return;
+    if (!session) {
+      if (force) throw new Error('Turn On GPS / Start Location Sharing before starting the journey or opening Google Maps.');
+      return;
+    }
     if (Date.now() - Date.parse(session.startedAt) >= 12 * 60 * 60 * 1000) { await stopDriverTracking(); return; }
     const pace = (location.coords.speed ?? 0) > 1 ? movingMs : stationaryMs;
     if (!force && Date.now() - lastSent < pace) return;
@@ -78,7 +81,7 @@ setSignOutCleanup(stopDriverTracking);
 TaskManager.defineTask<{ locations: Location.LocationObject[] }>(TASK, async ({ data, error }) => {
   if (error) { await stopDriverTracking(); return; }
   const newest = data?.locations?.at(-1);
-  if (newest) await upload(newest);
+  if (newest && !starting) await upload(newest);
 });
 export async function startDriverTracking(pickupId: string): Promise<Session> {
   if (starting) throw new Error('Location sharing is already starting.');
@@ -106,12 +109,12 @@ export async function startDriverTracking(pickupId: string): Promise<Session> {
   } finally { starting = false; }
 }
 export async function requireDriverTracking(pickupId: string) {
-  const session = await trackingSession();
-  if (!session || session.pickupId !== pickupId || !await Location.hasStartedLocationUpdatesAsync(TASK)
-    || !(await Location.getForegroundPermissionsAsync()).granted || !(await Location.getBackgroundPermissionsAsync()).granted) {
+  const session = await activeDriverTracking();
+  if (!session || session.pickupId !== pickupId) {
     throw new Error('Turn On GPS / Start Location Sharing before starting the journey or opening Google Maps.');
   }
-  if (!await Location.hasServicesEnabledAsync()) throw new Error('Phone Location/GPS is switched off.');
-  const point = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+  // The API rate limits consecutive fixes less than ten seconds apart.
+  if (lastSent && Date.now() - lastSent < 10_000) return;
+  const point = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
   await upload(point, true);
 }
