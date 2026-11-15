@@ -1,11 +1,11 @@
 import type { PoolClient } from 'pg';
+import { randomUUID } from 'node:crypto';
 import { getPool } from '../../db/pool';
 import type { UpdateOwnProfileInput } from './schemas';
 import type { CreateAvailabilityRequest } from '@aaharaconnect/shared';
 import { uuidSchema } from '@aaharaconnect/shared';
 import { HttpError } from '../../middleware/errorHandler';
 import type {
-  CreateAdminVolunteerInput,
   CreateSelfRegistrationInput,
   ListApplicationsQuery,
   ListTeamsQuery,
@@ -319,13 +319,15 @@ export async function findVolunteerById(id: string, client?: PoolClient): Promis
 }
 
 export async function findAdminVolunteerConflict(
-  registrationCode: string, phoneE164: string | null, excludeVolunteerId?: string
+  registrationCode: string | null, phoneE164: string | null, excludeVolunteerId?: string
 ): Promise<'registrationCode' | 'phoneE164' | null> {
-  const code = await getPool().query(
-    'SELECT 1 FROM app.volunteers WHERE registration_code = $1 AND ($2::uuid IS NULL OR id <> $2) LIMIT 1',
-    [registrationCode, excludeVolunteerId ?? null]
-  );
-  if (code.rowCount) return 'registrationCode';
+  if (registrationCode) {
+    const code = await getPool().query(
+      'SELECT 1 FROM app.volunteers WHERE registration_code = $1 AND ($2::uuid IS NULL OR id <> $2) LIMIT 1',
+      [registrationCode, excludeVolunteerId ?? null]
+    );
+    if (code.rowCount) return 'registrationCode';
+  }
   if (phoneE164) {
     const phone = await getPool().query(
       `SELECT 1 FROM app.people p WHERE p.phone_e164 = $1
@@ -337,30 +339,9 @@ export async function findAdminVolunteerConflict(
   return null;
 }
 
-export async function insertInvitedVolunteer(
-  authUserId: string, input: CreateAdminVolunteerInput, client: PoolClient
-): Promise<VolunteerProfileRow> {
-  const appUser = await client.query<{ id: string }>(
-    `INSERT INTO app.app_users(auth_user_id, role, display_name)
-     VALUES ($1, 'VOLUNTEER', $2) RETURNING id`, [authUserId, input.name]
-  );
-  const person = await client.query<{ id: string }>(
-    'INSERT INTO app.people(app_user_id, name, phone_e164) VALUES ($1, $2, $3) RETURNING id',
-    [appUser.rows[0].id, input.name, input.phoneE164]
-  );
-  const volunteer = await client.query<{ id: string }>(
-    `INSERT INTO app.volunteers(person_id, registration_code, skills, status)
-     VALUES ($1, $2, $3::text[], $4) RETURNING id`,
-    [person.rows[0].id, input.registrationCode, input.skills, input.status]
-  );
-  const row = await findVolunteerById(volunteer.rows[0].id, client);
-  if (!row) throw new HttpError(500, 'INTERNAL_ERROR', 'Created volunteer could not be read.');
-  return row;
-}
-
 export async function insertSelfRegisteredVolunteer(
   authUserId: string,
-  input: CreateSelfRegistrationInput,
+  input: Omit<CreateSelfRegistrationInput, 'registrationCode'>,
   client: PoolClient
 ): Promise<VolunteerProfileRow> {
   const appUser = await client.query<{ id: string }>(
@@ -371,17 +352,25 @@ export async function insertSelfRegisteredVolunteer(
     'INSERT INTO app.people(app_user_id, name, phone_e164) VALUES ($1, $2, $3) RETURNING id',
     [appUser.rows[0].id, input.name, input.phoneE164]
   );
-  const volunteer = await client.query<{ id: string }>(
-    `INSERT INTO app.volunteers(person_id, registration_code, skills, status)
-     VALUES ($1, $2, $3::text[], 'INACTIVE') RETURNING id`,
-    [person.rows[0].id, input.registrationCode, input.skills]
-  );
+  let volunteerId: string | undefined;
+  for (let attempt = 0; attempt < 8 && !volunteerId; attempt += 1) {
+    const registrationCode = `VOL-${randomUUID().toUpperCase()}`;
+    const volunteer = await client.query<{ id: string }>(
+      `INSERT INTO app.volunteers(person_id, registration_code, skills, status)
+       VALUES ($1, $2, $3::text[], 'INACTIVE')
+       ON CONFLICT (registration_code) DO NOTHING
+       RETURNING id`,
+      [person.rows[0].id, registrationCode, input.skills]
+    );
+    volunteerId = volunteer.rows[0]?.id;
+  }
+  if (!volunteerId) throw new HttpError(503, 'VOLUNTEER_REGISTRATION_REVIEW_REQUIRED', 'The application could not be assigned a registration code.');
   await client.query(
     `INSERT INTO app.volunteer_applications(volunteer_id, status)
      VALUES ($1, 'PENDING')`,
-    [volunteer.rows[0].id]
+    [volunteerId]
   );
-  const row = await findVolunteerById(volunteer.rows[0].id, client);
+  const row = await findVolunteerById(volunteerId, client);
   if (!row) throw new HttpError(500, 'INTERNAL_ERROR', 'Created volunteer application could not be read.');
   return row;
 }
@@ -498,6 +487,22 @@ export async function insertTeam(name: string, leaderVolunteerId: string | null,
 
 export async function updateTeam(id: string, name: string, leaderVolunteerId: string | null, client: PoolClient): Promise<void> {
   await client.query('UPDATE app.teams SET name = $2, leader_volunteer_id = $3 WHERE id = $1', [id, name, leaderVolunteerId]);
+}
+
+export async function countAssignmentsForTeam(teamId: string, client: PoolClient): Promise<number> {
+  const result = await client.query<{ count: string }>(
+    'SELECT COUNT(*)::text AS count FROM app.assignments WHERE team_id = $1', [teamId]
+  );
+  return Number(result.rows[0]?.count ?? 0);
+}
+
+export async function deleteTeamMemberships(teamId: string, client: PoolClient): Promise<void> {
+  await client.query('DELETE FROM app.team_members WHERE team_id = $1', [teamId]);
+}
+
+export async function deleteTeam(id: string, client: PoolClient): Promise<boolean> {
+  const result = await client.query('DELETE FROM app.teams WHERE id = $1', [id]);
+  return (result.rowCount ?? 0) === 1;
 }
 
 export async function replaceTeamMembers(teamId: string, memberIds: string[], client: PoolClient): Promise<void> {

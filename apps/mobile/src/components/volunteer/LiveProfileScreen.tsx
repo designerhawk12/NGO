@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, Card, Field, Header, Icon, InfoRow, LanguageSwitcher, Screen, Sheet, T } from '../common/UI';
+import ProfilePhoto from '../common/ProfilePhoto';
+import { Button, Card, Field, Header, InfoRow, LanguageSwitcher, Screen, Sheet, T } from '../common/UI';
 import { C } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { useVolunteerData } from '../../context/VolunteerDataContext';
@@ -50,7 +51,7 @@ export function LiveProfileScreen() {
   };
   return <Screen><Header title="Profile" right={<LanguageSwitcher />} />
     {profileLoading ? <Card><T>Loading profile...</T></Card> : profileError ? <Card><T color={C.red}>{profileError}</T><Button title="Retry" onPress={() => void refreshProfile()} variant="outline" style={{ marginTop: 14 }} /></Card> : !profile ? <Card><T>No volunteer profile found.</T><Button title="Retry" onPress={() => void refreshProfile()} variant="outline" style={{ marginTop: 14 }} /></Card> : <>
-      <Card style={{ alignItems: 'center', marginBottom: 18, paddingVertical: 23 }}><View style={{ width: 66, height: 66, borderRadius: 22, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}><Icon name="person" size={33} /></View><T size={22} weight="800" color={C.ink} translate={false}>{profile.name}</T><T color={C.muted}>Food Rescue Volunteer</T></Card>
+      <Card style={{ alignItems: 'center', marginBottom: 18, paddingVertical: 23 }}><ProfilePhoto iconName="person" /><T size={22} weight="800" color={C.ink} translate={false}>{profile.name}</T><T color={C.muted}>Food Rescue Volunteer</T></Card>
       <T size={20} weight="700" color={C.ink} style={{ marginBottom: 11 }}>Personal information</T>
       <Card style={{ marginBottom: 18 }}><InfoRow icon="person" label="Name" value={profile.name} /><InfoRow icon="phone" label="Phone number" value={profile.phoneE164 ?? '—'} /><InfoRow icon="shield" label="Registration number" value={profile.registrationCode} /><Button title="Edit profile" icon="edit" variant="outline" onPress={beginEdit} style={{ marginTop: 10 }} /></Card>
     </>}

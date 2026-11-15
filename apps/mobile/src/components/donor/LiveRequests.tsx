@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { DonorFoodRequest, listOwnFoodRequests } from '../../api/foodRequests';
 import { Badge, Button, Card, Empty, Header, LanguageSwitcher, Screen, Segments, T } from '../common/UI';
 import { C } from '../../constants/theme';
+import NotificationBell from '../common/NotificationBell';
 
 function outcome(item: DonorFoodRequest): string {
   if (item.status === 'CANCELLED') return 'Cancelled';
@@ -23,7 +24,7 @@ function RequestCard({ item }: { item: DonorFoodRequest }) {
       <Badge value={outcome(item)} />
     </View>
     <T color={C.muted} translate={false}>{item.items.map(food => food.foodType).join(', ')}</T>
-    <T color={C.muted} translate={false}>{new Date(item.readyAt).toLocaleString()}</T>
+    <T color={C.muted} translate={false}>{new Date(item.preparedAt).toLocaleString()}</T>
     <Button title="View request" variant="outline"
       onPress={() => router.push({ pathname: '/donor/request/[id]', params: { id: item.id } })}
       style={{ marginTop: 12 }} />
@@ -54,6 +55,7 @@ export function LiveDonorHome() {
   const completed = items.filter(item => outcome(item) === 'Completed');
   return <Screen>
     <Header title="Welcome" subtitle="Your food rescue workspace." right={<LanguageSwitcher />} />
+    <NotificationBell />
     <Card style={{ backgroundColor: C.greenSoft, marginBottom: 20, padding: 21 }}>
       <T size={23} weight="800" color={C.ink}>Your food can make someone’s day.</T>
       <T color={C.muted} style={{ marginTop: 6, marginBottom: 17 }}>Schedule a safe pickup for your surplus food.</T>

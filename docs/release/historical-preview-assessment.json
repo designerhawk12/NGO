@@ -1,0 +1,1756 @@
+{
+  "capturedUtc": "2026-11-10T04:50:04.180Z",
+  "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+  "teamId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+  "activeDeployment": "dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR",
+  "protection": {
+    "deploymentType": "all_except_custom_domains"
+  },
+  "gitDisconnected": true,
+  "projectDomains": [
+    {
+      "name": "ngo-eight-umber.vercel.app",
+      "gitBranch": null,
+      "redirect": null,
+      "verified": true
+    }
+  ],
+  "records": [
+    {
+      "id": "dpl_28RM9mtJ5AxFJttybB7xntRgRRTd",
+      "url": "ngo-2oxqz3712-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-06T16:31:49.159Z",
+      "sourceCommit": "0d6e1d0ebdaf01ec2e7136c4b7376fa538e32224",
+      "branch": "integration/ngo-recovery",
+      "pullRequestNumber": "26",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-2oxqz3712-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-2oxqz3712-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_2VkFDfWDM5qgEsNqx4Ybry4hAWQg",
+      "url": "ngo-nd2c0ymyp-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-30T17:18:45.311Z",
+      "sourceCommit": "b3ffc5066b9d02a555b3d386d925b0e55ec6cd85",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "pullRequestNumber": "20",
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-demo-backend-hosting-2026-10-29-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-nd2c0ymyp-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-nd2c0ymyp-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_2wBnJ2swiSjypjfTuDs9oWZf2Fwa",
+      "url": "ngo-ocm1jpkc5-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T12:22:33.575Z",
+      "sourceCommit": "ae734387604893eadbe8c12214b543544bef63e8",
+      "branch": "develop",
+      "pullRequestNumber": null,
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-ocm1jpkc5-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-ocm1jpkc5-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_3ccCf3HrY9iApuDJjmhWAt3x4rCs",
+      "url": "ngo-ov61owyof-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-30T17:23:40.116Z",
+      "sourceCommit": "10ffbc1a7147a7fcce88c6649866c89f577ca4c6",
+      "branch": "develop",
+      "pullRequestNumber": null,
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-ov61owyof-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-ov61owyof-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_4qU4ouzTNPGdn1tkvVsi4RsE8yzG",
+      "url": "ngo-aomr5b8k2-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T06:44:36.175Z",
+      "sourceCommit": "18607fb1d99546030a50a01ad8c4519b8d00ff6e",
+      "branch": "codex/volunteer-applications-integration",
+      "pullRequestNumber": "21",
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-aomr5b8k2-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-aomr5b8k2-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_56EzLXSRZaResE6sUA2R9PeBvbkj",
+      "url": "ngo-6cftdovrf-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-05T18:45:31.151Z",
+      "sourceCommit": "07ecc9aed54e2c1d584584acb38120ba814e4379",
+      "branch": "integration/ngo-recovery",
+      "pullRequestNumber": "26",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-6cftdovrf-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-6cftdovrf-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_58fqbEZ2c4TGV3mtjZ7or9V4U28Q",
+      "url": "ngo-afk6q50c7-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-28T20:40:34.856Z",
+      "sourceCommit": "51c9736d1091b31860bb25c18ca9c8c720127477",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "pullRequestNumber": "19",
+      "bindingNames": [
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-demo-backend-hosting-2026-10-29-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-afk6q50c7-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-afk6q50c7-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_5cbzb1BEKqWL8xy6vtEuoiYxstUf",
+      "url": "ngo-40dsrgmhf-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-03T09:17:53.072Z",
+      "sourceCommit": "11f11ca47bf98356c7ffbcd7b4fad53edf278b66",
+      "branch": "integration/ngo-recovery",
+      "pullRequestNumber": "26",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-40dsrgmhf-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-40dsrgmhf-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_6NJ9s73yd8m94DCy5N4YJ9JzR9ak",
+      "url": "ngo-1vzjf42f0-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-04T05:22:09.640Z",
+      "sourceCommit": "517d6540c930cdaf9b6c3707764f9aa44a1be999",
+      "branch": "integration/ngo-recovery",
+      "pullRequestNumber": "26",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-1vzjf42f0-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-1vzjf42f0-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_6nQQ21fj4JqUUzyhMxfiVDtBxUx7",
+      "url": "ngo-17qujhawj-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T08:52:09.916Z",
+      "sourceCommit": "d1621e5e6d4a2cd767bd39663578580276d0fdcb",
+      "branch": "codex/volunteer-applications-integration",
+      "pullRequestNumber": "21",
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-17qujhawj-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-17qujhawj-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_6qhbUmCVmMkNXkFpyMq2yBXQuf5W",
+      "url": "ngo-gu96fv5f6-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-30T14:41:00.409Z",
+      "sourceCommit": "cd49f4010a19d4a55fd905996dcf0058ee6eaa93",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "pullRequestNumber": "19",
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-demo-backend-hosting-2026-10-29-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-gu96fv5f6-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-gu96fv5f6-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_6QhzmLGvDKG8L2bZnfB6X1118444",
+      "url": "ngo-4x3gmo864-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-05T18:34:38.015Z",
+      "sourceCommit": "2dac221fbc5681d9d81c247eef5b560e6e07c8a2",
+      "branch": "integration/ngo-recovery",
+      "pullRequestNumber": "26",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-4x3gmo864-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-4x3gmo864-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_7RgDCKNxHxpaiUa2qGz88pxpDuXS",
+      "url": "ngo-f86aoh0sg-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-30T15:00:28.047Z",
+      "sourceCommit": "d5de9b31349b9748a4a8814faf9ef7f7af456657",
+      "branch": "develop",
+      "pullRequestNumber": null,
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-f86aoh0sg-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-f86aoh0sg-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_7XNW6D1JqXGdCoVaUWdAHUH7xh8P",
+      "url": "ngo-bftikdy7j-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-03T09:41:37.718Z",
+      "sourceCommit": "9cb26adeac7f6e904aa99bb34c85a094cf62416c",
+      "branch": "integration/ngo-recovery",
+      "pullRequestNumber": "26",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-bftikdy7j-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-bftikdy7j-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_7ZYicErsWho7JfNL9BRhiiEJqniQ",
+      "url": "ngo-7ug3uaz56-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T11:44:01.152Z",
+      "sourceCommit": "ec9b692eedc64b9ce7839eac3da0f259edc17611",
+      "branch": "codex/driver-details",
+      "pullRequestNumber": null,
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-driver-details-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-7ug3uaz56-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-7ug3uaz56-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_8abaMWVSBcvRRNSzLC5H1oWEu78y",
+      "url": "ngo-6772tlcyg-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-28T20:14:58.407Z",
+      "sourceCommit": "51c9736d1091b31860bb25c18ca9c8c720127477",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "pullRequestNumber": "19",
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-demo-backend-hosting-2026-10-29-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-6772tlcyg-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-6772tlcyg-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_8dWurx1gVUpjUWGPs5B5fawtUZQU",
+      "url": "ngo-8msbdv5cl-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T09:29:29.848Z",
+      "sourceCommit": "5ad893cfca8cfe2cfa80808090b4dd98008f579f",
+      "branch": "codex/volunteer-applications-integration",
+      "pullRequestNumber": "21",
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-8msbdv5cl-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-8msbdv5cl-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_8iH4tAHask8XWozdr62LUFRhcjZt",
+      "url": "ngo-9dakrbhzy-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T09:03:19.164Z",
+      "sourceCommit": "6723811bb0f36e312d2c3a2b23d907d77341ae10",
+      "branch": "fix/ist-donation-times",
+      "pullRequestNumber": "22",
+      "bindingNames": [],
+      "currentAliases": [
+        "ngo-git-fix-ist-donation-times-equinox10.vercel.app"
+      ],
+      "historicalAliasMetadata": [
+        "ngo-git-fix-ist-donation-times-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-9dakrbhzy-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-9dakrbhzy-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-git-fix-ist-donation-times-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_96bbfeyS2rUxWn9yvhehzZS2Fgc8",
+      "url": "ngo-jawiswfd6-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-29T14:30:14.495Z",
+      "sourceCommit": "83df03401a05c01680ab3786898941d55328f11a",
+      "branch": "develop",
+      "pullRequestNumber": null,
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-jawiswfd6-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-jawiswfd6-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_9EKEqiFnrvt2KXFVLKWRQMHEUL75",
+      "url": "ngo-jfsf42qdo-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T10:38:23.346Z",
+      "sourceCommit": "9970c932d801c9ba28974dc27a29b9daab8d162f",
+      "branch": "codex/volunteer-roster-preview",
+      "pullRequestNumber": "23",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-jfsf42qdo-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-jfsf42qdo-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_9kC6BxaHDdSsaNCDMCSnxGEqrXDJ",
+      "url": "ngo-a3ns68hxj-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-02T11:41:01.006Z",
+      "sourceCommit": "8dba5e554cfc9716d3f74869337b208750864939",
+      "branch": "develop",
+      "pullRequestNumber": null,
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-a3ns68hxj-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-a3ns68hxj-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_9MeyLBSqXD8r9FA6CH2XYK19dKia",
+      "url": "ngo-mnwlycmel-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T12:14:08.018Z",
+      "sourceCommit": "ae734387604893eadbe8c12214b543544bef63e8",
+      "branch": "develop",
+      "pullRequestNumber": null,
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-mnwlycmel-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-mnwlycmel-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_Adox9TZ5TtoDwNr8c1wnKkFHvv16",
+      "url": "ngo-lgxg8ei8d-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-02T11:43:04.368Z",
+      "sourceCommit": "0bb52e57658fc09ab4bc63e07f9db1e1d86cfc49",
+      "branch": "develop",
+      "pullRequestNumber": null,
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-lgxg8ei8d-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-lgxg8ei8d-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_Aeu3LSE6V9h7iyFR3z6vPG8MfZfe",
+      "url": "ngo-opxvpt8at-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T08:26:04.849Z",
+      "sourceCommit": "331ed0023063a204fa2459f75a668d558bc2619c",
+      "branch": "develop",
+      "pullRequestNumber": null,
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-opxvpt8at-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-opxvpt8at-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_ALcWeHgfr2mQzGaDPqZYFLakJnn8",
+      "url": "ngo-dw70hbgsj-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T10:09:34.559Z",
+      "sourceCommit": "37a2fe5aa913e9358c7195d1cb6bd142f68347d5",
+      "branch": "codex/volunteer-applications-integration",
+      "pullRequestNumber": "21",
+      "bindingNames": [
+        "DATABASE_URL",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-dw70hbgsj-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-dw70hbgsj-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_AVW7JXsg3D3EWFVaVFTJCTxdW2so",
+      "url": "ngo-ezl2utptx-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T11:58:18.171Z",
+      "sourceCommit": "ec9b692eedc64b9ce7839eac3da0f259edc17611",
+      "branch": "codex/driver-details",
+      "pullRequestNumber": null,
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [
+        "ngo-git-codex-driver-details-equinox10.vercel.app"
+      ],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-driver-details-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-ezl2utptx-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-ezl2utptx-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-git-codex-driver-details-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_AwUaLVegnRUQt9w47to7r2UxL4fy",
+      "url": "ngo-b4cvfnnrq-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-03T20:07:34.501Z",
+      "sourceCommit": "440fb0b26bd2e20f8346df4ae2c9d1f5abdd86bd",
+      "branch": "integration/ngo-recovery",
+      "pullRequestNumber": "26",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-b4cvfnnrq-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-b4cvfnnrq-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_CKxCdGCskBxW8EZRDPVV6gqfDK9P",
+      "url": "ngo-2fiiujlkv-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-06T16:58:17.158Z",
+      "sourceCommit": "b7b321cca94b318e29e0ae8ced1e136db1ebfd3e",
+      "branch": "integration/ngo-recovery",
+      "pullRequestNumber": "26",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-2fiiujlkv-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-2fiiujlkv-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_CQwfGXfYdcYdaZKajajMhmyr8GKv",
+      "url": "ngo-hrsmxrr77-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-02T13:37:15.177Z",
+      "sourceCommit": "3823fbc951c58dd0a4bc3ce9e564e42e7cfa45ce",
+      "branch": "feature/vehicle-tracking",
+      "pullRequestNumber": "25",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [
+        "ngo-git-feature-vehicle-tracking-equinox10.vercel.app"
+      ],
+      "historicalAliasMetadata": [
+        "ngo-git-feature-vehicle-tracking-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-hrsmxrr77-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-hrsmxrr77-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-git-feature-vehicle-tracking-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_D4AEbTeEmTSqpSswRofqXUb1h1gR",
+      "url": "ngo-krpcsw9fq-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-30T18:05:39.740Z",
+      "sourceCommit": "b1574351e914922d00c22bad489e305ea577597a",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "pullRequestNumber": null,
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-demo-backend-hosting-2026-10-29-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-krpcsw9fq-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-krpcsw9fq-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_D4eqkJXcPAFtuN41uJ37wTCRdbFy",
+      "url": "ngo-628rt997i-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T07:48:00.984Z",
+      "sourceCommit": "10d4264ba5cbe78e0131a65b8a2656ef3ade07e1",
+      "branch": "codex/volunteer-applications-integration",
+      "pullRequestNumber": "21",
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-628rt997i-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-628rt997i-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_DKYEhzEw7wP5iwBUw2V8eMcVZUQE",
+      "url": "ngo-knqafxw5l-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T06:29:31.536Z",
+      "sourceCommit": "b3737eb2e00f4bf360eecf98df2d15df4c28221a",
+      "branch": "codex/volunteer-applications-integration",
+      "pullRequestNumber": "21",
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-knqafxw5l-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-knqafxw5l-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_DtMkg6vTq3ZV9whRTKYvjACXH4DA",
+      "url": "ngo-g0s4x7ic4-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T11:05:31.765Z",
+      "sourceCommit": "857c5092f2cfd12925cec90a611b34468b1c72ee",
+      "branch": "codex/volunteer-roster-preview",
+      "pullRequestNumber": "23",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [
+        "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app"
+      ],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-g0s4x7ic4-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-g0s4x7ic4-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_E8GjSbLXAF8busWxsPL6b37ryxnD",
+      "url": "ngo-12t3ebbmh-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T08:19:36.890Z",
+      "sourceCommit": "12d62d3f2231f2b6190f54dae40802e68efac078",
+      "branch": "develop",
+      "pullRequestNumber": null,
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-12t3ebbmh-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-12t3ebbmh-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_FqPr2iNWg424shQBnRs6ghboAYe1",
+      "url": "ngo-2ptg8iti5-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-04T17:04:00.758Z",
+      "sourceCommit": "3c7eb14dd4e9400ffc50d900bc57955192284aa1",
+      "branch": "integration/ngo-recovery",
+      "pullRequestNumber": "26",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-2ptg8iti5-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-2ptg8iti5-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_G6Chk7wGN9rJoa7wcvn4Q17h2Pkr",
+      "url": "ngo-c43ghjhpb-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-30T19:31:16.124Z",
+      "sourceCommit": "056d9b20ec5c17d91a77ba70b8008ee542360929",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "pullRequestNumber": null,
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-demo-backend-hosting-2026-10-29-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-c43ghjhpb-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-c43ghjhpb-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_GEyaVSX1J23QtS88fMdJpmwzj5zi",
+      "url": "ngo-8baza3y4o-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-28T19:35:58.200Z",
+      "sourceCommit": "7223b1003a76cd08bde738e33511f6c5a513ec6b",
+      "branch": "develop",
+      "pullRequestNumber": null,
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-8baza3y4o-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-8baza3y4o-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_Gi14XH9cawMk7ifquDQUFh41o5Pt",
+      "url": "ngo-40r5fgyvh-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-05T19:05:59.540Z",
+      "sourceCommit": "4099681d8314d80722a7e948f57e063941559dcd",
+      "branch": "integration/ngo-recovery",
+      "pullRequestNumber": "26",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-integration-ngo-recovery-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-40r5fgyvh-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-40r5fgyvh-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_Hf4beukB5h8p5q6AChP6Ss7JtWWd",
+      "url": "ngo-l7wejkvif-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-30T14:58:30.553Z",
+      "sourceCommit": "b4618afa8047bd48abe2f17ddd87e651cd016846",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "pullRequestNumber": "19",
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-demo-backend-hosting-2026-10-29-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-l7wejkvif-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-l7wejkvif-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_HgcQRX7cKE2JQgFpcX9PCf7AzXY4",
+      "url": "ngo-nsos9acvm-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-01T10:50:37.526Z",
+      "sourceCommit": "9970c932d801c9ba28974dc27a29b9daab8d162f",
+      "branch": "codex/volunteer-roster-preview",
+      "pullRequestNumber": "23",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-nsos9acvm-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-nsos9acvm-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_NfcFgohu5HZBVrpoGF2FCd3c8ZSZ",
+      "url": "ngo-6t574glt2-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-10-30T18:21:00.250Z",
+      "sourceCommit": "bdd05d9d47882e99326d79a41630b5bff11fa9f2",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "pullRequestNumber": null,
+      "bindingNames": [],
+      "currentAliases": [],
+      "historicalAliasMetadata": [
+        "ngo-git-demo-backend-hosting-2026-10-29-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-6t574glt2-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-6t574glt2-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    },
+    {
+      "id": "dpl_wXbuVcN7v7riLGbPocXv7foETq99",
+      "url": "ngo-61wghh8lt-equinox10.vercel.app",
+      "target": null,
+      "state": "READY",
+      "createdUtc": "2026-11-02T11:42:27.388Z",
+      "sourceCommit": "7a8902d9bf652b29f718dafdc920199bf2278096",
+      "branch": "codex/volunteer-applications-integration",
+      "pullRequestNumber": "21",
+      "bindingNames": [
+        "DATABASE_URL",
+        "DATABASE_SSL_CA",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "VITE_API_BASE_URL",
+        "CORS_ORIGIN"
+      ],
+      "currentAliases": [
+        "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app"
+      ],
+      "historicalAliasMetadata": [
+        "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app"
+      ],
+      "userAliasMetadata": [],
+      "customCurrentAliases": [],
+      "http": [
+        {
+          "host": "ngo-61wghh8lt-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-61wghh8lt-equinox10.vercel.app",
+          "path": "/api/v1/health/ready",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        },
+        {
+          "host": "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app",
+          "path": "/",
+          "status": 302,
+          "vercelAuthenticationGate": true,
+          "redirectPresent": true,
+          "vercelError": null
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "count": 42,
+    "protectedDeploymentRoots": 42,
+    "publicDeploymentRoots": 0,
+    "unavailableDeploymentRoots": 0,
+    "withDatabaseBindingName": 22,
+    "withSupabaseBindingNames": 22,
+    "withServerSecretBindingName": 0,
+    "currentAliasCount": 5,
+    "customAliasCount": 0,
+    "currentAliasesPublic": [],
+    "branches": [
+      "codex/driver-details",
+      "codex/volunteer-applications-integration",
+      "codex/volunteer-roster-preview",
+      "demo/backend-hosting-2026-10-29",
+      "develop",
+      "feature/vehicle-tracking",
+      "fix/ist-donation-times",
+      "integration/ngo-recovery"
+    ],
+    "httpProbeCount": 89,
+    "httpStatusCounts": {
+      "302": 89
+    }
+  },
+  "completedUtc": "2026-11-10T04:50:52.274Z",
+  "environmentValuesRequestedOrDecrypted": false,
+  "openPullRequests": [
+    {
+      "number": 25,
+      "url": "https://github.com/designerhawk12/NGO/pull/25",
+      "title": "Implement Vehicle Tracking Module"
+    },
+    {
+      "number": 26,
+      "url": "https://github.com/designerhawk12/NGO/pull/26",
+      "title": "Integration/ngo recovery"
+    }
+  ],
+  "requiredByOperatorsOrReviewers": "NOT VERIFIED: requires explicit owner/reviewer retirement attestation"
+}

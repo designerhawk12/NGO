@@ -58,10 +58,11 @@ function toFrontendVehicle(item: ApiVehicleItem, existing?: Vehicle): Vehicle {
     nextServiceDate: existing?.nextServiceDate ?? existing?.nextMaintenance ?? item.latestMaintenance?.nextServiceDueOn ?? undefined,
     lastCleaningDate: existing?.lastCleaningDate,
     nextCleaningDueDate: existing?.nextCleaningDueDate,
-    driverId: item.currentDriver?.driverId ?? existing?.driverId,
-    driverName: item.currentDriver?.name ?? existing?.driverName,
-    driverPhone: item.currentDriver?.phone ?? existing?.driverPhone,
-    driverLicence: item.currentDriver?.licenceNumber ?? existing?.driverLicence,
+    // The fixed NGO employee driver comes only from the server (set in Assign Driver).
+    driverId: item.assignedDriver?.driverId,
+    driverName: item.assignedDriver?.name,
+    driverPhone: item.assignedDriver?.phone ?? undefined,
+    driverLicence: item.assignedDriver?.licenceNumber,
     lastMaintenance: item.latestMaintenance?.servicedOn ?? existing?.lastMaintenance,
     nextMaintenance: item.latestMaintenance?.nextServiceDueOn ?? existing?.nextMaintenance ?? existing?.nextServiceDate,
     readiness: item.readiness ?? existing?.readiness,
@@ -82,10 +83,10 @@ export default function Vehicles({
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'detail' | 'maint' | null>(null)
 
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(() => isLiveAdmin())
   const [error, setError] = useState<string | null>(null)
   const [_summary, setSummary] = useState<FleetSummary | null>(null)
-  const [liveDrivers, setLiveDrivers] = useState<Driver[]>(fallbackDrivers)
+  const [liveDrivers, setLiveDrivers] = useState<Driver[]>(() => isLiveAdmin() ? [] : fallbackDrivers)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -114,6 +115,17 @@ export default function Vehicles({
       } else {
         const reason: any = vehiclesRes.reason
         if (reason?.status === 401 || reason?.code === 'UNAUTHENTICATED') {
+          if (isLiveAdmin()) {
+            updateParentVehicles([])
+            setLiveDrivers([])
+            setError('Administrator session expired. Sign in again to load the live fleet.')
+          }
+          return
+        }
+        if (isLiveAdmin()) {
+          updateParentVehicles([])
+          setLiveDrivers([])
+          setError('Could not load the live vehicle registry. Retry after checking the administrator session.')
           return
         }
         console.warn('Failed to load vehicles from API:', vehiclesRes.reason)
@@ -135,6 +147,8 @@ export default function Vehicles({
           status: d.status,
         }))
         setLiveDrivers(mappedDrivers)
+      } else if (isLiveAdmin()) {
+        setLiveDrivers([])
       }
 
       // If vehicles request failed, surface the error unless it's offline / unauthenticated
@@ -170,28 +184,22 @@ export default function Vehicles({
     loadData()
   }, [loadData])
 
-  const CANONICAL_STATUS: Record<string, string> = {
-    'KA-09-AB-2027': 'AVAILABLE',
-    'KA-09-AB-2026': 'AVAILABLE',
-    'KA-09-AB-2048': 'AVAILABLE',
-    'KA-05-MN-1180': 'ON TRIP',
-    'KA-03-CD-4512': 'ON TRIP',
-    'KA-01-PQ-7734': 'MAINTENANCE',
-  }
-
   const getEffectiveStatus = (v: Vehicle): string => {
     const regUpper = v.registrationNumber.toUpperCase()
     if (v.status === 'MAINTENANCE' || v.readiness?.dispatchStatus === 'MAINTENANCE_RESTRICTED') return 'MAINTENANCE'
     if (v.status === 'ON TRIP' || v.readiness?.dispatchStatus === 'DISPATCHED') return 'ON TRIP'
-    if (CANONICAL_STATUS[regUpper]) return CANONICAL_STATUS[regUpper]
     if (v.status === 'AVAILABLE' || v.status === 'ACTIVE') return 'AVAILABLE'
-    return v.status
+    return isLiveAdmin() ? v.status : v.status || regUpper
   }
 
-  const availableCount = initialVehicles.filter(v => getEffectiveStatus(v) === 'AVAILABLE').length
-  const onTripCount = initialVehicles.filter(v => getEffectiveStatus(v) === 'ON TRIP').length
-  const maintenanceCount = initialVehicles.filter(v => getEffectiveStatus(v) === 'MAINTENANCE').length
-  const totalFleetCount = initialVehicles.length
+  const visibleVehicles = isLiveAdmin() && loading ? [] : initialVehicles
+  const eligibleDrivers = isLiveAdmin()
+    ? liveDrivers.filter(driver => driver.status === 'ACTIVE' && driver.licenseExpiry >= new Date().toISOString().slice(0, 10))
+    : liveDrivers
+  const availableCount = visibleVehicles.filter(v => getEffectiveStatus(v) === 'AVAILABLE').length
+  const onTripCount = visibleVehicles.filter(v => getEffectiveStatus(v) === 'ON TRIP').length
+  const maintenanceCount = visibleVehicles.filter(v => getEffectiveStatus(v) === 'MAINTENANCE').length
+  const totalFleetCount = visibleVehicles.length
 
   const handleSaveVehicle = async (vehicle: Vehicle) => {
     if (isLiveAuthConfigured() && !isLiveAdmin()) {
@@ -200,7 +208,7 @@ export default function Vehicles({
     }
     const isEdit = Boolean(
       vehicle.vehicleId &&
-      initialVehicles.some(
+        visibleVehicles.some(
         v => v.vehicleId === vehicle.vehicleId || v.registrationNumber.toUpperCase() === vehicle.registrationNumber.toUpperCase()
       )
     )
@@ -215,7 +223,6 @@ export default function Vehicles({
             status: vehicle.status === 'MAINTENANCE' || vehicle.status === 'RETIRED' ? vehicle.status : 'ACTIVE',
             sizeCategory: vehicle.sizeCategory ?? null,
             indicativeMaxVessels: vehicle.indicativeMaxVessels ?? null,
-            assignedDriverId: vehicle.driverId ?? null,
           })
           notify('Vehicle updated successfully.', 'success')
         } else {
@@ -227,7 +234,6 @@ export default function Vehicles({
             status: vehicle.status === 'MAINTENANCE' || vehicle.status === 'RETIRED' ? vehicle.status : 'ACTIVE',
             sizeCategory: vehicle.sizeCategory ?? null,
             indicativeMaxVessels: vehicle.indicativeMaxVessels ?? null,
-            assignedDriverId: vehicle.driverId ?? null,
           })
           notify('Vehicle added to registry successfully.', 'success')
         }
@@ -249,7 +255,7 @@ export default function Vehicles({
         } else {
           const newVeh: Vehicle = {
             ...vehicle,
-            vehicleId: vehicle.vehicleId || `V${String(initialVehicles.length + 1).padStart(3, '0')}`,
+            vehicleId: vehicle.vehicleId || `V${String(visibleVehicles.length + 1).padStart(3, '0')}`,
           }
           updateParentVehicles(curr => {
             const updated = [newVeh, ...curr]
@@ -449,7 +455,7 @@ export default function Vehicles({
             }`}
             onClick={() => setTab('fleet')}
           >
-            <Truck size={16} /> <span>Fleet Registry</span> <span>({initialVehicles.length})</span>
+            <Truck size={16} /> <span>Fleet Registry</span> <span>({visibleVehicles.length})</span>
           </button>
           <button
             type="button"
@@ -468,7 +474,7 @@ export default function Vehicles({
       {/* Tab Content */}
       {tab === 'fleet' ? (
         <VehicleList
-          vehicles={initialVehicles}
+          vehicles={visibleVehicles}
           drivers={liveDrivers}
           maintenanceRecords={maintenanceRecords}
           onAddVehicle={() => {
@@ -492,7 +498,7 @@ export default function Vehicles({
       ) : (
         <MaintenanceList
           maintenanceRecords={maintenanceRecords}
-          vehicles={initialVehicles}
+          vehicles={visibleVehicles}
           onLogMaintenance={() => {
             setSelectedVehicle(null)
             setModalMode('maint')
@@ -503,8 +509,7 @@ export default function Vehicles({
       {/* Modals and Drawers */}
       {modalMode === 'add' && (
         <VehicleModal
-          existingVehicles={initialVehicles}
-          drivers={liveDrivers}
+          existingVehicles={visibleVehicles}
           maintenanceRecords={maintenanceRecords}
           onClose={() => setModalMode(null)}
           onSave={handleSaveVehicle}
@@ -516,8 +521,7 @@ export default function Vehicles({
         <VehicleModal
           key={selectedVehicle.vehicleId}
           vehicle={selectedVehicle}
-          existingVehicles={initialVehicles}
-          drivers={liveDrivers}
+          existingVehicles={visibleVehicles}
           maintenanceRecords={maintenanceRecords}
           onClose={() => {
             setSelectedVehicle(null)
@@ -531,7 +535,7 @@ export default function Vehicles({
       {modalMode === 'detail' && selectedVehicle && (
         <VehicleDetailModal
           vehicle={selectedVehicle}
-          drivers={liveDrivers}
+          drivers={eligibleDrivers}
           assignments={assignments}
           events={events}
           maintenanceRecords={maintenanceRecords}
@@ -553,7 +557,7 @@ export default function Vehicles({
 
       {modalMode === 'maint' && (
         <MaintenanceModal
-          vehicles={initialVehicles}
+          vehicles={visibleVehicles}
           initialVehicleId={selectedVehicle?.vehicleId}
           onClose={() => {
             setSelectedVehicle(null)

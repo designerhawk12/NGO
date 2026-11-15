@@ -1,0 +1,1934 @@
+{
+  "capturedUtc": "2026-11-10T05:04:40.740Z",
+  "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+  "teamId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+  "manifestSha256": "5f21b22a766cccda0f7251382aa4684e13061e001a5d89a4d4862a2f29f36ba2",
+  "ownerReviewAttestation": "User confirmed relevant operators and PR25/PR26 reviewers no longer need every listed Preview link",
+  "project": {
+    "id": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+    "name": "ngo",
+    "updatedAt": 1794285650141,
+    "gitLink": null,
+    "activeDeployment": "dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR",
+    "protection": {
+      "deploymentType": "all_except_custom_domains"
+    },
+    "env": [
+      {
+        "id": "2g6ss988CwpJaw43",
+        "key": "SUPABASE_ANON_KEY",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "4tXpHkFTRmXXE9aQ",
+        "key": "PUBLIC_VOLUNTEER_REGISTRATION_ENABLED",
+        "type": "plain",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "4weB20rFlepMDJWS",
+        "key": "POSTGRES_DATABASE",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "eWjHd1Aky7vpT0bN",
+        "key": "CORS_ORIGIN",
+        "type": "sensitive",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "iGzz2heBsDhiV4ep",
+        "key": "SUPABASE_JWT_SECRET",
+        "type": "sensitive",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "noi9qOYMarVxDRTJ",
+        "key": "VITE_API_BASE_URL",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "psm91a4WWEMXgQO1",
+        "key": "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "Ru0s8EOML9jLt6qb",
+        "key": "POSTGRES_HOST",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "Sir7O8TqvJJBkRRy",
+        "key": "SUPABASE_SECRET_KEY",
+        "type": "sensitive",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "T1ZjRkakWsbhvO0V",
+        "key": "SUPABASE_URL",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "tVKo9LotOTshCACb",
+        "key": "VITE_SUPABASE_URL",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "UM3fRIYRcozTlg28",
+        "key": "SUPABASE_SERVICE_ROLE_KEY",
+        "type": "sensitive",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "unbnh6CbXWAQL2Y8",
+        "key": "DATABASE_SSL_CA",
+        "type": "sensitive",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "UtGil0f5DolgfCko",
+        "key": "POSTGRES_USER",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "vthafSpfObcs4Ixx",
+        "key": "DATABASE_SSL",
+        "type": "sensitive",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "XEaUlJAI1QvOSjdQ",
+        "key": "DATABASE_URL",
+        "type": "sensitive",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "ydIDgoxrfW3uAylC",
+        "key": "VOLUNTEER_INVITE_REDIRECT_URL",
+        "type": "sensitive",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "Z5LKIb22fkpps7uG",
+        "key": "POSTGRES_PASSWORD",
+        "type": "sensitive",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      },
+      {
+        "id": "ZVukaEfCjuKeWFSx",
+        "key": "SUPABASE_PUBLISHABLE_KEY",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "gitBranch": null
+      }
+    ],
+    "buildCommand": "npm run build:web",
+    "installCommand": "npm ci",
+    "outputDirectory": "apps/web/dist",
+    "rootDirectory": null,
+    "framework": "vite"
+  },
+  "activeAliases": [
+    {
+      "host": "ngo-eight-umber.vercel.app",
+      "uid": "fc65f0addbf94c3d8a498b87eb827c5d6e23b11d0c818adf3113fb9873c27aa5b65c4139e9dbb6f4286913af35f7843cf3b55f0bc2879ec8c3ca2fe3913ad961"
+    },
+    {
+      "host": "ngo-git-integration-ngo-recovery-equinox10.vercel.app",
+      "uid": "d0ce47e2b1e2c089c14da0b261eb0b9a675efd0e74532ced5bfb7b1ff222210e63f8d3d65483d45c8093b76d0fa7418c68aa00c40cd92bf3db627698913605df"
+    }
+  ],
+  "deployments": [
+    {
+      "id": "dpl_28RM9mtJ5AxFJttybB7xntRgRRTd",
+      "target": null,
+      "state": "READY",
+      "created": 1793982709159,
+      "url": "ngo-2oxqz3712-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_2VkFDfWDM5qgEsNqx4Ybry4hAWQg",
+      "target": null,
+      "state": "READY",
+      "created": 1793380725311,
+      "url": "ngo-nd2c0ymyp-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_2wBnJ2swiSjypjfTuDs9oWZf2Fwa",
+      "target": null,
+      "state": "READY",
+      "created": 1793535753575,
+      "url": "ngo-ocm1jpkc5-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_2wRUjz9oeo5YHy8rH43XdErPhHSV",
+      "target": "production",
+      "state": "READY",
+      "created": 1793705164405,
+      "url": "ngo-4ghxwjbqt-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_2YRszXKtrr1Be6Q2Wa7CcUbrJoj4",
+      "target": "production",
+      "state": "READY",
+      "created": 1793526663804,
+      "url": "ngo-2rs2pkgw7-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_35dxu4vKGyXBLhVTxr31oxauf4WN",
+      "target": "production",
+      "state": "READY",
+      "created": 1793517902327,
+      "url": "ngo-m49k5f0cx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_3ccCf3HrY9iApuDJjmhWAt3x4rCs",
+      "target": null,
+      "state": "READY",
+      "created": 1793381020116,
+      "url": "ngo-ov61owyof-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_3RW9briSMFCbBXAV7tL3e19pEPJM",
+      "target": "production",
+      "state": "READY",
+      "created": 1793387125001,
+      "url": "ngo-br72nypkx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_48XvHzKP9tJcFLks5XZHSuVDqxpR",
+      "target": "production",
+      "state": "READY",
+      "created": 1793985230252,
+      "url": "ngo-i2v03pslb-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_4Dy14GR4DNKyDofaTMRwCAuRdxE9",
+      "target": "production",
+      "state": "READY",
+      "created": 1793383626362,
+      "url": "ngo-3d70zxzqx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_4MnYeEnsTuP1Ed8DVJ4y7uX1EXuM",
+      "target": "production",
+      "state": "READY",
+      "created": 1793216031611,
+      "url": "ngo-8mzza6cvh-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_4qU4ouzTNPGdn1tkvVsi4RsE8yzG",
+      "target": null,
+      "state": "READY",
+      "created": 1793515476175,
+      "url": "ngo-aomr5b8k2-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_56CpxejcUCBhqGtBunYMfonJ22Rr",
+      "target": "production",
+      "state": "READY",
+      "created": 1793386378652,
+      "url": "ngo-5guh3w9vy-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_56EzLXSRZaResE6sUA2R9PeBvbkj",
+      "target": null,
+      "state": "READY",
+      "created": 1793904331151,
+      "url": "ngo-6cftdovrf-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_58fqbEZ2c4TGV3mtjZ7or9V4U28Q",
+      "target": null,
+      "state": "READY",
+      "created": 1793220034856,
+      "url": "ngo-afk6q50c7-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_5cbzb1BEKqWL8xy6vtEuoiYxstUf",
+      "target": null,
+      "state": "READY",
+      "created": 1793697473072,
+      "url": "ngo-40dsrgmhf-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_5k9HrtHZvPBVgKeYSQSBRwpmBNSQ",
+      "target": "production",
+      "state": "READY",
+      "created": 1793528149497,
+      "url": "ngo-2dw8uorh5-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_6fM6wxDsw5Er2KAa9uZ5RRGDcaU1",
+      "target": null,
+      "state": "ERROR",
+      "created": 1793522844468,
+      "url": "ngo-wipmt3ki3-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_6NJ9s73yd8m94DCy5N4YJ9JzR9ak",
+      "target": null,
+      "state": "READY",
+      "created": 1793769729640,
+      "url": "ngo-1vzjf42f0-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_6nQQ21fj4JqUUzyhMxfiVDtBxUx7",
+      "target": null,
+      "state": "READY",
+      "created": 1793523129916,
+      "url": "ngo-17qujhawj-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_6qhbUmCVmMkNXkFpyMq2yBXQuf5W",
+      "target": null,
+      "state": "READY",
+      "created": 1793371260409,
+      "url": "ngo-gu96fv5f6-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_6QhzmLGvDKG8L2bZnfB6X1118444",
+      "target": null,
+      "state": "READY",
+      "created": 1793903678015,
+      "url": "ngo-4x3gmo864-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_7cfbuMgYpDQzT5ogEZq53pVSdADr",
+      "target": "production",
+      "state": "READY",
+      "created": 1793380852923,
+      "url": "ngo-djmmwglt2-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_7qiMBgmRfahBg8Y41JU4oussdYL4",
+      "target": "production",
+      "state": "READY",
+      "created": 1793384573369,
+      "url": "ngo-8s7i0gq80-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_7RgDCKNxHxpaiUa2qGz88pxpDuXS",
+      "target": null,
+      "state": "READY",
+      "created": 1793372428047,
+      "url": "ngo-f86aoh0sg-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_7XNW6D1JqXGdCoVaUWdAHUH7xh8P",
+      "target": null,
+      "state": "READY",
+      "created": 1793698897718,
+      "url": "ngo-bftikdy7j-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_7ZYicErsWho7JfNL9BRhiiEJqniQ",
+      "target": null,
+      "state": "READY",
+      "created": 1793533441152,
+      "url": "ngo-7ug3uaz56-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_8abaMWVSBcvRRNSzLC5H1oWEu78y",
+      "target": null,
+      "state": "READY",
+      "created": 1793218498407,
+      "url": "ngo-6772tlcyg-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_8dWurx1gVUpjUWGPs5B5fawtUZQU",
+      "target": null,
+      "state": "READY",
+      "created": 1793525369848,
+      "url": "ngo-8msbdv5cl-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_8iH4tAHask8XWozdr62LUFRhcjZt",
+      "target": null,
+      "state": "READY",
+      "created": 1793523799164,
+      "url": "ngo-9dakrbhzy-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_8mCga2ryn3LbfZ3exxwuKXChtQTb",
+      "target": "production",
+      "state": "READY",
+      "created": 1793367833033,
+      "url": "ngo-cez91rfrs-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_8ooCNzvqj6BFNcs2SM2hzqyyj1TG",
+      "target": "production",
+      "state": "READY",
+      "created": 1793530056851,
+      "url": "ngo-hyspyxj5o-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_94Dayeyeaz6Uhf2ffKBGy3Dq9GX6",
+      "target": "production",
+      "state": "READY",
+      "created": 1793522337057,
+      "url": "ngo-r502yekxn-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_96bbfeyS2rUxWn9yvhehzZS2Fgc8",
+      "target": null,
+      "state": "READY",
+      "created": 1793284214495,
+      "url": "ngo-jawiswfd6-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_9EKEqiFnrvt2KXFVLKWRQMHEUL75",
+      "target": null,
+      "state": "READY",
+      "created": 1793529503346,
+      "url": "ngo-jfsf42qdo-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_9kC6BxaHDdSsaNCDMCSnxGEqrXDJ",
+      "target": null,
+      "state": "READY",
+      "created": 1793619661006,
+      "url": "ngo-a3ns68hxj-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_9MeyLBSqXD8r9FA6CH2XYK19dKia",
+      "target": null,
+      "state": "READY",
+      "created": 1793535248018,
+      "url": "ngo-mnwlycmel-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_A17kSj8a14WJPuKCFT3Hgtkzw24g",
+      "target": "production",
+      "state": "READY",
+      "created": 1793519405090,
+      "url": "ngo-ayq8lu9kj-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_A8BG62nmmr9gphVYpBHMAN5zkcD6",
+      "target": "production",
+      "state": "READY",
+      "created": 1793515611063,
+      "url": "ngo-1e2w5nvq8-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_Adox9TZ5TtoDwNr8c1wnKkFHvv16",
+      "target": null,
+      "state": "READY",
+      "created": 1793619784368,
+      "url": "ngo-lgxg8ei8d-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_Aeu3LSE6V9h7iyFR3z6vPG8MfZfe",
+      "target": null,
+      "state": "READY",
+      "created": 1793521564849,
+      "url": "ngo-opxvpt8at-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_ALcWeHgfr2mQzGaDPqZYFLakJnn8",
+      "target": null,
+      "state": "READY",
+      "created": 1793527774559,
+      "url": "ngo-dw70hbgsj-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_AP947urXckRqHftdFhPDURhNwz5p",
+      "target": "production",
+      "state": "READY",
+      "created": 1793812279235,
+      "url": "ngo-2gorydeb4-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_ArPNwDXL57byYbyaVT6ynKCzGQaF",
+      "target": "production",
+      "state": "READY",
+      "created": 1793521323019,
+      "url": "ngo-1wnz155oy-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_AVW7JXsg3D3EWFVaVFTJCTxdW2so",
+      "target": null,
+      "state": "READY",
+      "created": 1793534298171,
+      "url": "ngo-ezl2utptx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_AwUaLVegnRUQt9w47to7r2UxL4fy",
+      "target": null,
+      "state": "READY",
+      "created": 1793736454501,
+      "url": "ngo-b4cvfnnrq-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_B3kPtUtxrfXFxVwCTrjGENkTbAAL",
+      "target": "production",
+      "state": "READY",
+      "created": 1793526444219,
+      "url": "ngo-luay46klp-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_BPGxFs5pN3zEmq5Vs9WC5BrjUrKU",
+      "target": "production",
+      "state": "READY",
+      "created": 1793530434388,
+      "url": "ngo-3xf30mh5y-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_BpvLjEhRprwPrxQZw3THzr8H4TNw",
+      "target": "production",
+      "state": "READY",
+      "created": 1793522364173,
+      "url": "ngo-mpz6t27bl-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_C4JJduq4QPZCgVMHoPaTiReMNQCm",
+      "target": "production",
+      "state": "READY",
+      "created": 1793906205386,
+      "url": "ngo-auql5uugq-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_CKxCdGCskBxW8EZRDPVV6gqfDK9P",
+      "target": null,
+      "state": "READY",
+      "created": 1793984297158,
+      "url": "ngo-2fiiujlkv-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_CQwfGXfYdcYdaZKajajMhmyr8GKv",
+      "target": null,
+      "state": "READY",
+      "created": 1793626635177,
+      "url": "ngo-hrsmxrr77-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_CTgZJSRJQvf6BFUr2CgSnAaYifCQ",
+      "target": "production",
+      "state": "READY",
+      "created": 1793762673556,
+      "url": "ngo-aixkl3cgx-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_D4AEbTeEmTSqpSswRofqXUb1h1gR",
+      "target": null,
+      "state": "READY",
+      "created": 1793383539740,
+      "url": "ngo-krpcsw9fq-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_D4eqkJXcPAFtuN41uJ37wTCRdbFy",
+      "target": null,
+      "state": "READY",
+      "created": 1793519280984,
+      "url": "ngo-628rt997i-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_D5TPJCiTGXn1pAawdGpk7upSQpv3",
+      "target": "production",
+      "state": "READY",
+      "created": 1793524560288,
+      "url": "ngo-lv86b5z69-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_DKYEhzEw7wP5iwBUw2V8eMcVZUQE",
+      "target": null,
+      "state": "READY",
+      "created": 1793514571536,
+      "url": "ngo-knqafxw5l-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_DtMkg6vTq3ZV9whRTKYvjACXH4DA",
+      "target": null,
+      "state": "READY",
+      "created": 1793531131765,
+      "url": "ngo-g0s4x7ic4-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_E8GjSbLXAF8busWxsPL6b37ryxnD",
+      "target": null,
+      "state": "READY",
+      "created": 1793521176890,
+      "url": "ngo-12t3ebbmh-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_EX3iQqWa3jCRm7VrxJLyeqyJKUgm",
+      "target": "production",
+      "state": "READY",
+      "created": 1793526096205,
+      "url": "ngo-f2b57f371-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_EyU4KxdKcJN8aVCWfUzAQMqCGx86",
+      "target": "production",
+      "state": "READY",
+      "created": 1793985034002,
+      "url": "ngo-r9vri5r9p-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_F4psXMB27AfzvE4Myiq4LNbjAQJx",
+      "target": "production",
+      "state": "READY",
+      "created": 1793518494139,
+      "url": "ngo-kno2zzzx3-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_FLpniwaduSFLZmhM684iXN7eTm8q",
+      "target": "production",
+      "state": "READY",
+      "created": 1793388934020,
+      "url": "ngo-3a1yz1ain-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_FqPr2iNWg424shQBnRs6ghboAYe1",
+      "target": null,
+      "state": "READY",
+      "created": 1793811840758,
+      "url": "ngo-2ptg8iti5-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_G6Chk7wGN9rJoa7wcvn4Q17h2Pkr",
+      "target": null,
+      "state": "READY",
+      "created": 1793388676124,
+      "url": "ngo-c43ghjhpb-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_GEyaVSX1J23QtS88fMdJpmwzj5zi",
+      "target": null,
+      "state": "READY",
+      "created": 1793216158200,
+      "url": "ngo-8baza3y4o-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_Gi14XH9cawMk7ifquDQUFh41o5Pt",
+      "target": null,
+      "state": "READY",
+      "created": 1793905559540,
+      "url": "ngo-40r5fgyvh-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_GmAPYXpMvnP5Q65YoJs1VZdRawkh",
+      "target": "production",
+      "state": "READY",
+      "created": 1793517695250,
+      "url": "ngo-8pxg9x35m-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_GTZT4VyEqUxVj9CsMF6EDcJ8fLqp",
+      "target": "production",
+      "state": "READY",
+      "created": 1793776473183,
+      "url": "ngo-i6zivks0u-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_Hf4beukB5h8p5q6AChP6Ss7JtWWd",
+      "target": null,
+      "state": "READY",
+      "created": 1793372310553,
+      "url": "ngo-l7wejkvif-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_HgcQRX7cKE2JQgFpcX9PCf7AzXY4",
+      "target": null,
+      "state": "READY",
+      "created": 1793530237526,
+      "url": "ngo-nsos9acvm-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_Hrp2g3JMQjuo3H1nEdbAwQv36y1c",
+      "target": "production",
+      "state": "READY",
+      "created": 1793372542079,
+      "url": "ngo-batxd8esn-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_NfcFgohu5HZBVrpoGF2FCd3c8ZSZ",
+      "target": null,
+      "state": "READY",
+      "created": 1793384460250,
+      "url": "ngo-6t574glt2-equinox10.vercel.app"
+    },
+    {
+      "id": "dpl_wXbuVcN7v7riLGbPocXv7foETq99",
+      "target": null,
+      "state": "READY",
+      "created": 1793619747388,
+      "url": "ngo-61wghh8lt-equinox10.vercel.app"
+    }
+  ],
+  "staging": [
+    {
+      "project": {
+        "id": "prj_W1MrwAqFsWTFohHs6UXR2fo1EEIL",
+        "name": "aaharaconnect-ngo-staging",
+        "updatedAt": 1794252414470,
+        "gitLink": null,
+        "activeDeployment": "dpl_5Ya46jG23KCua5tG3gXkA2cKnWHP",
+        "protection": {
+          "deploymentType": "prod_deployment_urls_and_all_previews"
+        },
+        "env": [
+          {
+            "id": "2GHe9vygmLUHxJgf",
+            "key": "DATABASE_SSL_CA",
+            "type": "sensitive",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "4c6hs1dqhYVdgFWJ",
+            "key": "SUPABASE_SECRET_KEY",
+            "type": "sensitive",
+            "target": [
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "7I1uy9KN492wZLi4",
+            "key": "NODE_ENV",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "a0Ojq1N97EkxHWtJ",
+            "key": "DATABASE_SSL",
+            "type": "sensitive",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "AfC9H2SGDqb4jwMD",
+            "key": "WHATSAPP_ADMIN_OPTED_IN",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "awsQsR91UR0WXr87",
+            "key": "VOLUNTEER_IDENTITY_REQUIRED",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "dCwaCc2VQEQMS5Y4",
+            "key": "ANDROID_RELEASE_APPROVED",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "EyQMEsrKihbzSEGO",
+            "key": "SUPABASE_URL",
+            "type": "sensitive",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "iG3FcL77nocoXiFF",
+            "key": "DATABASE_URL",
+            "type": "sensitive",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "Ku6Ok5lBcmAfbllc",
+            "key": "PUBLIC_VOLUNTEER_REGISTRATION_ENABLED",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "m8zcilWhBim1GfTQ",
+            "key": "FOOD_REQUEST_IDEMPOTENCY_ENABLED",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "mjfjy7qQ75PKRUD5",
+            "key": "NOTIFICATION_OUTBOX_ENABLED",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "nZvgz77GbeGZdPRn",
+            "key": "SUPABASE_SECRET_KEY",
+            "type": "sensitive",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "OR8LS7ErJFGRz7Fc",
+            "key": "SUPABASE_PUBLISHABLE_KEY",
+            "type": "sensitive",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "pB5PU4DXuIoTyKwP",
+            "key": "VOLUNTEER_INVITE_REDIRECT_URL",
+            "type": "sensitive",
+            "target": [
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "pMfxJTmWDqlDWKHa",
+            "key": "IDENTITY_DELETION_APPROVED",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "pnLXXRjfmRf4cmBq",
+            "key": "DRIVER_TRACKING_REQUIRED",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "pSCKKI9Z3JwT5haO",
+            "key": "CORS_ORIGIN",
+            "type": "sensitive",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "pzOnX7kqbEFsVxfB",
+            "key": "VITE_SUPABASE_URL",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "qfO570eBHMb9VPTE",
+            "key": "WHATSAPP_SENDING_ENABLED",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "rQ88AR25OYHuqenv",
+            "key": "VITE_API_BASE_URL",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "RvAT5UDaza2Sdbuu",
+            "key": "TRACKING_GEOCODING_ENABLED",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "sa52o2fL5SMyGSbF",
+            "key": "VITE_SUPABASE_PUBLISHABLE_KEY",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "sEIqSN2xAwGAr27H",
+            "key": "PUBLIC_APP_ORIGIN",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "xQA8VZwDzzgZ3gKw",
+            "key": "VOLUNTEER_INVITE_REDIRECT_URL",
+            "type": "sensitive",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "ZNTgoHDTiqzteFKq",
+            "key": "ANDROID_SIGNING_CERT_SHA256",
+            "type": "encrypted",
+            "target": [
+              "production",
+              "preview"
+            ],
+            "gitBranch": null
+          }
+        ],
+        "buildCommand": "npm run build:web",
+        "installCommand": "npm ci",
+        "outputDirectory": "apps/web/dist",
+        "rootDirectory": null,
+        "framework": "vite"
+      },
+      "deployments": [
+        {
+          "id": "dpl_245LXpXkK6GmeLw18cgAq6wAuGeB",
+          "target": "production",
+          "state": "READY",
+          "created": 1793650023734,
+          "url": "aaharaconnect-ngo-staging-2qx7bpxap-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_3E32FguU9eV1kCaAbVgqoKTcvwcg",
+          "target": null,
+          "state": "READY",
+          "created": 1793904373126,
+          "url": "aaharaconnect-ngo-staging-g2hs092en-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_3zCtQzJ29iBTUJVg42Tr6W7B3uvi",
+          "target": null,
+          "state": "READY",
+          "created": 1793769966395,
+          "url": "aaharaconnect-ngo-staging-fsk5pb4nr-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_53Hb3s4ZkbQWxCdmE6Ew61oSswud",
+          "target": null,
+          "state": "READY",
+          "created": 1793789556883,
+          "url": "aaharaconnect-ngo-staging-6zlhrfrud-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_5Ya46jG23KCua5tG3gXkA2cKnWHP",
+          "target": "production",
+          "state": "READY",
+          "created": 1794252317668,
+          "url": "aaharaconnect-ngo-staging-1b75438jk-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_7RpkQASohDEG5s9Yu4tguQAcaL33",
+          "target": "production",
+          "state": "READY",
+          "created": 1793643692424,
+          "url": "aaharaconnect-ngo-staging-addrrm2x6-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_7WXo9CybWE3YdjLtUGy2EaHp48AH",
+          "target": null,
+          "state": "READY",
+          "created": 1793982725831,
+          "url": "aaharaconnect-ngo-staging-dikugzk8h-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_95BV8CqDJKrVnTSJbhCufe1NhtLb",
+          "target": "production",
+          "state": "READY",
+          "created": 1793641816966,
+          "url": "aaharaconnect-ngo-staging-89hh5jo81-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_AZyFKDo4NzmtJFGxJzj1sFEfbhZx",
+          "target": "production",
+          "state": "READY",
+          "created": 1794245129163,
+          "url": "aaharaconnect-ngo-staging-iowgj83bf-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_F1Sh8D3UoHfYGTH9wdXb6yCuB887",
+          "target": null,
+          "state": "READY",
+          "created": 1793984302671,
+          "url": "aaharaconnect-ngo-staging-m2jzorzng-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_Fmbe3UCX1VREeTnM2cfzvPHUDeb6",
+          "target": "production",
+          "state": "READY",
+          "created": 1794250779921,
+          "url": "aaharaconnect-ngo-staging-kr4t5ntys-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_FVTdENCjjSjmWWsNgsx9yH9KdRJQ",
+          "target": "production",
+          "state": "READY",
+          "created": 1794244950719,
+          "url": "aaharaconnect-ngo-staging-jihjs2sr8-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_FzZ2xfFFhh2CU6AaSywj1rLdPw15",
+          "target": "production",
+          "state": "READY",
+          "created": 1794229739425,
+          "url": "aaharaconnect-ngo-staging-4kyfjh3zz-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_GJH2P83961Fa9TNwWA3vRGq231o4",
+          "target": "production",
+          "state": "READY",
+          "created": 1794245428471,
+          "url": "aaharaconnect-ngo-staging-pqkgf9w6i-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_H678Z6q5qs1LFfb9Eo5Kn168i4r9",
+          "target": null,
+          "state": "READY",
+          "created": 1793642144185,
+          "url": "aaharaconnect-ngo-staging-8hisozq5f-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_HDxxkwXVvS2MGBetbSEa94MfxhhQ",
+          "target": "production",
+          "state": "READY",
+          "created": 1794249965732,
+          "url": "aaharaconnect-ngo-staging-9j4d41zwt-equinox10.vercel.app"
+        }
+      ]
+    },
+    {
+      "project": {
+        "id": "prj_Nd3YLsJkOYjlZMPLmFZw9MFG88Ul",
+        "name": "aaharaconnect-ngo-staging-api",
+        "updatedAt": 1794250918546,
+        "gitLink": null,
+        "activeDeployment": "dpl_9WrBdHU8JP4KD2CVBQpkUbwzJDqi",
+        "protection": {
+          "deploymentType": "prod_deployment_urls_and_all_previews"
+        },
+        "env": [
+          {
+            "id": "6ilXXWzJQvDQlaFp",
+            "key": "PUBLIC_VOLUNTEER_REGISTRATION_ENABLED",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "7EZJ987njYLoxifl",
+            "key": "WHATSAPP_ADMIN_OPTED_IN",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "86fyAhT85cz3eaQB",
+            "key": "CORS_ORIGIN",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "8HzshkJ5kJhn8UhH",
+            "key": "ANDROID_RELEASE_APPROVED",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "C084VqeebgZQw8Yx",
+            "key": "VITE_SUPABASE_URL",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "dK899wU2BeljYUxb",
+            "key": "PUBLIC_APP_ORIGIN",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "FfGxsn9W59ak1GqJ",
+            "key": "DATABASE_SSL",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "gtNAssEzz1ZsweXh",
+            "key": "SUPABASE_PUBLISHABLE_KEY",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "GZbi9j0Du806AbRr",
+            "key": "SUPABASE_SECRET_KEY",
+            "type": "sensitive",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "iT67jQUq9g9NQbfz",
+            "key": "VOLUNTEER_IDENTITY_REQUIRED",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "JmVhHsgHUxN10l0q",
+            "key": "NODE_ENV",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "KCeEiABJsuU12z0q",
+            "key": "ANDROID_SIGNING_CERT_SHA256",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "kVEBzkCl1tuP6xJc",
+            "key": "VITE_SUPABASE_PUBLISHABLE_KEY",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "kXeoEXe5j3OHm8Gz",
+            "key": "IDENTITY_DELETION_APPROVED",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "LdKMiQP5tozCtxsI",
+            "key": "VOLUNTEER_INVITE_REDIRECT_URL",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "lkEjJjQV2aq5V25k",
+            "key": "LOCATION_RETENTION_DAYS",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "OatKYadddxyrRJJv",
+            "key": "SUPABASE_URL",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "r35rXCvit6d1wk6y",
+            "key": "DATABASE_URL",
+            "type": "sensitive",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "UvCEXmVqLVGsPNS5",
+            "key": "FOOD_REQUEST_IDEMPOTENCY_ENABLED",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "W1ICN1fQfoGuHnwr",
+            "key": "DATABASE_SSL_CA",
+            "type": "sensitive",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "WmDgp9datEfFF0dP",
+            "key": "DRIVER_TRACKING_REQUIRED",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "WU6MHDHU08I1EtRi",
+            "key": "TRACKING_GEOCODING_ENABLED",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "YhUFxWHOFOEfLd7N",
+            "key": "WHATSAPP_SENDING_ENABLED",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "z4MGOopaX233r0Qf",
+            "key": "VITE_API_BASE_URL",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          },
+          {
+            "id": "Zmg2Aesg1hS7kmBJ",
+            "key": "NOTIFICATION_OUTBOX_ENABLED",
+            "type": "encrypted",
+            "target": [
+              "production"
+            ],
+            "gitBranch": null
+          }
+        ],
+        "buildCommand": null,
+        "installCommand": null,
+        "outputDirectory": null,
+        "rootDirectory": null,
+        "framework": null
+      },
+      "deployments": [
+        {
+          "id": "dpl_2xsNyXtW6hi2okE8mZDuBCAwpDx4",
+          "target": "production",
+          "state": "ERROR",
+          "created": 1793674881105,
+          "url": "aaharaconnect-ngo-staging-aa4h700fj-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_6eX3XRKYFoKxCMUM6Eh1RwNhNnDM",
+          "target": "production",
+          "state": "ERROR",
+          "created": 1793904488738,
+          "url": "aaharaconnect-ngo-staging-kwo83mh4n-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_9WrBdHU8JP4KD2CVBQpkUbwzJDqi",
+          "target": "production",
+          "state": "READY",
+          "created": 1794250776880,
+          "url": "aaharaconnect-ngo-staging-q4jg042p7-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_bHe4YQABt5BUT6rJPxt5kjm7ScPW",
+          "target": "production",
+          "state": "READY",
+          "created": 1793982723285,
+          "url": "aaharaconnect-ngo-staging-bgqciyu3i-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_DT23yU11sZJSEiLGryxhuZbS8kLz",
+          "target": "production",
+          "state": "READY",
+          "created": 1794229744797,
+          "url": "aaharaconnect-ngo-staging-d9mwcsqfc-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_Ft55QLpMW6W1zwbAnmA2vD7FD5Ny",
+          "target": "production",
+          "state": "READY",
+          "created": 1793675040860,
+          "url": "aaharaconnect-ngo-staging-ojxh67eud-equinox10.vercel.app"
+        },
+        {
+          "id": "dpl_GemgEeSTdAKHRc2pEqAtLGK1o5Un",
+          "target": "production",
+          "state": "READY",
+          "created": 1793905567487,
+          "url": "aaharaconnect-ngo-staging-axokonom7-equinox10.vercel.app"
+        }
+      ]
+    }
+  ],
+  "aliases": [
+    {
+      "host": "ngo-git-fix-ist-donation-times-equinox10.vercel.app",
+      "uid": "0527e1dc5b56154f44a4598d293f123e537285b838cd6213ff84797e9b22bb7156d1d0ccb0490eb418076522effed335a06f02ec4edc2188072dbcd1959a8a0c",
+      "deploymentId": "dpl_8iH4tAHask8XWozdr62LUFRhcjZt",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl"
+    },
+    {
+      "host": "ngo-git-codex-driver-details-equinox10.vercel.app",
+      "uid": "591bab3cc10813df305c6b630a6c6d61693fdfe9f8174871eb23689e6bd8c1708bc32885adea5977e30b4f90154cd8c9b4b0ccc8edfe6025873a39f7e8a84912",
+      "deploymentId": "dpl_AVW7JXsg3D3EWFVaVFTJCTxdW2so",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl"
+    },
+    {
+      "host": "ngo-git-feature-vehicle-tracking-equinox10.vercel.app",
+      "uid": "bafc7c52b1a7686dad7b80e3dcce52482c82e697c7ea1326f815faabe0f9929da6bff8ab0ee2c2b6a756614d11d88d78032e675c0a0e34efc9b346e77f33dca2",
+      "deploymentId": "dpl_CQwfGXfYdcYdaZKajajMhmyr8GKv",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl"
+    },
+    {
+      "host": "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app",
+      "uid": "be3f13f4f64334900fc6004c595ff74dbe0d4cce3edb9460e5baee15eed71d219674d690c8436127a5088f8a7e6398aa62e0fd6ca5d32f2e1d381adfc308e535",
+      "deploymentId": "dpl_DtMkg6vTq3ZV9whRTKYvjACXH4DA",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl"
+    },
+    {
+      "host": "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app",
+      "uid": "a335316ecf83159d810b018c7ad52a6115fb77ef48c1895dcb5a0e983dfb9703104ed63e3afe5b3a90d650ef3c0796cc1473e39077032a6020429e811a30471b",
+      "deploymentId": "dpl_wXbuVcN7v7riLGbPocXv7foETq99",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl"
+    }
+  ],
+  "targets": [
+    {
+      "id": "dpl_28RM9mtJ5AxFJttybB7xntRgRRTd",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-2oxqz3712-equinox10.vercel.app",
+      "sourceCommit": "0d6e1d0ebdaf01ec2e7136c4b7376fa538e32224",
+      "branch": "integration/ngo-recovery",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_2VkFDfWDM5qgEsNqx4Ybry4hAWQg",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-nd2c0ymyp-equinox10.vercel.app",
+      "sourceCommit": "b3ffc5066b9d02a555b3d386d925b0e55ec6cd85",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_2wBnJ2swiSjypjfTuDs9oWZf2Fwa",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-ocm1jpkc5-equinox10.vercel.app",
+      "sourceCommit": "ae734387604893eadbe8c12214b543544bef63e8",
+      "branch": "develop",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_3ccCf3HrY9iApuDJjmhWAt3x4rCs",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-ov61owyof-equinox10.vercel.app",
+      "sourceCommit": "10ffbc1a7147a7fcce88c6649866c89f577ca4c6",
+      "branch": "develop",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_4qU4ouzTNPGdn1tkvVsi4RsE8yzG",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-aomr5b8k2-equinox10.vercel.app",
+      "sourceCommit": "18607fb1d99546030a50a01ad8c4519b8d00ff6e",
+      "branch": "codex/volunteer-applications-integration",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_56EzLXSRZaResE6sUA2R9PeBvbkj",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-6cftdovrf-equinox10.vercel.app",
+      "sourceCommit": "07ecc9aed54e2c1d584584acb38120ba814e4379",
+      "branch": "integration/ngo-recovery",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_58fqbEZ2c4TGV3mtjZ7or9V4U28Q",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-afk6q50c7-equinox10.vercel.app",
+      "sourceCommit": "51c9736d1091b31860bb25c18ca9c8c720127477",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_5cbzb1BEKqWL8xy6vtEuoiYxstUf",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-40dsrgmhf-equinox10.vercel.app",
+      "sourceCommit": "11f11ca47bf98356c7ffbcd7b4fad53edf278b66",
+      "branch": "integration/ngo-recovery",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_6NJ9s73yd8m94DCy5N4YJ9JzR9ak",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-1vzjf42f0-equinox10.vercel.app",
+      "sourceCommit": "517d6540c930cdaf9b6c3707764f9aa44a1be999",
+      "branch": "integration/ngo-recovery",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_6nQQ21fj4JqUUzyhMxfiVDtBxUx7",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-17qujhawj-equinox10.vercel.app",
+      "sourceCommit": "d1621e5e6d4a2cd767bd39663578580276d0fdcb",
+      "branch": "codex/volunteer-applications-integration",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_6qhbUmCVmMkNXkFpyMq2yBXQuf5W",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-gu96fv5f6-equinox10.vercel.app",
+      "sourceCommit": "cd49f4010a19d4a55fd905996dcf0058ee6eaa93",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_6QhzmLGvDKG8L2bZnfB6X1118444",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-4x3gmo864-equinox10.vercel.app",
+      "sourceCommit": "2dac221fbc5681d9d81c247eef5b560e6e07c8a2",
+      "branch": "integration/ngo-recovery",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_7RgDCKNxHxpaiUa2qGz88pxpDuXS",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-f86aoh0sg-equinox10.vercel.app",
+      "sourceCommit": "d5de9b31349b9748a4a8814faf9ef7f7af456657",
+      "branch": "develop",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_7XNW6D1JqXGdCoVaUWdAHUH7xh8P",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-bftikdy7j-equinox10.vercel.app",
+      "sourceCommit": "9cb26adeac7f6e904aa99bb34c85a094cf62416c",
+      "branch": "integration/ngo-recovery",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_7ZYicErsWho7JfNL9BRhiiEJqniQ",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-7ug3uaz56-equinox10.vercel.app",
+      "sourceCommit": "ec9b692eedc64b9ce7839eac3da0f259edc17611",
+      "branch": "codex/driver-details",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_8abaMWVSBcvRRNSzLC5H1oWEu78y",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-6772tlcyg-equinox10.vercel.app",
+      "sourceCommit": "51c9736d1091b31860bb25c18ca9c8c720127477",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_8dWurx1gVUpjUWGPs5B5fawtUZQU",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-8msbdv5cl-equinox10.vercel.app",
+      "sourceCommit": "5ad893cfca8cfe2cfa80808090b4dd98008f579f",
+      "branch": "codex/volunteer-applications-integration",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_8iH4tAHask8XWozdr62LUFRhcjZt",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-9dakrbhzy-equinox10.vercel.app",
+      "sourceCommit": "6723811bb0f36e312d2c3a2b23d907d77341ae10",
+      "branch": "fix/ist-donation-times",
+      "currentAliases": [
+        {
+          "host": "ngo-git-fix-ist-donation-times-equinox10.vercel.app",
+          "uid": "0527e1dc5b56154f44a4598d293f123e537285b838cd6213ff84797e9b22bb7156d1d0ccb0490eb418076522effed335a06f02ec4edc2188072dbcd1959a8a0c"
+        }
+      ]
+    },
+    {
+      "id": "dpl_96bbfeyS2rUxWn9yvhehzZS2Fgc8",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-jawiswfd6-equinox10.vercel.app",
+      "sourceCommit": "83df03401a05c01680ab3786898941d55328f11a",
+      "branch": "develop",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_9EKEqiFnrvt2KXFVLKWRQMHEUL75",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-jfsf42qdo-equinox10.vercel.app",
+      "sourceCommit": "9970c932d801c9ba28974dc27a29b9daab8d162f",
+      "branch": "codex/volunteer-roster-preview",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_9kC6BxaHDdSsaNCDMCSnxGEqrXDJ",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-a3ns68hxj-equinox10.vercel.app",
+      "sourceCommit": "8dba5e554cfc9716d3f74869337b208750864939",
+      "branch": "develop",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_9MeyLBSqXD8r9FA6CH2XYK19dKia",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-mnwlycmel-equinox10.vercel.app",
+      "sourceCommit": "ae734387604893eadbe8c12214b543544bef63e8",
+      "branch": "develop",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_Adox9TZ5TtoDwNr8c1wnKkFHvv16",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-lgxg8ei8d-equinox10.vercel.app",
+      "sourceCommit": "0bb52e57658fc09ab4bc63e07f9db1e1d86cfc49",
+      "branch": "develop",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_Aeu3LSE6V9h7iyFR3z6vPG8MfZfe",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-opxvpt8at-equinox10.vercel.app",
+      "sourceCommit": "331ed0023063a204fa2459f75a668d558bc2619c",
+      "branch": "develop",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_ALcWeHgfr2mQzGaDPqZYFLakJnn8",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-dw70hbgsj-equinox10.vercel.app",
+      "sourceCommit": "37a2fe5aa913e9358c7195d1cb6bd142f68347d5",
+      "branch": "codex/volunteer-applications-integration",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_AVW7JXsg3D3EWFVaVFTJCTxdW2so",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-ezl2utptx-equinox10.vercel.app",
+      "sourceCommit": "ec9b692eedc64b9ce7839eac3da0f259edc17611",
+      "branch": "codex/driver-details",
+      "currentAliases": [
+        {
+          "host": "ngo-git-codex-driver-details-equinox10.vercel.app",
+          "uid": "591bab3cc10813df305c6b630a6c6d61693fdfe9f8174871eb23689e6bd8c1708bc32885adea5977e30b4f90154cd8c9b4b0ccc8edfe6025873a39f7e8a84912"
+        }
+      ]
+    },
+    {
+      "id": "dpl_AwUaLVegnRUQt9w47to7r2UxL4fy",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-b4cvfnnrq-equinox10.vercel.app",
+      "sourceCommit": "440fb0b26bd2e20f8346df4ae2c9d1f5abdd86bd",
+      "branch": "integration/ngo-recovery",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_CKxCdGCskBxW8EZRDPVV6gqfDK9P",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-2fiiujlkv-equinox10.vercel.app",
+      "sourceCommit": "b7b321cca94b318e29e0ae8ced1e136db1ebfd3e",
+      "branch": "integration/ngo-recovery",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_CQwfGXfYdcYdaZKajajMhmyr8GKv",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-hrsmxrr77-equinox10.vercel.app",
+      "sourceCommit": "3823fbc951c58dd0a4bc3ce9e564e42e7cfa45ce",
+      "branch": "feature/vehicle-tracking",
+      "currentAliases": [
+        {
+          "host": "ngo-git-feature-vehicle-tracking-equinox10.vercel.app",
+          "uid": "bafc7c52b1a7686dad7b80e3dcce52482c82e697c7ea1326f815faabe0f9929da6bff8ab0ee2c2b6a756614d11d88d78032e675c0a0e34efc9b346e77f33dca2"
+        }
+      ]
+    },
+    {
+      "id": "dpl_D4AEbTeEmTSqpSswRofqXUb1h1gR",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-krpcsw9fq-equinox10.vercel.app",
+      "sourceCommit": "b1574351e914922d00c22bad489e305ea577597a",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_D4eqkJXcPAFtuN41uJ37wTCRdbFy",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-628rt997i-equinox10.vercel.app",
+      "sourceCommit": "10d4264ba5cbe78e0131a65b8a2656ef3ade07e1",
+      "branch": "codex/volunteer-applications-integration",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_DKYEhzEw7wP5iwBUw2V8eMcVZUQE",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-knqafxw5l-equinox10.vercel.app",
+      "sourceCommit": "b3737eb2e00f4bf360eecf98df2d15df4c28221a",
+      "branch": "codex/volunteer-applications-integration",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_DtMkg6vTq3ZV9whRTKYvjACXH4DA",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-g0s4x7ic4-equinox10.vercel.app",
+      "sourceCommit": "857c5092f2cfd12925cec90a611b34468b1c72ee",
+      "branch": "codex/volunteer-roster-preview",
+      "currentAliases": [
+        {
+          "host": "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app",
+          "uid": "be3f13f4f64334900fc6004c595ff74dbe0d4cce3edb9460e5baee15eed71d219674d690c8436127a5088f8a7e6398aa62e0fd6ca5d32f2e1d381adfc308e535"
+        }
+      ]
+    },
+    {
+      "id": "dpl_E8GjSbLXAF8busWxsPL6b37ryxnD",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-12t3ebbmh-equinox10.vercel.app",
+      "sourceCommit": "12d62d3f2231f2b6190f54dae40802e68efac078",
+      "branch": "develop",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_FqPr2iNWg424shQBnRs6ghboAYe1",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-2ptg8iti5-equinox10.vercel.app",
+      "sourceCommit": "3c7eb14dd4e9400ffc50d900bc57955192284aa1",
+      "branch": "integration/ngo-recovery",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_G6Chk7wGN9rJoa7wcvn4Q17h2Pkr",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-c43ghjhpb-equinox10.vercel.app",
+      "sourceCommit": "056d9b20ec5c17d91a77ba70b8008ee542360929",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_GEyaVSX1J23QtS88fMdJpmwzj5zi",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-8baza3y4o-equinox10.vercel.app",
+      "sourceCommit": "7223b1003a76cd08bde738e33511f6c5a513ec6b",
+      "branch": "develop",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_Gi14XH9cawMk7ifquDQUFh41o5Pt",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-40r5fgyvh-equinox10.vercel.app",
+      "sourceCommit": "4099681d8314d80722a7e948f57e063941559dcd",
+      "branch": "integration/ngo-recovery",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_Hf4beukB5h8p5q6AChP6Ss7JtWWd",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-l7wejkvif-equinox10.vercel.app",
+      "sourceCommit": "b4618afa8047bd48abe2f17ddd87e651cd016846",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_HgcQRX7cKE2JQgFpcX9PCf7AzXY4",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-nsos9acvm-equinox10.vercel.app",
+      "sourceCommit": "9970c932d801c9ba28974dc27a29b9daab8d162f",
+      "branch": "codex/volunteer-roster-preview",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_NfcFgohu5HZBVrpoGF2FCd3c8ZSZ",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-6t574glt2-equinox10.vercel.app",
+      "sourceCommit": "bdd05d9d47882e99326d79a41630b5bff11fa9f2",
+      "branch": "demo/backend-hosting-2026-10-29",
+      "currentAliases": []
+    },
+    {
+      "id": "dpl_wXbuVcN7v7riLGbPocXv7foETq99",
+      "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+      "ownerId": "team_lRAI0kP7NNOxCUPBitJQ3d95",
+      "target": null,
+      "state": "READY",
+      "url": "ngo-61wghh8lt-equinox10.vercel.app",
+      "sourceCommit": "7a8902d9bf652b29f718dafdc920199bf2278096",
+      "branch": "codex/volunteer-applications-integration",
+      "currentAliases": [
+        {
+          "host": "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app",
+          "uid": "a335316ecf83159d810b018c7ad52a6115fb77ef48c1895dcb5a0e983dfb9703104ed63e3afe5b3a90d650ef3c0796cc1473e39077032a6020429e811a30471b"
+        }
+      ]
+    }
+  ],
+  "completedUtc": "2026-11-10T05:07:11.808Z",
+  "passed": true
+}

@@ -43,7 +43,7 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
         foodRequestId: food.rows[0].id,
         windowStartsAt: start.toISOString(),
         windowEndsAt: end.toISOString(),
-        deliveryAddress: 'Central Food Bank Hub',
+        distributionCenterId: (await client.query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Central Food Bank Hub'])).rows[0].id,
       }, user.rows[0].id, defaultFoodPort, client);
 
       expect(created.status).toBe('PLANNED');
@@ -58,7 +58,7 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
         foodRequestId: food.rows[0].id,
         windowStartsAt: start.toISOString(),
         windowEndsAt: end.toISOString(),
-        deliveryAddress: 'Another Hub',
+        distributionCenterId: (await client.query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Another Hub'])).rows[0].id,
       }, user.rows[0].id, defaultFoodPort, client)).rejects.toMatchObject({
         status: 409,
         code: 'RESOURCE_CONFLICT',
@@ -100,12 +100,16 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
       )).rows[0];
 
       const driver = (await client.query<{ id: string }>(
-        "INSERT INTO app.drivers(person_id, licence_number, licence_expires_on, status) VALUES ($1, 'DL-999', '2030-01-01', 'ACTIVE') RETURNING id",
+        "INSERT INTO app.drivers(person_id, licence_number, licence_expires_on, status, driver_type) VALUES ($1, 'DL-999', '2030-01-01', 'ACTIVE', 'EMPLOYEE') RETURNING id",
         [driverPerson.id]
       )).rows[0];
 
       const vehicle = (await client.query<{ id: string }>(
         "INSERT INTO app.vehicles(registration_number, kind, capacity_kg, status) VALUES ('KA01AB1234', 'Van', 500, 'ACTIVE') RETURNING id"
+      )).rows[0];
+      await client.query('UPDATE app.vehicles SET assigned_driver_id = $2 WHERE id = $1', [vehicle.id, driver.id]);
+      const vessel = (await client.query<{ id: string }>(
+        "INSERT INTO app.vessels(vessel_code, name, vessel_type, material, capacity_value, capacity_unit, temperature_suitability) VALUES ('INT-VES-1', 'Crate', 'CRATE', 'FOOD_GRADE_PLASTIC', 50, 'KG', 'AMBIENT') RETURNING id"
       )).rows[0];
 
       const donor = (await client.query<{ id: string }>(
@@ -136,7 +140,7 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
         foodRequestId: food.id,
         windowStartsAt: start.toISOString(),
         windowEndsAt: end.toISOString(),
-        deliveryAddress: 'Central Food Bank Hub',
+        distributionCenterId: (await client.query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Central Food Bank Hub'])).rows[0].id,
       }, adminUser.id, defaultFoodPort, client);
 
       const assignmentResult = await createAssignment(
@@ -146,6 +150,7 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
           volunteerIds: [vol.id],
           driverId: driver.id,
           vehicleId: vehicle.id,
+          vesselIds: [vessel.id],
           role: 'Pickup Crew',
           windowStartsAt: start.toISOString(),
           windowEndsAt: end.toISOString(),
@@ -170,6 +175,16 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
         client
       );
       expect(accepted.status).toBe('ACCEPTED');
+      expect(accepted.driverAcceptance).toBe('PENDING');
+
+      // The trip cannot start until the NGO driver has accepted (migration 013). This fixture driver
+      // has no app sign-in, so record their acceptance directly (no version change).
+      await expect(transitionAssignmentStatus({
+        assignmentId: assignment.id,
+        input: { action: 'START', expectedVersion: 1 },
+        actor: { id: volUser.id, authUserId: randomUUID(), role: 'VOLUNTEER' },
+      }, client)).rejects.toMatchObject({ code: 'DRIVER_NOT_ACCEPTED' });
+      await client.query("UPDATE app.assignments SET driver_acceptance = 'ACCEPTED', driver_responded_at = now() WHERE id = $1", [assignment.id]);
 
       // 2. Volunteer START
       const started = await transitionAssignmentStatus(
@@ -264,12 +279,16 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
       )).rows[0];
 
       const driver = (await client.query<{ id: string }>(
-        "INSERT INTO app.drivers(person_id, licence_number, licence_expires_on, status) VALUES ($1, 'DL-998', '2030-01-01', 'ACTIVE') RETURNING id",
+        "INSERT INTO app.drivers(person_id, licence_number, licence_expires_on, status, driver_type) VALUES ($1, 'DL-998', '2030-01-01', 'ACTIVE', 'EMPLOYEE') RETURNING id",
         [driverPerson.id]
       )).rows[0];
 
       const vehicle = (await client.query<{ id: string }>(
         "INSERT INTO app.vehicles(registration_number, kind, capacity_kg, status) VALUES ('KA01AB5678', 'Van', 500, 'ACTIVE') RETURNING id"
+      )).rows[0];
+      await client.query('UPDATE app.vehicles SET assigned_driver_id = $2 WHERE id = $1', [vehicle.id, driver.id]);
+      const vessel = (await client.query<{ id: string }>(
+        "INSERT INTO app.vessels(vessel_code, name, vessel_type, material, capacity_value, capacity_unit, temperature_suitability) VALUES ('INT-VES-2', 'Crate', 'CRATE', 'FOOD_GRADE_PLASTIC', 50, 'KG', 'AMBIENT') RETURNING id"
       )).rows[0];
 
       const donor = (await client.query<{ id: string }>(
@@ -299,7 +318,7 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
         foodRequestId: food.id,
         windowStartsAt: start.toISOString(),
         windowEndsAt: end.toISOString(),
-        deliveryAddress: 'Central Food Bank Hub',
+        distributionCenterId: (await client.query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Central Food Bank Hub'])).rows[0].id,
       }, adminUser.id, defaultFoodPort, client);
 
       const assignmentResult = await createAssignment(
@@ -309,6 +328,7 @@ describe.skipIf(!enabled)('Pickups module integration (PR1)', () => {
           volunteerIds: [vol.id],
           driverId: driver.id,
           vehicleId: vehicle.id,
+          vesselIds: [vessel.id],
           role: 'Pickup Crew',
           windowStartsAt: start.toISOString(),
           windowEndsAt: end.toISOString(),

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { appRoleSchema, uuidSchema, type AppRole, type AppUser } from '@aaharaconnect/shared';
+import { assignableAppRoleSchema, uuidSchema, type AppRole, type AppUser } from '@aaharaconnect/shared';
 import { setAppUserRole } from '../auth/appUsers';
 import { requireAuth } from '../middleware/authenticate';
 import { requireRole } from '../middleware/authorize';
@@ -10,7 +10,7 @@ import { z } from 'zod';
 
 export const authRouter = Router();
 authRouter.get('/me', requireAuth, (_request, response) => sendSuccess(response, response.locals.appUser as AppUser));
-authRouter.patch('/admin/users/:id/role', requireAuth, requireRole('ADMIN'), validateBody(z.object({ role: appRoleSchema })), async (request, response, next) => {
+authRouter.patch('/admin/users/:id/role', requireAuth, requireRole('ADMIN'), validateBody(z.object({ role: assignableAppRoleSchema })), async (request, response, next) => {
   try {
     const id = uuidSchema.safeParse(request.params.id);
     if (!id.success) throw new HttpError(400, 'VALIDATION_ERROR', 'User ID must be a UUID.');

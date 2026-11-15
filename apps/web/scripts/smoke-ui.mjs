@@ -82,13 +82,19 @@ try {
   const setInput = async (element, value) => { assert.ok(element, 'Expected input'); await act(async () => { const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; setter.call(element, value); element.dispatchEvent(new window.Event('input', { bubbles:true })) }) }
 
   await act(async () => root.render(React.createElement(Root)))
+  assert.equal(document.querySelector('.landing-hero h1').textContent, 'Good food from your event can feed someone today')
+  assert.equal(document.querySelector('.landing-hero a[href="#install-app"]'), null)
+  assert.doesNotMatch(document.querySelector('.landing').textContent, /NGO administration|SHA-256/)
   const adminLinks = [...document.querySelectorAll('a[href="#/workspace"]')]
   assert.ok(adminLinks.length >= 2)
   assert.ok(adminLinks.every(link => /admin/i.test(link.textContent)), 'Web workspace links must describe the admin app')
   assert.doesNotMatch(document.querySelector('.landing').textContent, /Open volunteer workspace/)
-  assert.ok(document.querySelector('.landing a[href$="donor/index.html"]'), 'Landing page should offer donor entry')
+  assert.equal(document.querySelector('.landing a[href$="donor/index.html"]'), null, 'Landing page must not promote donor joining')
+  assert.match(document.querySelector('.landing').textContent, /Install the Mobile App/)
+  assert.ok(document.querySelector('.landing-cta.large[href="#/workspace"]'), 'Admin dashboard must be the primary CTA')
+  assert.ok(document.querySelector('#install-app button[disabled]'), 'Unverified APK must not expose a broken download link')
 
-  const adminLink = document.querySelector('.landing-link')
+  const adminLink = document.querySelector('.landing-cta.large[href="#/workspace"]')
   assert.ok(adminLink, 'Expected admin dashboard link')
   const hashChanged = new Promise((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error('Admin link did not trigger hash navigation')), 2000)
@@ -96,117 +102,26 @@ try {
   })
   await act(async () => { adminLink.click(); await hashChanged })
   assert.equal(window.location.hash, '#/workspace')
-  assert.match(document.body.textContent, /Volunteer Management/)
-  for (const label of ['Volunteers', 'Food & Donors', 'Pickup & Logistics', 'Vehicle Tracking', 'Vehicle Details', 'Vessels']) {
-    assert.ok([...document.querySelectorAll('.side-nav button')].some(item => item.textContent.trim() === label), `${label} module should be visible`)
+  const assertAdminGate = () => {
+    assert.match(document.querySelector('main').textContent, /Administrator sign-in/)
+    assert.equal(document.querySelector('.sidebar'), null)
+    assert.doesNotMatch(document.querySelector('main').textContent, /Sharma Wedding|Ramesh Kumar|Team Alpha|Royal Orchid/)
   }
-  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Volunteers')))
-  assert.match(document.querySelector('main h1').textContent, /Volunteers/)
-  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Food & Donors')))
-  assert.match(document.querySelector('main').textContent, /Live Food Requests from Donors|Food & Donors/)
-  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Pickup & Logistics')))
-  assert.match(document.querySelector('main h1').textContent, /Pickup & Logistics/)
-  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vehicle Tracking')))
-  assert.match(document.querySelector('main').textContent, /This device location/)
-  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vehicle Details')))
-  assert.match(document.querySelector('main').textContent, /Fleet Registry/)
-  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Vessels')))
-  assert.match(document.querySelector('main h1').textContent, /Vessels/)
-  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('Dashboard')))
-  const openDemo = button('Open demo dashboard')
-  if (openDemo) await click(openDemo)
-
-  await click(button('ಕನ್ನಡ'))
-  assert.match(document.body.textContent, /ಸ್ವಯಂಸೇವಕರ ನಿರ್ವಹಣೆ/)
-  assert.match(document.body.textContent, /ಡ್ಯಾಶ್‌ಬೋರ್ಡ್/)
-  assert.match(document.querySelector('.side-nav').textContent, /ಆಹಾರ ಮತ್ತು ದಾನಿಗಳು/)
-  await click(button('English'))
-  assert.match(document.body.textContent, /Volunteer Management/)
-
-  await click(document.querySelector('.dashboard-heading .button-primary'))
-  assert.match(document.body.textContent, /Select a pickup event/)
-  await click(button('Continue'))
-  await click([...document.querySelectorAll('.people-choice')].find(item => item.textContent.includes('Team Alpha')))
-  await click(button('Continue'))
-  await click([...document.querySelectorAll('.resource-choice')].find(item => item.textContent.includes('Ramesh Kumar')))
-  await click(button('Continue'))
-  await click([...document.querySelectorAll('.resource-choice')].find(item => item.textContent.includes('Van 02')))
-  await click(button('Continue'))
-  assert.match(document.querySelector('.review-card').textContent, /Sharma Wedding/)
-  await act(async () => { document.querySelector('.wizard-footer .button-primary').click(); await new Promise(resolve => setTimeout(resolve, 550)) })
-  assert.match(document.body.textContent, /ASG011/)
-  assert.equal(document.querySelector('.assignment-table tbody tr:first-child .status-badge')?.textContent, 'Pending')
-
-  await click(button('ಕನ್ನಡ'))
-  assert.match(document.body.textContent, /ನಿಯೋಜನೆಗಳು/)
-  await click(document.querySelector('.assignment-table .id-link'))
-  const status = document.querySelector('.drawer select')
-  assert.equal(status?.value, 'Pending')
-  assert.equal([...status.options].find(option => option.value === 'Accepted')?.textContent, 'ಸ್ವೀಕರಿಸಲಾಗಿದೆ')
-  await setSelect(status, 'Accepted')
-  assert.match(document.querySelector('.drawer .status-badge').textContent, /ಸ್ವೀಕರಿಸಲಾಗಿದೆ/)
-  await click(document.querySelector('.drawer-header .icon-button'))
-  await click(document.querySelector('.page-heading .button-primary'))
-  assert.match(document.querySelector('.wizard-content').textContent, /ಸಂಗ್ರಹ ಕಾರ್ಯಕ್ರಮ ಆಯ್ಕೆಮಾಡಿ/)
-  assert.match(document.querySelector('.wizard-content').textContent, /ವಿವಾಹ/)
-  await click(document.querySelector('.wizard-footer .button-secondary'))
-
-  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('ಸ್ವಯಂಸೇವಕರು')))
-  assert.match(document.body.textContent, /ಸ್ವಯಂಸೇವಕರು/)
-  const statusFilter = document.querySelector('select[aria-label="ಸ್ಥಿತಿಯ ಪ್ರಕಾರ ಫಿಲ್ಟರ್ ಮಾಡಿ"]')
-  assert.ok(statusFilter)
-  assert.equal([...statusFilter.options].find(option => option.value === 'AVAILABLE')?.textContent, 'ಲಭ್ಯ')
-  await setSelect(statusFilter, 'UNAVAILABLE')
-  assert.match(document.querySelector('.volunteer-table tbody').textContent, /Vikram Desai/)
-  assert.doesNotMatch(document.querySelector('.volunteer-table tbody').textContent, /Arjun Rao/)
-  await click(document.querySelector('.clear-filters'))
-  const search = document.querySelector('.search-wrap input')
-  await setInput(search, 'Arjun')
-  assert.match(document.querySelector('.volunteer-table tbody').textContent, /Arjun Rao/)
-  assert.doesNotMatch(document.querySelector('.volunteer-table tbody').textContent, /Priya Sharma/)
-  await setInput(search, '')
-
-  await click(document.querySelector('.page-heading .button-primary'))
-  const addInputs = document.querySelectorAll('.modal .dialog-form input:not([type="checkbox"])')
-  await setInput(addInputs[0], 'Kavya Iyer')
-  await setInput(addInputs[1], '+91 98765 43999')
-  await setInput(addInputs[2], 'kavya.iyer@example.com')
-  await click(document.querySelector('.skill-picker input[type="checkbox"]'))
-  await click(document.querySelector('.modal .dialog-footer .button-primary'))
-  assert.match(document.querySelector('.volunteer-table tbody').textContent, /Kavya Iyer/)
-
-  await click([...document.querySelectorAll('.person-cell')].find(item => item.textContent.includes('Kavya Iyer')))
-  await click(document.querySelector('.drawer-actions .button-secondary'))
-  await setInput(document.querySelector('.modal .dialog-form input'), 'Kavya Nair')
-  await click(document.querySelector('.modal .dialog-footer .button-primary'))
-  assert.match(document.querySelector('.drawer .profile-hero').textContent, /Kavya Nair/)
-  await click(document.querySelector('.drawer-header .icon-button'))
-
-  await click([...document.querySelectorAll('.side-nav button')].find(item => item.textContent.includes('ತಂಡಗಳು')))
-  await click(document.querySelector('.page-heading .button-primary'))
-  await setInput(document.querySelector('.modal input'), 'Team Echo')
-  await setSelect(document.querySelector('.modal select'), 'VOL013')
-  await click(document.querySelector('.modal .dialog-footer .button-primary'))
-  const echoCard = [...document.querySelectorAll('.team-card')].find(item => item.textContent.includes('Team Echo'))
-  assert.ok(echoCard)
-  await click(echoCard.querySelector('.team-card-footer button'))
-  await click(document.querySelector('.drawer .section-heading .text-link'))
-  await setSelect(document.querySelector('.inline-picker select'), 'VOL002')
-  assert.match(document.querySelector('.drawer .detail-section').textContent, /Priya Sharma/)
-  await click(document.querySelector('.drawer .button-secondary.full-width'))
-  await click([...document.querySelectorAll('.leader-options button')].find(item => item.textContent.includes('Priya Sharma')))
-  assert.match(document.querySelector('.team-detail-summary').textContent, /Priya Sharma/)
-  await click([...document.querySelectorAll('.member-row')].find(item => item.textContent.includes('Kavya Nair')).querySelector('.icon-button'))
-  assert.doesNotMatch(document.querySelector('.drawer .detail-section').textContent, /Kavya Nair/)
-  await click(document.querySelector('.drawer-header .icon-button'))
-  await click([...document.querySelectorAll('.sidebar-bottom button')].find(item => item.textContent.includes('ಸೆಟ್ಟಿಂಗ್‌ಗಳು')))
-  assert.match(document.body.textContent, /ಘಟಕದ ಮಾಹಿತಿ/)
+  assertAdminGate()
+  for (const module of ['dashboard', 'settings', 'volunteers', 'food', 'pickups', 'tracking', 'vehicles', 'vessels']) {
+    await act(async () => {
+      window.history.replaceState({}, '', `/#/workspace/${module}`)
+      window.dispatchEvent(new window.Event('hashchange'))
+    })
+    assertAdminGate()
+  }
 
   await act(async () => root.unmount())
 
   // Exercise the live admin Volunteer form with a local, deterministic API stub.
   const liveRequests = []
-  let liveRoster = []
+  // Volunteers now join through mobile registration and approval; the roster starts with one.
+  let liveRoster = [{ id:'7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5', personId:'f50a3e0e-9f8c-4293-bb2b-fc55e4b3d3d8', registrationCode:'VOL-002', name:'Kavya Iyer', phoneE164:'+919876543210', skills:['Driving','Packing'], status:'ACTIVE' }]
   let liveTeams = []
   let failNextEdit = false
   let failNextTeamCreate = false
@@ -233,12 +148,6 @@ try {
       liveTeams = liveTeams.map(team => team.id === path.split('/').at(-1) ? { ...team, ...input } : team)
       return apiReply(liveTeams[0])
     }
-    if (method === 'POST' && path.endsWith('/volunteers')) {
-      const input = JSON.parse(options.body)
-      const created = { id:'7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5', personId:'f50a3e0e-9f8c-4293-bb2b-fc55e4b3d3d8', registrationCode:input.registrationCode, name:input.name, phoneE164:input.phoneE164, skills:input.skills, status:input.status }
-      liveRoster = [created, ...liveRoster]
-      return apiReply(created, 201)
-    }
     if (method === 'PATCH' && path.includes('/volunteers/')) {
       if (failNextEdit) {
         failNextEdit = false
@@ -255,45 +164,38 @@ try {
   const flush = async () => { await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) }) }
   await act(async () => liveRoot.render(React.createElement(LiveVolunteers, { token:'test-access-token' })))
   await flush()
-  await click(button('Add Volunteer'))
-  assert.ok(document.querySelector('.modal input[type="email"]'), 'Create needs an email field')
-  assert.equal(document.querySelector('.modal input[type="password"]'), null)
-  assert.equal(document.querySelector('.modal select[name="role"]'), null)
+  // The Admin page no longer creates Volunteers or drivers.
+  assert.equal(button('Add Volunteer'), undefined, 'Volunteers register in the mobile app; there is no Admin create button')
+  assert.match(document.body.textContent, /Volunteers join through the mobile app/)
+  assert.match(document.querySelector('.volunteer-table').textContent, /Kavya Iyer/)
+  await click(button('Edit volunteer'))
+  await flush()
+  assert.equal(document.querySelector('.modal input[type="email"]'), null, 'Email is immutable on edit')
+  assert.equal(document.querySelector('.modal input[type="date"]'), null, 'No licence expiry field for Volunteers')
+  assert.equal(document.querySelector('.modal .driver-skill-toggle'), null, 'No Driver role toggle for Volunteers')
+  assert.doesNotMatch(document.querySelector('.modal').textContent, /licen[cs]e|Vehicle Registration/i, 'No driver fields on the Volunteer form')
+  await setInput(document.querySelector('.modal input[placeholder="e.g. Kavya Iyer"]'), '')
   await click(document.querySelector('.modal button[type="submit"]'))
   assert.match(document.querySelector('.modal [role="alert"]').textContent, /name/)
-  await setInput(document.querySelector('.modal input[placeholder="e.g. Kavya Iyer"]'), 'Kavya Iyer')
-  await click(document.querySelector('.modal button[type="submit"]'))
-  assert.match(document.querySelector('.modal [role="alert"]').textContent, /registration code/)
-  await setInput(document.querySelector('.modal input[placeholder="VOL-002"]'), 'VOL-002')
-  await click(document.querySelector('.modal button[type="submit"]'))
-  assert.match(document.querySelector('.modal [role="alert"]').textContent, /valid email/)
-  await setInput(document.querySelector('.modal input[type="email"]'), 'kavya@example.com')
-  await setInput(document.querySelector('.modal input[type="tel"]'), '+919876543210')
-  await setInput(document.querySelector('.modal input[placeholder="Driving, Packing"]'), 'Driving, Packing')
-  await click(document.querySelector('.modal button[type="submit"]'))
-  await flush()
-  const createRequest = liveRequests.find(item => item.method === 'POST')
-  assert.deepEqual(createRequest.body, { email:'kavya@example.com', name:'Kavya Iyer', phoneE164:'+919876543210', registrationCode:'VOL-002', skills:['Driving','Packing'], status:'ACTIVE' })
-  assert.equal(createRequest.headers.get('Authorization'), 'Bearer test-access-token')
-  assert.match(document.querySelector('.volunteer-table').textContent, /Kavya Iyer/)
-  assert.match(document.querySelector('.toast').textContent, /invitation sent/)
-  assert.ok(liveRequests.filter(item => item.method === 'GET' && item.path.endsWith('/volunteers')).length >= 2, 'Create refreshes the roster')
-  await click(button('Edit volunteer'))
-  assert.equal(document.querySelector('.modal input[type="email"]'), null, 'Email is immutable on edit')
   await setInput(document.querySelector('.modal input[placeholder="e.g. Kavya Iyer"]'), 'Kavya Nair')
+  await click([...document.querySelectorAll('.modal .skill-picker label')].find(item => item.textContent.trim() === 'Loading').querySelector('input'))
   await click(document.querySelector('.modal button[type="submit"]'))
   await flush()
   const editRequest = liveRequests.find(item => item.method === 'PATCH')
   assert.equal(editRequest.body.name, 'Kavya Nair')
-  assert.equal('email' in editRequest.body, false)
-  assert.equal('role' in editRequest.body, false)
+  assert.deepEqual(editRequest.body.skills, ['Driving', 'Packing', 'Loading'])
+  assert.equal(editRequest.headers.get('Authorization'), 'Bearer test-access-token')
+  for (const key of ['email', 'role', 'driverDetails', 'driverStatus']) assert.equal(key in editRequest.body, false, `${key} must not be sent`)
   assert.match(document.querySelector('.volunteer-table').textContent, /Kavya Nair/)
+  assert.match(document.querySelector('.toast').textContent, /updated successfully/)
   await click(button('Edit volunteer'))
+  await flush()
   failNextEdit = true
   await click(document.querySelector('.modal button[type="submit"]'))
   await flush()
   assert.match(document.querySelector('.modal [role="alert"]').textContent, /already in use/)
   await click(document.querySelector('.modal .dialog-footer .button-secondary'))
+  assert.equal(liveRequests.filter(item => item.method === 'POST' && item.path.endsWith('/volunteers')).length, 0, 'No Volunteer create requests')
   await act(async () => liveRoot.unmount())
 
   // The live Team editor uses the Admin token and roster; successful writes refresh the list.
@@ -389,7 +291,7 @@ try {
   assert.equal(liveRequests.length, requestsBeforeInvite, 'Password must never go to Express')
   await act(async () => releaseUpdate({ data:{ user:inviteUser }, error:null }))
   await flush()
-  assert.match(document.querySelector('.invite-page').textContent, /Your Volunteer account is ready/)
+  assert.match(document.querySelector('.invite-page').textContent, /Your AaharaConnect account is ready/)
   assert.deepEqual(inviteCalls.signOut, [{ scope:'local' }])
   await act(async () => inviteRoot.unmount())
 
@@ -426,7 +328,7 @@ try {
   // Verify Requirement: Donor page has no misleading Pickup assignment action
   const { readFileSync } = await import('node:fs')
   const { resolve } = await import('node:path')
-  const donorHtml = readFileSync(resolve(process.cwd(), 'public/donor/index.html'), 'utf8')
+  const donorHtml = readFileSync(resolve(process.cwd(), 'donor/index.html'), 'utf8')
   assert.doesNotMatch(donorHtml, /🚚 Open Pickup &amp; Logistics/, 'Donor page must not contain header pickup action')
   assert.doesNotMatch(donorHtml, /Open in Pickup &amp; Logistics/, 'Donor page must not contain status pickup action')
   assert.doesNotMatch(donorHtml, /Go to Volunteer Workspace/, 'Donor page must not link to volunteer workspace')
@@ -502,7 +404,7 @@ try {
     assert.equal(fnError.code, 'UNAUTHENTICATED', `${name} must return UNAUTHENTICATED code`)
   }
 
-  console.log('Smoke check passed: bilingual demo UI, live Volunteer create/edit/error flows, donor isolation, logistics recommendations, auth propagation and team flows.')
+  console.log('Smoke check passed: production dashboard has no demo entry, live Volunteer flows, donor isolation, logistics recommendations, auth propagation and team flows.')
 } finally {
   dom.window.close()
   await server.close()

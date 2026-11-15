@@ -7,6 +7,7 @@ import { C } from '../../../constants/theme';
 import { useApp } from '../../../context/AppContext';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useVolunteerData } from '../../../context/VolunteerDataContext';
+import NotificationBell from '../../../components/common/NotificationBell';
 export default function VolunteerHome() {
   const { volunteer, assignments, slots, mode } = useApp();
   return mode === 'live' ? <LiveVolunteerHome /> : <DemoVolunteerHome volunteerName={volunteer.name} assignments={assignments} slotsCount={slots.length} />;
@@ -17,6 +18,7 @@ function LiveVolunteerHome() {
   const today = new Date();
   const availableNow = availability.some(slot => slot.state === 'AVAILABLE' && new Date(slot.startsAt) <= today && today < new Date(slot.endsAt));
   return <Screen><Header title="Good evening," subtitle={profile?.name ?? (profileLoading ? t('Loading...') : '')} right={<LanguageSwitcher />} />
+    <NotificationBell />
     {profileError ? <Card style={{ marginBottom: 16 }}><T color={C.red}>{profileError}</T><Button title="Retry" variant="outline" onPress={() => void refreshProfile()} style={{ marginTop: 12 }} /></Card> : !profileLoading && !profile ? <Card style={{ marginBottom: 16 }}><T>No volunteer profile found.</T><Button title="Retry" variant="outline" onPress={() => void refreshProfile()} style={{ marginTop: 12 }} /></Card> : null}
     <Card style={{ backgroundColor: C.greenSoft, borderColor: '#CDE7D5', marginBottom: 20 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Icon name="calendar" size={24} /><View style={{ flex: 1 }}><T size={17} weight="700" color={C.ink}>Your availability</T><T color={C.muted}>{availabilityLoading ? t('Loading...') : availabilityError ? t('Could not load availability.') : `${availability.length} ${t('slots')}`}</T></View>{!availabilityLoading && !availabilityError && <Badge value={availableNow ? 'Available' : 'Unavailable'} />}</View>{availabilityError && <Button title="Retry" variant="outline" onPress={() => void refreshAvailability()} style={{ marginTop: 12 }} />}</Card>
     <T size={21} weight="700" color={C.ink} style={{ marginBottom: 12 }}>Next assignment</T>

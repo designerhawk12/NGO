@@ -112,6 +112,7 @@ const sampleFoodRequestRow = {
   notes: validFoodPayload.notes,
   status: 'SUBMITTED',
   created_at: new Date('2026-10-10T10:05:00Z'),
+  cancelled_at: null,
 };
 
 const sampleFoodItemRows = [
@@ -278,6 +279,26 @@ describe('Food and Donor Management API (Module 2)', () => {
     });
   });
 
+  it('persists meals and weight for each submitted vegetarian item', async () => {
+    query.mockImplementationOnce(async () => ({ rows: [] }));
+    query.mockImplementationOnce(async () => ({ rows: [mockDonorRow] }));
+    query.mockImplementationOnce(async () => ({ rows: [sampleFoodRequestRow] }));
+    query.mockImplementationOnce(async () => ({ rows: [{ ...sampleFoodItemRows[0], estimated_meals: '80', estimated_weight_kg: '12.5' }] }));
+    query.mockImplementationOnce(async () => ({ rows: [{ ...sampleFoodItemRows[1], estimated_meals: '40', estimated_weight_kg: '7.5' }] }));
+    const payload = { ...validFoodPayload, estimatedWeightKg: 20, items: [
+      { foodType: 'Rice', quantity: 80, unit: 'MEALS', handlingRequirements: 'Keep warm', estimatedMeals: 80, estimatedWeightKg: 12.5 },
+      { foodType: 'Dal', quantity: 40, unit: 'MEALS', handlingRequirements: 'Keep hot', estimatedMeals: 40, estimatedWeightKg: 7.5 },
+    ] };
+    const res = await request(app).post('/api/v1/food-requests').set('Authorization', 'Bearer donor-token').send(payload);
+    expect(res.status).toBe(201);
+    const inserts = query.mock.calls.filter(([sql]) => String(sql).includes('INSERT INTO app.food_items'));
+    expect(inserts).toHaveLength(2);
+    expect(inserts[0][1].slice(-2)).toEqual([80, 12.5]);
+    expect(inserts[1][1].slice(-2)).toEqual([40, 7.5]);
+    expect(res.body.data.items[0]).toMatchObject({ estimatedMeals: 80, estimatedWeightKg: 12.5 });
+    expect(res.body.data.items[1]).toMatchObject({ estimatedMeals: 40, estimatedWeightKg: 7.5 });
+  });
+
   describe('Retrieval & Ownership Protection', () => {
     it('allows a donor to retrieve their own food request by ID', async () => {
       // 1. findFoodRequestById -> food request
@@ -422,6 +443,8 @@ describe('Food and Donor Management API (Module 2)', () => {
       query.mockImplementationOnce(async () => ({ rows: [mockAssignmentRow] }));
       // 7. getAssignmentVolunteerIds -> [volunteerId]
       query.mockImplementationOnce(async () => ({ rows: [{ volunteer_id: '7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5' }] }));
+      // 8. Admin crew responses (same projection also used for donor status summary)
+      query.mockImplementationOnce(async () => ({ rows: [{ volunteer_id: '7b6e0f4e-1ed9-466a-97a9-314eb6f64aa5', response: 'ACCEPTED' }] }));
 
       const res = await request(app)
         .get(`/api/v1/food-requests/${sampleFoodRequestId}`)
@@ -455,6 +478,7 @@ describe('Food and Donor Management API (Module 2)', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.status).toBe('CANCELLED');
+      expect(query.mock.calls[4][0]).toContain('cancelled_at = now()');
     });
   });
 
@@ -478,6 +502,7 @@ describe('Food and Donor Management API (Module 2)', () => {
       expect(res.body.data.items[0].id).toBe(sampleFoodRequestId);
       expect(res.body.data.items[0].donorName).toBe(sampleFoodRequestRow.source_name);
       expect(res.body.data.items[0].pickup).toBeNull();
+      expect(query.mock.calls[0][0]).toContain("status = 'SUBMITTED' OR (status = 'CANCELLED' AND cancelled_at > now() - interval '24 hours')");
     });
 
     it('rejects VOLUNTEER from listing food requests with 403 FORBIDDEN', async () => {
@@ -489,6 +514,24 @@ describe('Food and Donor Management API (Module 2)', () => {
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('FORBIDDEN');
+    });
+
+    it('keeps all cancelled requests available in the explicit history list', async () => {
+      findUser.mockResolvedValue(admin);
+      query.mockImplementationOnce(async () => ({ rows: [{ ...sampleFoodRequestRow, status: 'CANCELLED', cancelled_at: null }] }));
+      query.mockImplementationOnce(async () => ({ rows: sampleFoodItemRows }));
+      query.mockImplementationOnce(async () => ({ rows: [] }));
+
+      const res = await request(app)
+        .get('/api/v1/food-requests?status=CANCELLED')
+        .set('Authorization', 'Bearer admin-token');
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items).toHaveLength(1);
+      expect(res.body.data.items[0].status).toBe('CANCELLED');
+      expect(query.mock.calls[0][0]).toContain('WHERE status = $1');
+      expect(query.mock.calls[0][0]).not.toContain("cancelled_at > now() - interval '24 hours'");
+      expect(query.mock.calls[0][1]).toEqual(['CANCELLED']);
     });
   });
 });

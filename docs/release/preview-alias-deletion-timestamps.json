@@ -1,0 +1,37 @@
+[
+  {
+    "host": "ngo-git-fix-ist-donation-times-equinox10.vercel.app",
+    "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+    "deploymentId": "dpl_8iH4tAHask8XWozdr62LUFRhcjZt",
+    "deletedAt": null,
+    "updatedAt": 1794287426281
+  },
+  {
+    "host": "ngo-git-codex-driver-details-equinox10.vercel.app",
+    "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+    "deploymentId": "dpl_AVW7JXsg3D3EWFVaVFTJCTxdW2so",
+    "deletedAt": null,
+    "updatedAt": 1794287490274
+  },
+  {
+    "host": "ngo-git-feature-vehicle-tracking-equinox10.vercel.app",
+    "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+    "deploymentId": "dpl_CQwfGXfYdcYdaZKajajMhmyr8GKv",
+    "deletedAt": null,
+    "updatedAt": 1794287514462
+  },
+  {
+    "host": "ngo-git-codex-volunteer-roster-preview-equinox10.vercel.app",
+    "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+    "deploymentId": "dpl_DtMkg6vTq3ZV9whRTKYvjACXH4DA",
+    "deletedAt": null,
+    "updatedAt": 1794287547942
+  },
+  {
+    "host": "ngo-git-codex-volunteer-applications-integration-equinox10.vercel.app",
+    "projectId": "prj_6BuwhBiISjTlzgGtqG2arEXqOXGl",
+    "deploymentId": "dpl_wXbuVcN7v7riLGbPocXv7foETq99",
+    "deletedAt": null,
+    "updatedAt": 1794287620155
+  }
+]

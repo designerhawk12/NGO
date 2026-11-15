@@ -1,0 +1,39 @@
+# Local credentials and environment configuration
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+*.pem
+**/*.pem
+*.crt
+**/*.crt
+*.key
+**/*.key
+staging.env
+**/staging.env
+
+# Local Vercel metadata and generated output
+.vercel
+**/.vercel
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+coverage
+**/coverage
+.expo
+**/.expo
+.eas
+**/.eas
+
+# Other certificate and private-key containers
+*.cer
+**/*.cer
+*.p12
+**/*.p12
+*.pfx
+**/*.pfx

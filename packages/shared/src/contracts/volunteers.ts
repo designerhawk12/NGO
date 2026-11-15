@@ -5,12 +5,24 @@ export const volunteerStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
 export const volunteerApplicationStatusSchema = z.enum(['PENDING', 'APPROVED', 'DENIED']);
 const volunteerSkillsSchema = z.array(z.string().trim().min(1).max(100)).max(32)
   .refine(skills => new Set(skills.map(skill => skill.toLowerCase())).size === skills.length, 'Skills must be unique.');
+export const identityProofSchema = z.strictObject({
+  documentType: z.enum(['MASKED_AADHAAR', 'PAN', 'DRIVING_LICENCE']),
+  contentType: z.enum(['image/jpeg', 'image/png']),
+  dataBase64: z.string().min(16).max(700000).regex(/^[A-Za-z0-9+/]+={0,2}$/),
+  consent: z.literal(true), maskedAadhaarConfirmed: z.boolean(),
+}).refine(value => value.documentType !== 'MASKED_AADHAAR' || value.maskedAadhaarConfirmed, { message: 'Mask the first eight Aadhaar digits before uploading.' });
+export type IdentityProofInput = z.infer<typeof identityProofSchema>;
 export const volunteerRegistrationInputSchema = z.strictObject({
   email: z.string().trim().toLowerCase().email().max(254),
   name: z.string().trim().min(1).max(200),
-  phoneE164: z.string().regex(/^\+[1-9][0-9]{7,14}$/, 'Use an E.164 phone number.').nullable().optional().default(null),
-  registrationCode: z.string().trim().min(1).max(64),
+  phoneE164: z.string().regex(/^\+[1-9][0-9]{7,14}$/, 'Use an E.164 phone number.'),
+  // Older mobile builds may still send this field. The server ignores it and
+  // assigns a unique registration code for every public application.
+  registrationCode: z.string().trim().min(1).max(64).optional(),
   skills: volunteerSkillsSchema.default([]),
+  identityProof: identityProofSchema.optional(),
+  submissionId: uuidSchema.optional(),
+  whatsappOptIn: z.boolean().optional(),
 });
 export const volunteerRegistrationResultSchema = z.object({
   status: z.literal('PENDING'),
@@ -29,6 +41,7 @@ export const volunteerApplicationSchema = z.object({
 });
 export const volunteerApprovalDecisionSchema = z.strictObject({
   status: z.enum(['APPROVED', 'DENIED']),
+  reason: z.string().trim().min(1).max(500).optional(),
 });
 const availabilityFields = z.object({ startsAt: utcDateTimeSchema, endsAt: utcDateTimeSchema, state: z.enum(['AVAILABLE', 'UNAVAILABLE']) });
 export const availabilityInputSchema = availabilityFields.refine(value => new Date(value.startsAt) < new Date(value.endsAt), { path: ['endsAt'], message: 'End must follow start.' });

@@ -1,0 +1,28 @@
+{
+  "verifiedUtc": "2026-11-10T05:45:42.244Z",
+  "website": "https://ngo-eight-umber.vercel.app",
+  "checks": [
+    {
+      "path": "/",
+      "status": 200
+    },
+    {
+      "path": "/accept-invite",
+      "status": 200
+    },
+    {
+      "path": "/reset-password",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/health/ready",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    }
+  ],
+  "pass": true,
+  "scope": "Token-free route/health availability only, not email delivery or authenticated callback acceptance"
+}

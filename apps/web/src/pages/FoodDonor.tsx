@@ -1,19 +1,7 @@
-import {
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  Flame,
-  MapPin,
-  Package,
-  Phone,
-  RefreshCw,
-  Scale,
-  Sparkles,
-  ThermometerSnowflake,
-  Truck,
-} from 'lucide-react'
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
-import { StatusBadge, formatTime } from '../components/common/UI'
+import { Package, RefreshCw } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { Avatar, Drawer, StatusBadge } from '../components/common/UI'
+import { useProfilePhotos } from '../features/photos/useProfilePhotos'
 import {
   assignDonorPickupToVehicle,
   fetchAllDonorRequests,
@@ -22,7 +10,6 @@ import {
 } from '../features/vehicles/donorTripService'
 import {
   createAssignment,
-  createPickup,
   fetchDrivers,
   fetchVehicles,
   fetchVolunteers,
@@ -44,14 +31,25 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
   const [liveVehicles, setLiveVehicles] = useState<Vehicle[]>([])
   const [selectedVehicleMap, setSelectedVehicleMap] = useState<Record<string, string>>({})
   const [assigningId, setAssigningId] = useState<string | null>(null)
+  const [selectedRequest, setSelectedRequest] = useState<DonorPickupRequest | null>(null)
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('requestId')
+    if (raw && /^[0-9a-f-]{36}$/i.test(raw)) {
+      const match = requests.find(request => request.id === raw)
+      if (match) setSelectedRequest(match)
+    }
+  }, [requests])
+  const [showCancelledHistory, setShowCancelledHistory] = useState(false)
+  const photoIds = useMemo(() => requests.map(request => request.donorId ?? ''), [requests])
+  const photos = useProfilePhotos('DONOR', photoIds)
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async (cancelledHistory: boolean) => {
     setLoading(true)
     setError(null)
     setLoadError(false)
     try {
       const live = isLiveAdmin()
-      const data = await fetchAllDonorRequests(live)
+      const data = await fetchAllDonorRequests(live, cancelledHistory ? 'CANCELLED' : undefined)
       const activeTrips = live ? [] : getAllActiveTrips()
 
       // Merge assignment status from active trips
@@ -68,6 +66,9 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
         return req
       })
 
+      // Keep cancelled requests visible for history while never mixing them into
+      // the active scheduling section above submitted/assigned work.
+      enriched.sort((a, b) => Number(a.status === 'CANCELLED') - Number(b.status === 'CANCELLED'))
       setRequests(enriched)
     } catch (err: unknown) {
       setLoadError(true)
@@ -75,7 +76,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   // Load live vehicles directly from PostgreSQL in live admin mode
   useEffect(() => {
@@ -101,15 +102,15 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
   }, [])
 
   useEffect(() => {
-    void loadRequests()
-    const handleSync = () => void loadRequests()
+    void loadRequests(showCancelledHistory)
+    const handleSync = () => void loadRequests(showCancelledHistory)
     window.addEventListener('storage', handleSync)
     window.addEventListener('focus', handleSync)
     let bc: BroadcastChannel | null = null
     try {
       if ('BroadcastChannel' in window) {
         bc = new BroadcastChannel('aahara_donations')
-        bc.onmessage = () => void loadRequests()
+        bc.onmessage = () => void loadRequests(showCancelledHistory)
       }
     } catch {}
     return () => {
@@ -117,7 +118,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
       window.removeEventListener('focus', handleSync)
       if (bc) bc.close()
     }
-  }, [])
+  }, [loadRequests, showCancelledHistory])
 
   // Live mode must not make a mock vehicle dispatchable when the API has not
   // returned a canonical vehicle record.
@@ -154,15 +155,15 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
       setAssigningId(request.id)
       try {
         // The backend rechecks the approved safety review before scheduling.
-        const pickup = request.pickup || await createPickup({
-          foodRequestId: request.id,
-          deliveryAddress: 'AaharaConnect Distribution Center, Indiranagar',
-          windowStartsAt: request.readyAt || new Date().toISOString(),
-          windowEndsAt: request.pickupDeadline || new Date(Date.now() + 10800000).toISOString(),
-        })
+        // Live pickups are scheduled in Pickup & Logistics, where a Distribution Center is chosen.
+        if (!request.pickup) {
+          notify?.('Schedule this pickup in Pickup & Logistics and choose a Distribution Center first.', 'error')
+          return
+        }
+        const pickup = request.pickup
         if (pickup.status !== 'PLANNED') {
           notify?.(`This pickup is already ${pickup.status.toLowerCase()}. Refresh the request before assigning it again.`, 'error')
-          await loadRequests()
+          await loadRequests(showCancelledHistory)
           return
         }
 
@@ -272,20 +273,24 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
         <div className="flex items-center gap-2">
           <button
             type="button"
+            className="button button-secondary"
+            aria-pressed={showCancelledHistory}
+            onClick={() => {
+              const next = !showCancelledHistory
+              setShowCancelledHistory(next)
+            }}
+            disabled={loading}
+          >
+            {showCancelledHistory ? 'Show active requests' : 'Cancelled history'}
+          </button>
+          <button
+            type="button"
             className="button button-secondary flex items-center gap-1.5"
-            onClick={() => void loadRequests()}
+            onClick={() => void loadRequests(showCancelledHistory)}
             title="Refresh donor requests"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
-          <a
-            className="button button-primary flex items-center gap-1.5"
-            href={`${import.meta.env.BASE_URL}donor/index.html`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open donor prototype <ExternalLink size={15} />
-          </a>
         </div>
       </div>
 
@@ -313,7 +318,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
             <Package size={18} className="text-emerald-700" />
-            Live Food Requests from Donors
+            {showCancelledHistory ? 'Cancelled Food Request History' : 'Live Food Requests from Donors'}
           </h2>
           <span className="text-xs text-slate-500 font-medium">
             {availableVehicles.length} vehicles currently available
@@ -331,7 +336,7 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
             <button
               type="button"
               className="button button-secondary mt-3"
-              onClick={() => void loadRequests()}
+              onClick={() => void loadRequests(showCancelledHistory)}
             >
               Retry
             </button>
@@ -341,160 +346,67 @@ export default function FoodDonor({ vehicles = [], setVehicles, notify }: Props)
             <Package size={32} className="mx-auto text-slate-300 mb-2" />
             <h3 className="font-bold text-slate-700">No donor requests found</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-              No food requests received yet. Use the donor prototype to submit a donation, and it will appear here.
+              {isLiveAdmin() ? 'No food requests have been submitted yet.' : 'No demo donor requests are available.'}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {requests.map(req => {
-              const selectedVehId = selectedVehicleMap[req.id] || availableVehicles[0]?.vehicleId || ''
-              const candidateVehicle = displayVehicles.find(v => v.vehicleId === selectedVehId)
-              const hasCapacity = candidateVehicle
-                ? candidateVehicle.capacityKg >= req.estimatedWeightKg
-                : false
-
-              return (
-                <div
-                  key={req.id}
-                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-emerald-200 transition-all flex flex-col justify-between space-y-4"
-                >
-                  <div className="space-y-3">
-                    {/* Header: Donor & Status */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-base leading-tight">
-                          {req.donorName}
-                        </h3>
-                        <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-1">
-                          <MapPin size={13} className="text-emerald-600 shrink-0" />
-                          <span>{req.pickupAddress}</span>
-                        </p>
-                      </div>
-                      <StatusBadge status={req.status} />
-                    </div>
-
-                    {/* Timings & Contact */}
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600">
-                        <Clock size={13} className="text-slate-400" />
-                        <span>{`Ready: ${formatTime(req.readyAt)} · Due: ${formatTime(req.pickupDeadline)}`}</span>
-                      </div>
-                      {req.contactPhone && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600">
-                          <Phone size={13} className="text-slate-400" />
-                          <span>{req.contactPhone}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Cargo Specs */}
-                    <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-                      <div className="rounded-xl border border-slate-150 bg-slate-50/70 p-2.5">
-                        <span className="block text-[10px] font-bold uppercase text-slate-400">Cargo Weight</span>
-                        <strong className="text-sm font-extrabold text-slate-800 flex items-center gap-1 mt-0.5">
-                          <Scale size={13} className="text-emerald-600" />
-                          <span>{req.weightProvided === false ? 'Not provided' : `${req.estimatedWeightKg} kg`}</span>
-                        </strong>
-                      </div>
-                      <div className="rounded-xl border border-slate-150 bg-slate-50/70 p-2.5">
-                        <span className="block text-[10px] font-bold uppercase text-slate-400">Indicative Vessels</span>
-                        <strong className="text-sm font-extrabold text-slate-800 flex items-center gap-1 mt-0.5">
-                          <Package size={13} className="text-emerald-600" />
-                          <span>{req.weightProvided === false ? 'Pending' : `${req.totalVessels} Vessels`}</span>
-                        </strong>
-                      </div>
-                    </div>
-
-                    {/* Automated Equipment Requirement */}
-                    <div className={`p-3 rounded-xl border text-xs space-y-1 ${req.equipment.badgeClass}`}>
-                      <div className="flex items-center gap-1.5 font-bold">
-                        {req.equipment.needsRefrigerator ? (
-                          <ThermometerSnowflake size={15} />
-                        ) : req.equipment.needsInsulatedBody ? (
-                          <Flame size={15} />
-                        ) : (
-                          <Sparkles size={15} />
-                        )}
-                        <span>{req.equipment.label}</span>
-                      </div>
-                      <p className="text-[11px] opacity-90 leading-relaxed">{req.equipment.reason}</p>
-                    </div>
-
-                    {/* Food Items */}
-                    <div className="text-xs text-slate-600 bg-slate-50/80 p-2.5 rounded-xl border border-slate-150">
-                      <span className="font-semibold text-slate-700">Food Items: </span>
-                      <span>{req.foods.map(f => `${f.name} (${f.quantity} ${f.unit})`).join(', ')}</span>
-                    </div>
-                  </div>
-
-                  {/* Assignment Action Footer */}
-                  <div className="pt-3 border-t border-slate-100">
-                    {isLiveAdmin() ? <p className="text-sm text-slate-600">Use Pickup & Logistics to plan and reserve a vehicle for this request.</p> :
-                    req.status === 'ASSIGNED' ? (
-                      <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/80 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2 text-emerald-800">
-                          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                          <span>
-                            {`Assigned to vehicle: ${req.assignedVehicleReg || 'Registered Fleet'}`}
+          <div className="table-scroll">
+            <table className="data-table donor-request-table">
+              <thead><tr><th>Donor</th><th>Food items</th><th>Quantity</th><th>Pickup address</th><th>Prepared / deadline</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {requests.map(req => {
+                  const selectedVehId = selectedVehicleMap[req.id] || availableVehicles[0]?.vehicleId || ''
+                  const candidateVehicle = displayVehicles.find(v => v.vehicleId === selectedVehId)
+                  const hasCapacity = candidateVehicle ? candidateVehicle.capacityKg >= req.estimatedWeightKg : false
+                  const itemSummary = req.foods.map(f => f.name).join(', ')
+                  const quantitySummary = req.foods.map(f => `${f.quantity} ${String(f.unit).toLowerCase()}`).join(' + ')
+                  return (
+                    <tr key={req.id}>
+                      <td><span className="person-cell"><Avatar name={req.donorName} size="sm" src={req.donorId ? photos[req.donorId] : undefined} /><span><strong>{req.donorName}</strong>{req.contactPhone && <small>{req.contactPhone}</small>}</span></span></td>
+                      <td className="clamp-cell" title={itemSummary}>{itemSummary || '—'}</td>
+                      <td><strong>{quantitySummary || '—'}</strong><small className="block-small">{req.weightProvided === false ? 'Weight not provided' : `${req.estimatedWeightKg} kg`}</small></td>
+                      <td className="clamp-cell" title={req.pickupAddress}>{req.pickupAddress}</td>
+                      <td><span className="block-small">{new Date(req.preparedAt || req.readyAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span><small className="block-small">Due {new Date(req.pickupDeadline).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</small></td>
+                      <td><StatusBadge status={req.status} /></td>
+                      <td className="actions-cell">
+                        <button type="button" className="text-link" onClick={() => setSelectedRequest(req)}>View Details</button>
+                        {req.status !== 'CANCELLED' && !isLiveAdmin() && req.status !== 'ASSIGNED' && (
+                          <span className="inline-assign">
+                            <label htmlFor={`veh-select-${req.id}`} className="sr-only">Select Vehicle</label>
+                            <select id={`veh-select-${req.id}`} value={selectedVehId} onChange={e => setSelectedVehicleMap(prev => ({ ...prev, [req.id]: e.target.value }))} disabled={availableVehicles.length === 0}>
+                              {availableVehicles.length === 0 ? <option value="">No vehicles available</option> : availableVehicles.map(v => <option key={v.vehicleId} value={v.vehicleId}>{`${v.registrationNumber} · ${v.capacityKg} kg ${v.capacityKg < req.estimatedWeightKg ? '(too small)' : ''}`}</option>)}
+                            </select>
+                            <button type="button" className="button button-primary" onClick={() => handleAssign(req)} disabled={availableVehicles.length === 0 || !hasCapacity || assigningId === req.id}>{assigningId === req.id ? 'Assigning…' : 'Assign'}</button>
                           </span>
-                        </div>
-                        <span className="text-[10px] font-bold bg-white text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                          On Trip
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <label htmlFor={`veh-select-${req.id}`} className="sr-only">
-                            Select Vehicle
-                          </label>
-                          <select
-                            id={`veh-select-${req.id}`}
-                            value={selectedVehId}
-                            onChange={e =>
-                              setSelectedVehicleMap(prev => ({ ...prev, [req.id]: e.target.value }))
-                            }
-                            className="flex-1 h-10 px-3 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 focus:border-emerald-500 focus:outline-none"
-                            disabled={availableVehicles.length === 0}
-                          >
-                            {availableVehicles.length === 0 ? (
-                              <option value="">No vehicles currently available</option>
-                            ) : (
-                              availableVehicles.map(v => (
-                                <option key={v.vehicleId} value={v.vehicleId}>
-                                  {`${v.registrationNumber} (${v.type}) · Cap: ${v.capacityKg} kg ${v.capacityKg < req.estimatedWeightKg ? '⚠️ Low Capacity' : '✓ Fits'}`}
-                                </option>
-                              ))
-                            )}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => handleAssign(req)}
-                            disabled={availableVehicles.length === 0 || !hasCapacity || assigningId === req.id || (isLiveAdmin() && req.safetyReview !== 'APPROVED')}
-                            className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-sm transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
-                          >
-                            <Truck size={14} className={assigningId === req.id ? 'animate-spin' : ''} /> {assigningId === req.id ? 'Assigning…' : 'Assign Vehicle'}
-                          </button>
-                        </div>
-                        {candidateVehicle && !hasCapacity && (
-                          <p className="text-[11px] text-rose-600 font-medium">
-                            {`Selected vehicle capacity (${candidateVehicle.capacityKg} kg) is less than pickup weight (${req.estimatedWeightKg} kg).`}
-                          </p>
                         )}
-                        {isLiveAdmin() && req.safetyReview !== 'APPROVED' && (
-                          <p className="text-[11px] text-amber-700 font-medium">
-                            Food-safety review must be approved before scheduling.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+                        {req.status === 'ASSIGNED' && !isLiveAdmin() && <small className="block-small">Vehicle {req.assignedVehicleReg || 'assigned'}</small>}
+                        {isLiveAdmin() && req.status !== 'CANCELLED' && req.safetyReview !== 'APPROVED' && <small className="block-small warn-text">Safety review pending</small>}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
+      {selectedRequest && <Drawer title={`Food request ${selectedRequest.id.slice(0, 8)}`} onClose={() => setSelectedRequest(null)}>
+        <div className="drawer-body space-y-4">
+          <div className="detail-section"><h3>Donor and pickup</h3><div className="detail-grid">
+            <div><span>Donor</span><strong>{selectedRequest.donorName}</strong></div>
+            <div><span>Request status</span><strong><StatusBadge status={selectedRequest.status}/></strong></div>
+            <div><span>Pickup address</span><strong>{selectedRequest.pickupAddress}</strong></div>
+            <div><span>Contact</span><strong>{selectedRequest.contactName || '—'}{selectedRequest.contactPhone ? ` · ${selectedRequest.contactPhone}` : ''}</strong></div>
+            <div><span>Food prepared</span><strong>{new Date(selectedRequest.preparedAt || selectedRequest.readyAt).toLocaleString()}</strong></div>
+            <div><span>Pickup deadline</span><strong>{new Date(selectedRequest.pickupDeadline).toLocaleString()}</strong></div>
+            <div><span>Estimated weight</span><strong>{selectedRequest.weightProvided === false ? 'Not provided' : `${selectedRequest.estimatedWeightKg} kg`}</strong></div>
+            <div><span>Food-safety review</span><strong>{selectedRequest.safetyReview ?? 'Not reviewed'}</strong></div>
+          </div></div>
+          <div className="detail-section"><h3>Food items</h3>{selectedRequest.foods.length ? <ul>{selectedRequest.foods.map((food, index) => <li key={`${food.name}-${index}`}>{food.name} · {food.quantity} {food.unit}{food.foodType ? ` · ${food.foodType}` : ''}</li>)}</ul> : <p>No item details provided.</p>}</div>
+          <div className="detail-section"><h3>Handling and notes</h3><p>{selectedRequest.handlingRequirements || 'No special handling requirements.'}</p><p>{selectedRequest.notes || 'No additional notes.'}</p></div>
+          {selectedRequest.pickup && <div className="detail-section"><h3>Scheduled pickup</h3><div className="detail-grid"><div><span>Pickup status</span><strong>{selectedRequest.pickup.status}</strong></div><div><span>Assignment status</span><strong>{selectedRequest.pickup.assignmentStatus || 'No active assignment'}</strong></div><div><span>Window starts</span><strong>{new Date(selectedRequest.pickup.windowStartsAt).toLocaleString()}</strong></div><div><span>Window ends</span><strong>{new Date(selectedRequest.pickup.windowEndsAt).toLocaleString()}</strong></div><div><span>Delivery address</span><strong>{selectedRequest.pickup.deliveryAddress}</strong></div></div></div>}
+        </div>
+      </Drawer>}
     </>
   )
 }

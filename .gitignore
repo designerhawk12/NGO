@@ -22,6 +22,7 @@ coverage/
 !**/.env.example
 *.crt
 *.pem
+**/google-services.json
 
 # Local tools and logs
 .vscode/

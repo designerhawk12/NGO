@@ -1,0 +1,41 @@
+name: Bounded WhatsApp outbox dispatch
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+permissions: {}
+concurrency:
+  group: whatsapp-outbox-dispatch
+  cancel-in-progress: false
+jobs:
+  dispatch:
+    # Off until separately approved and configured by the integration maintainer.
+    if: github.repository == 'designerhawk12/NGO' && vars.AAHARA_WHATSAPP_DISPATCH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Dispatch at most ten pending messages
+        env:
+          API_ORIGIN: ${{ vars.AAHARA_API_ORIGIN }}
+          DISPATCH_SECRET: ${{ secrets.AAHARA_NOTIFICATION_DISPATCH_SECRET }}
+        shell: python
+        run: |
+          import json, os, time, urllib.request
+          origin = os.environ.get('API_ORIGIN', '')
+          allowed = {'https://aaharaconnect-ngo-staging-api.vercel.app', 'https://ngo-eight-umber.vercel.app'}
+          if origin not in allowed or not os.environ.get('DISPATCH_SECRET'):
+              raise SystemExit('Approved API origin and dispatch secret are required.')
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, *args, **kwargs):
+                  return None
+          client = urllib.request.build_opener(NoRedirect())
+          processed = 0
+          for _ in range(10):
+              req = urllib.request.Request(origin + '/api/v1/notifications/dispatch', method='POST', headers={'Authorization': 'Bearer ' + os.environ['DISPATCH_SECRET']})
+              with client.open(req, timeout=20) as response:
+                  result = json.load(response).get('data', {})
+              processed += int(result.get('processed', 0))
+              if result.get('disabled') or result.get('configurationRequired') or not result.get('processed'):
+                  break
+              time.sleep(1.2)
+          print('Bounded dispatch processed:', processed)

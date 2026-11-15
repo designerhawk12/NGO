@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { parse } from 'dotenv';
 import { describe, expect, it } from 'vitest';
 
-const root = resolve(process.cwd(), '..');
+const root = resolve(__dirname, '../../..');
 const examples = ['.env.example', 'server/.env.example', 'apps/web/.env.example', 'apps/mobile/.env.example'];
 
 describe('public environment examples', () => {

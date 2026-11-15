@@ -493,7 +493,10 @@ export function PickupDrawer({
                 <strong>
                   {resolvedVolunteers.length > 0 ? (
                     <>
-                      <div>{resolvedVolunteers.map(v => v.name).join(', ')}</div>
+                      <div>{resolvedVolunteers.map(v => {
+                        const response=currentAssignment.crewResponses?.find(member=>member.volunteerId===v.id)?.response ?? 'PENDING'
+                        return `${v.name} (${response.toLowerCase()})`
+                      }).join(', ')}</div>
                       <small style={{ color: '#64748b', fontWeight: 400 }}>{`(${currentAssignment.volunteerIds.length} assigned)`}</small>
                     </>
                   ) : (

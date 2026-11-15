@@ -30,3 +30,7 @@ The API clients at `apps/web/src/api/client.ts` and `apps/mobile/src/api/client.
 - A cross-module operation that must be atomic shares a `pg` transaction client. Modules do not import another module's repository or write its tables directly.
 
 See `DATA_MODEL.md`, `API_CONTRACTS.md`, `WORKFLOW_STATES.md`, `TEAM_OWNERSHIP.md` and `DEPLOYMENT.md`. Root `AGENTS.md` is mandatory for Codex collaborators.
+
+## Expo push notifications (migration 016)
+
+The same Expo app now accepts the database-owned ADMIN role. Mobile obtains an Expo token only after explicit notification permission and an authenticated session. Express owns device registration, inbox authorization and Expo Push Service requests. Business services insert idempotent recipient notifications and delivery rows in their existing transactions; controllers attempt dispatch only after commit. A secret-protected Vercel Cron endpoint processes due retries and Expo receipts. Expo tickets and receipts establish provider processing, never human receipt. The Hobby cron schedule is daily, so transient retries are not guaranteed promptly without an external scheduler or a higher-frequency plan. WhatsApp remains a separate disabled integration. The new `app` tables are private to the restricted Express runtime role; client roles have no table grants or RLS policies.

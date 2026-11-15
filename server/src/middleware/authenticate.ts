@@ -11,10 +11,13 @@ export const requireAuth: RequestHandler = async (request, response, next) => {
       throw new HttpError(401, 'UNAUTHENTICATED', 'Your session has expired. Sign in again in Settings to continue.');
     }
     const identity = await verifySupabaseToken(match[1]);
-    const appUser = await findOrCreateAppUser(identity.authUserId);
+    const appUser = await findOrCreateAppUser(identity.authUserId, identity.displayName);
     response.locals.appUser = appUser;
     const isCurrentUserStatusRead = request.baseUrl === '/api/v1' && request.path === '/me';
-    if (appUser.role === 'VOLUNTEER' && (appUser.volunteerApplicationStatus === 'PENDING' || appUser.volunteerApplicationStatus === 'DENIED') && !isCurrentUserStatusRead) {
+    // Narrow onboarding exception: identity service still verifies this user's pending application.
+    const isOwnPendingIdentityWrite = appUser.volunteerApplicationStatus === 'PENDING'
+      && request.method === 'PUT' && request.baseUrl === '/api/v1/volunteers' && request.path === '/me/identity';
+    if (appUser.role === 'VOLUNTEER' && (appUser.volunteerApplicationStatus === 'PENDING' || appUser.volunteerApplicationStatus === 'DENIED') && !isCurrentUserStatusRead && !isOwnPendingIdentityWrite) {
       if (appUser.volunteerApplicationStatus === 'DENIED') {
         throw new HttpError(403, 'VOLUNTEER_APPLICATION_DENIED', 'The volunteer application was not approved.');
       }

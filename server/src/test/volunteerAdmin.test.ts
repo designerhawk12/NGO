@@ -10,6 +10,7 @@ const { verify, findUser, repo, withTransaction } = vi.hoisted(() => ({
     listVolunteers: vi.fn(), findVolunteerById: vi.fn(),
     listTeams: vi.fn(), findTeamById: vi.fn(), findTeamForUpdate: vi.fn(),
     findExistingVolunteerIds: vi.fn(), insertTeam: vi.fn(), updateTeam: vi.fn(), replaceTeamMembers: vi.fn(),
+    countAssignmentsForTeam: vi.fn(), deleteTeamMemberships: vi.fn(), deleteTeam: vi.fn(),
   },
 }));
 vi.mock('../auth/supabase', () => ({ verifySupabaseToken: verify }));
@@ -48,6 +49,9 @@ beforeEach(() => {
   repo.insertTeam.mockResolvedValue(teamId);
   repo.updateTeam.mockResolvedValue(undefined);
   repo.replaceTeamMembers.mockResolvedValue(undefined);
+  repo.countAssignmentsForTeam.mockResolvedValue(0);
+  repo.deleteTeamMemberships.mockResolvedValue(undefined);
+  repo.deleteTeam.mockResolvedValue(true);
   repo.findByAppUserId.mockResolvedValue(volunteerRow);
   repo.listOwnTeamsByAppUserId.mockResolvedValue([]);
 });
@@ -112,11 +116,28 @@ describe('ADMIN Volunteer Management API', () => {
       expect((await request(app).get(`/api/v1/teams/${teamId}`).set(auth)).status).toBe(403);
       expect((await request(app).post('/api/v1/teams').set(auth).send({ name: 'Team Beta' })).status).toBe(403);
       expect((await request(app).patch(`/api/v1/teams/${teamId}`).set(auth).send({ name: 'Team Beta' })).status).toBe(403);
+      expect((await request(app).delete(`/api/v1/teams/${teamId}`).set(auth)).status).toBe(403);
     }
     findUser.mockResolvedValue(actor);
     expect((await request(app).get('/api/v1/teams/not-a-uuid').set(auth)).status).toBe(400);
     expect((await request(app).patch('/api/v1/teams/not-a-uuid').set(auth).send({ name: 'Beta' })).status).toBe(400);
+    expect((await request(app).delete('/api/v1/teams/not-a-uuid').set(auth)).status).toBe(400);
     expect((await request(app).get('/api/v1/teams?limit=0').set(auth)).status).toBe(400);
+  });
+
+  it('deletes a team only when no operational assignments reference it', async () => {
+    expect((await request(app).delete(`/api/v1/teams/${teamId}`)).status).toBe(401);
+    repo.countAssignmentsForTeam.mockResolvedValueOnce(1);
+    const blocked = await request(app).delete(`/api/v1/teams/${teamId}`).set(auth);
+    expect(blocked.status).toBe(409);
+    expect(repo.deleteTeamMemberships).not.toHaveBeenCalled();
+    expect(repo.deleteTeam).not.toHaveBeenCalled();
+
+    const deleted = await request(app).delete(`/api/v1/teams/${teamId}`).set(auth);
+    expect(deleted.status).toBe(200);
+    expect(deleted.body.data).toEqual({ id: teamId, deleted: true });
+    expect(repo.deleteTeamMemberships).toHaveBeenCalledWith(teamId, expect.anything());
+    expect(repo.deleteTeam).toHaveBeenCalledWith(teamId, expect.anything());
   });
 
   it('creates a team with explicit members and keeps assignment membership untouched', async () => {

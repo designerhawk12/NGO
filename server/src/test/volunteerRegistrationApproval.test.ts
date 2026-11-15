@@ -1,14 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 
-const { verify, findUser, invite, getEmail, withTransaction, repo } = vi.hoisted(() => ({
+const { verify, findUser, invite, getEmail, withTransaction, consumeRateLimit, repo } = vi.hoisted(() => ({
   verify: vi.fn(),
   findUser: vi.fn(),
   invite: vi.fn(),
   getEmail: vi.fn(),
   withTransaction: vi.fn(),
+  consumeRateLimit: vi.fn(),
   repo: {
     findAdminVolunteerConflict: vi.fn(),
+    insertInvitedVolunteer: vi.fn(),
     insertSelfRegisteredVolunteer: vi.fn(),
     listPendingVolunteerApplications: vi.fn(),
     findVolunteerApplicationForUpdate: vi.fn(),
@@ -25,6 +27,7 @@ vi.mock('../auth/supabase', () => ({
 }));
 vi.mock('../auth/appUsers', () => ({ findOrCreateAppUser: findUser }));
 vi.mock('../db/pool', () => ({ withTransaction }));
+vi.mock('../modules/volunteers/registrationRateLimit', () => ({ consumeVolunteerRegistrationRateLimit: consumeRateLimit }));
 vi.mock('../modules/volunteers/repository', () => repo);
 
 import { HttpError } from '../middleware/errorHandler';
@@ -67,14 +70,20 @@ const applicationRow = {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.stubEnv('PUBLIC_VOLUNTEER_REGISTRATION_ENABLED', 'true');
   verify.mockResolvedValue({ authUserId: admin.authUserId, email: 'admin@example.test' });
   findUser.mockResolvedValue(admin);
   invite.mockResolvedValue({ authUserId: volunteerActor.authUserId, inviteNonce: 'safe-test-nonce' });
+  consumeRateLimit.mockResolvedValue(true);
   getEmail.mockResolvedValue('applicant@example.test');
   repo.findAdminVolunteerConflict.mockResolvedValue(null);
   repo.insertSelfRegisteredVolunteer.mockResolvedValue({
     id: volunteerId, person_id: volunteerActor.id, registration_code: 'VOL-020',
     name: 'Applicant Person', phone_e164: '+919876543210', skills: ['Food Handling'], status: 'INACTIVE',
+  });
+  repo.insertInvitedVolunteer.mockResolvedValue({
+    id: volunteerId, person_id: volunteerActor.id, registration_code: 'VOL-020',
+    name: 'Applicant Person', phone_e164: null, skills: [], status: 'ACTIVE',
   });
   repo.listPendingVolunteerApplications.mockResolvedValue({ rows: [applicationRow], nextCursor: null });
   repo.findVolunteerApplicationForUpdate.mockResolvedValue({ id: applicationId, volunteer_id: volunteerId, status: 'PENDING', app_user_role: 'VOLUNTEER' });
@@ -82,19 +91,72 @@ beforeEach(() => {
   withTransaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => callback({}));
 });
 
+afterEach(() => vi.unstubAllEnvs());
+
 describe('Volunteer self-registration', () => {
+  it('is disabled by default before validation, database access, or email invitation', async () => {
+    vi.stubEnv('PUBLIC_VOLUNTEER_REGISTRATION_ENABLED', undefined);
+    const result = await request(app).post('/api/v1/volunteers/register').send({ email: 'invalid' });
+    expect(result.status).toBe(403);
+    expect(result.body.error.code).toBe('REGISTRATION_DISABLED');
+    expect(invite).not.toHaveBeenCalled();
+    expect(repo.findAdminVolunteerConflict).not.toHaveBeenCalled();
+    expect(repo.insertSelfRegisteredVolunteer).not.toHaveBeenCalled();
+    expect(consumeRateLimit).not.toHaveBeenCalled();
+  });
+
+  it('does not enable registration for values other than the exact word true', async () => {
+    for (const value of ['false', 'TRUE', '1']) {
+      vi.stubEnv('PUBLIC_VOLUNTEER_REGISTRATION_ENABLED', value);
+      const result = await request(app).post('/api/v1/volunteers/register').send(registration);
+      expect(result.status).toBe(403);
+    }
+    expect(invite).not.toHaveBeenCalled();
+  });
+
+  it('routes new Volunteers to mobile registration: the retired Admin create endpoint sends nothing', async () => {
+    vi.stubEnv('PUBLIC_VOLUNTEER_REGISTRATION_ENABLED', 'false');
+    const result = await request(app).post('/api/v1/volunteers').set(auth).send({
+      email: 'applicant@example.test', name: 'Applicant Person', registrationCode: 'VOL-020',
+    });
+    expect(result.status).toBe(410);
+    expect(result.body.error.code).toBe('ADMIN_VOLUNTEER_CREATION_RETIRED');
+    expect(invite).not.toHaveBeenCalled();
+    expect(repo.insertSelfRegisteredVolunteer).not.toHaveBeenCalled();
+  });
+
   it('sends the existing invite and creates a pending application with server-owned account role', async () => {
     const result = await request(app).post('/api/v1/volunteers/register').send(registration);
     expect(result.status).toBe(201);
+    expect(consumeRateLimit).toHaveBeenCalledWith(expect.any(String), 'applicant@example.test');
     expect(invite).toHaveBeenCalledWith('applicant@example.test', 'Applicant Person');
     expect(repo.insertSelfRegisteredVolunteer).toHaveBeenCalledWith(volunteerActor.authUserId, {
       email: 'applicant@example.test', name: 'Applicant Person', phoneE164: '+919876543210',
-      registrationCode: 'VOL-020', skills: ['Food Handling'],
+      skills: ['Food Handling'],
     }, expect.anything());
     expect(result.body.data.status).toBe('PENDING');
-    expect(result.body.data.message).toContain('Check your email to set your password');
+    expect(result.body.data.message).toBe('Application submitted successfully. Your Volunteer account is awaiting administrator approval.');
     expect(JSON.stringify(result.body)).not.toContain('authUserId');
     expect(JSON.stringify(result.body)).not.toContain('safe-test-nonce');
+  });
+
+  it('accepts registration without an internal code and lets the server create the code', async () => {
+    const { registrationCode: _legacyCode, ...publicInput } = registration;
+    const result = await request(app).post('/api/v1/volunteers/register').send(publicInput);
+    expect(result.status).toBe(201);
+    expect(repo.insertSelfRegisteredVolunteer).toHaveBeenCalledWith(volunteerActor.authUserId, {
+      email: 'applicant@example.test', name: 'Applicant Person', phoneE164: '+919876543210', skills: ['Food Handling'],
+    }, expect.anything());
+  });
+
+  it('does not invite or create an application after the durable rate limit is reached', async () => {
+    consumeRateLimit.mockResolvedValueOnce(false);
+    const result = await request(app).post('/api/v1/volunteers/register').send(registration);
+    expect(result.status).toBe(429);
+    expect(result.body.error.code).toBe('INVITE_RATE_LIMITED');
+    expect(invite).not.toHaveBeenCalled();
+    expect(repo.findAdminVolunteerConflict).not.toHaveBeenCalled();
+    expect(repo.insertSelfRegisteredVolunteer).not.toHaveBeenCalled();
   });
 
   it('rejects invalid, duplicate, and client-authoritative fields before sending an invitation', async () => {

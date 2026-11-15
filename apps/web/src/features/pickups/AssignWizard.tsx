@@ -1,26 +1,29 @@
 import {
-  AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Box,
   Check,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  Navigation,
   ShieldAlert,
-  Sparkles,
   Truck,
   User,
   Users,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type {
+  ContainerAssignmentOptions,
+  ContainerOption,
+  DriverAssignmentOption,
+  DriverAssignmentOptions,
+  PickupLoadSummary,
+} from '@aaharaconnect/shared'
 import { Modal } from '../../components/common/UI'
 import { isLiveAdmin, map409ErrorMessage } from './adapters'
-import { calculateAiLogistics, rankVehiclesForPickup, rankVolunteersForPickup } from './aiLogistics'
-import { createAssignment, fetchEligibleVolunteersForPickup } from './api'
+import { calculateAiLogistics, rankVolunteersForPickup } from './aiLogistics'
+import { createAssignment, fetchContainerOptions, fetchDriverOptions } from './api'
 import { saveDemoAssignment, updateDemoPickupStatus, useAssignWizardResources } from './hooks'
+import { useVolunteerPickupEligibility } from './useVolunteerPickupEligibility'
 import type { LiveAssignment, Pickup } from './types'
 
 interface Props {
@@ -30,11 +33,11 @@ interface Props {
   notify: (message: string, kind?: 'success' | 'error') => void
 }
 
+// Volunteers are crew; the NGO employee driver brings their one fixed vehicle.
 const wizardSteps = [
   'Select Volunteers',
-  'Select Driver',
-  'Select Vehicle',
-  'Containers',
+  'Select Driver & Vehicle',
+  'Select Containers',
   'Review Assignment',
 ]
 
@@ -43,232 +46,89 @@ const demoVolunteersFallback = [
   { volunteerId: 'vol-2', name: 'Amit Patel', role: 'Loading Crew', skills: ['Packing', 'Heavy Lifting'] },
   { volunteerId: 'vol-3', name: 'Neha Rao', role: 'Food Inspector', skills: ['Food Safety', 'Packing'] },
   { volunteerId: 'vol-4', name: 'Rohan Verma', role: 'Distribution Volunteer', skills: ['Distribution', 'Packaging'] },
-  { volunteerId: 'vol-5', name: 'Vikram Singh', role: 'Volunteer Driver', skills: ['Driving'] },
 ]
 
-const demoDriversFallback = [
-  { driverId: 'drv-1', name: 'Rahul Kumar', licenceStatus: 'VALID' },
-  { driverId: 'drv-2', name: 'Suresh Gowda', licenceStatus: 'VALID' },
-  { driverId: 'drv-3', name: 'Priya Sharma', licenceStatus: 'VALID' },
-]
+const unitLabel = (unit: string) => (unit === 'LITRES' ? 'L' : 'kg')
+const isSealed = (container: ContainerOption) => container.hasTightLid || container.vesselType === 'MILK_CAN'
 
-const demoVehiclesFallback = [
-  { vehicleId: 'veh-1', registrationNumber: 'KA 01 AB 1234', type: '3-Wheeler Cargo Auto', capacity: 120 },
-  { vehicleId: 'veh-2', registrationNumber: 'KA 05 XY 5678', type: 'Tata Ace Mini Truck', capacity: 500 },
-  { vehicleId: 'veh-3', registrationNumber: 'KA 03 EV 9012', type: 'Two-Wheeler EV Scooter', capacity: 25 },
-  { vehicleId: 'veh-4', registrationNumber: 'KA 04 CR 3456', type: 'Refrigerated Cargo Van', capacity: 1200 },
-]
+/** Mirrors the server's container checks so the Admin sees problems before confirming. */
+function containerProblems(load: PickupLoadSummary, chosen: ContainerOption[], maxVessels: number | null): string[] {
+  const problems: string[] = []
+  if (chosen.length === 0) return ['Select at least one clean, food-grade container for this pickup.']
+  for (const container of chosen) if (!container.available) problems.push(`${container.vesselCode}: ${container.reason ?? 'not available'}`)
+  if (maxVessels != null && chosen.length > maxVessels) problems.push(`The selected vehicle carries at most ${maxVessels} container(s).`)
+  const total = chosen.reduce((sum, container) => sum + Number(container.capacityValue), 0)
+  const required = load.weightKg ?? load.knownWeightKg
+  if (required > 0 && total + 0.0001 < required) problems.push(`Selected containers hold about ${Math.round(total * 100) / 100} kg, but about ${required} kg of food is expected.`)
+  if (load.liquidLitres > 0) {
+    const sealed = chosen.filter(isSealed).reduce((sum, container) => sum + Number(container.capacityValue), 0)
+    if (sealed + 0.0001 < load.liquidLitres) problems.push(`Liquid food (${load.liquidLitres} L) needs sealed containers with at least that capacity.`)
+  }
+  return problems
+}
+
+function describeLoad(load: PickupLoadSummary): string {
+  if (load.weightKg == null) return `Capacity verification required · recorded items weigh ${load.knownWeightKg} kg`
+  return `${load.weightKg} kg${load.basis === 'MEASURED' ? '' : ' (estimate)'}${load.liquidLitres ? ` · includes ${load.liquidLitres} L of liquids` : ''}`
+}
 
 export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
+  const live = isLiveAdmin()
   const [step, setStep] = useState(0)
   const [idempotencyKey] = useState(() => crypto.randomUUID())
   const [selectedVolunteerIds, setSelectedVolunteerIds] = useState<string[]>([])
   const [selectedDriverId, setSelectedDriverId] = useState('')
-  const [selectedVehicleId, setSelectedVehicleId] = useState('')
   const [selectedVesselIds, setSelectedVesselIds] = useState<string[]>([])
   const [role] = useState('Pickup Volunteer')
-  const [expandedRouteVehicleId, setExpandedRouteVehicleId] = useState<string | null>(null)
 
   const aiAssessment = useMemo(
-    () =>
-      pickup.aiAssessment ||
-      calculateAiLogistics(pickup.foods || [], pickup.donorName, pickup.donorLocation),
+    () => pickup.aiAssessment || calculateAiLogistics(pickup.foods || [], pickup.donorName, pickup.donorLocation),
     [pickup]
   )
-
-  const [containerCount, setContainerCount] = useState(
-    () => aiAssessment.vessels.reduce((acc, v) => acc + v.count, 0) || 2
-  )
-  const [estimatedLoadKg, setEstimatedLoadKg] = useState(
-    () => aiAssessment.totalEstimatedWeightKg || 30
-  )
+  const estimatedLoadKg = aiAssessment.totalEstimatedWeightKg || 30
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [volunteerEligibility, setVolunteerEligibility] = useState<{
-    windowStartsAt: string
-    windowEndsAt: string
-    volunteerIds: string[]
-    reservationConflictVolunteerIds: string[]
-    blockingReason: string | null
-    foodPickupDeadline: string
-    requiresNewDonorRequest: boolean
-  } | null>(null)
-  const [volunteerEligibilityError, setVolunteerEligibilityError] = useState<string | null>(null)
-  const [checkingVolunteerEligibility, setCheckingVolunteerEligibility] = useState(isLiveAdmin())
-
   const {
-    volunteers,
-    drivers,
-    vehicles,
-    vessels,
-    waitingTeam1,
-    waitingTeam5Drivers,
-    waitingTeam5Vehicles,
-    waitingVessels,
-  } = useAssignWizardResources()
+    eligibility: volunteerEligibility,
+    error: volunteerEligibilityError,
+    loading: checkingVolunteerEligibility,
+    refresh: refreshVolunteerEligibility,
+  } = useVolunteerPickupEligibility(pickup.id, pickup.windowStartsAt, pickup.windowEndsAt, live)
 
-  const activeVolunteers = volunteers.length > 0 ? volunteers : (isLiveAdmin() ? [] : demoVolunteersFallback)
-  const activeDrivers = drivers.length > 0 ? drivers : (isLiveAdmin() ? [] : demoDriversFallback)
-  const activeVehicles = vehicles.length > 0 ? vehicles : (isLiveAdmin() ? [] : demoVehiclesFallback)
+  const [driverOptions, setDriverOptions] = useState<DriverAssignmentOptions | null>(null)
+  const [driverOptionsError, setDriverOptionsError] = useState<string | null>(null)
+  const [loadingDrivers, setLoadingDrivers] = useState(false)
+  const [containerOptions, setContainerOptions] = useState<ContainerAssignmentOptions | null>(null)
+  const [containerOptionsError, setContainerOptionsError] = useState<string | null>(null)
+  const [loadingContainers, setLoadingContainers] = useState(false)
 
-  useEffect(() => {
-    if (!isLiveAdmin()) return
+  const { volunteers, waitingTeam1 } = useAssignWizardResources()
+  const activeVolunteers = volunteers.length > 0 ? volunteers : (live ? [] : demoVolunteersFallback)
 
-    // Guard: pickup.id must be a real server UUID before hitting the API.
-    // Demo fixture IDs (e.g. 'p1000000-...') start with non-hex chars and
-    // will be rejected by the server uuidSchema with 'Pickup ID must be a UUID'.
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    if (!UUID_RE.test(pickup.id)) {
-      setCheckingVolunteerEligibility(false)
-      setVolunteerEligibility(null)
-      setVolunteerEligibilityError(
-        'This pickup has a demo ID and is not saved in the database. ' +
-        'Create the pickup via \"Schedule Pickup\" to enable live volunteer eligibility checks.'
-      )
-      return
-    }
-
-    let active = true
-    setCheckingVolunteerEligibility(true)
-    setVolunteerEligibility(null)
-    setVolunteerEligibilityError(null)
-    void fetchEligibleVolunteersForPickup(pickup.id)
-      .then(result => {
-        if (active) setVolunteerEligibility(result)
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setVolunteerEligibilityError(error instanceof Error
-            ? error.message
-            : 'Could not verify volunteer availability for this pickup window.')
-        }
-      })
-      .finally(() => {
-        if (active) setCheckingVolunteerEligibility(false)
-      })
-    return () => { active = false }
-  }, [pickup.id])
-
-  // Detect whether a volunteer is categorized as a driver (has driving skill or driver role)
-  const isDriverVolunteer = (v: any) => {
-    const skills: string[] = Array.isArray(v.skills) ? v.skills : []
-    const hasDrivingSkill = skills.some(s => typeof s === 'string' && s.toLowerCase().includes('driv'))
-    const role = String(v.role || '').toLowerCase()
-    const hasDriverRole = role.includes('driv')
-    return hasDrivingSkill || hasDriverRole
-  }
-
-  // Step 0: Crew Volunteers — show volunteers whose skills DO NOT include driving (e.g. packing, food handling, heavy lifting)
-  const crewVolunteers = useMemo(() => {
-    return activeVolunteers.filter((v: any) => !isDriverVolunteer(v))
-  }, [activeVolunteers])
-
-  const volunteersWithWindowEligibility = useMemo(() => crewVolunteers.map((volunteer: any) => {
-    if (!isLiveAdmin()) return volunteer
+  // Every approved volunteer is crew; drivers are separate NGO employees chosen in step 2.
+  const volunteersWithWindowEligibility = useMemo(() => activeVolunteers.map((volunteer: any) => {
+    if (!live) return volunteer
     const id = String(volunteer.volunteerId || volunteer.id || '')
     const reservationConflict = volunteerEligibility?.reservationConflictVolunteerIds.includes(id) ?? false
     const windowAvailable = volunteerEligibility?.volunteerIds.includes(id) ?? false
     const pickupWindowBlocked = Boolean(volunteerEligibility?.blockingReason)
-    const availabilityLabel = checkingVolunteerEligibility
-      ? 'Checking'
-      : volunteerEligibilityError
-        ? 'Not checked'
-        : pickupWindowBlocked
-          ? 'Window blocked'
-        : reservationConflict
-          ? 'Reserved'
-          : windowAvailable
-            ? 'Schedule eligible'
-            : 'Unavailable'
+    const availabilityLabel = checkingVolunteerEligibility ? 'Checking'
+      : volunteerEligibilityError ? 'Not checked'
+        : pickupWindowBlocked ? 'Window blocked'
+          : reservationConflict ? 'Reserved'
+            : windowAvailable ? 'Schedule eligible' : 'No covering slot'
     const windowAvailabilityReason = checkingVolunteerEligibility
       ? 'Checking this volunteer’s schedule and reservation for the pickup window.'
-      : volunteerEligibilityError
-        ? `Pickup-window eligibility was not checked: ${volunteerEligibilityError}`
-      : pickupWindowBlocked
-        ? volunteerEligibility?.blockingReason || 'Pickup window is not assignable.'
-      : reservationConflict
-        ? 'An active assignment reservation overlaps this pickup window.'
-        : 'No available volunteer schedule covers this pickup window.'
-    return {
-      ...volunteer,
-      windowAvailable,
-      windowAvailabilityReason,
-      windowAvailabilityLabel: availabilityLabel,
-    }
-  }), [
-    crewVolunteers,
-    checkingVolunteerEligibility,
-    volunteerEligibility,
-    volunteerEligibilityError,
-  ])
-
-  // Step 1: All Drivers — show registered drivers and any volunteer who has the driving skill
-  const evaluatedDrivers = useMemo(() => {
-    const list: any[] = [...activeDrivers]
-    const existingNamesOrIds = new Set(
-      list.map((d: any) => (d.name || d.fullName || d.driverId || d.id || '').toLowerCase())
-    )
-
-    // Include volunteers with driving skill into drivers list
-    const drivingVolunteers: any[] = activeVolunteers.filter((v: any) => isDriverVolunteer(v))
-    for (const vol of drivingVolunteers) {
-      const volName = String(vol.name || vol.fullName || '')
-      const volId = String(vol.driverId || vol.id || vol.volunteerId || '')
-      if (volName && !existingNamesOrIds.has(volName.toLowerCase()) && !existingNamesOrIds.has(volId.toLowerCase())) {
-        list.push({
-          driverId: volId,
-          id: volId,
-          name: `${volName} (Volunteer Driver)`,
-          licenceNumber: vol.licenceNumber || 'Volunteer Driver on file',
-          licenceStatus: 'VALID',
-          status: vol.status || 'ACTIVE',
-        })
-        existingNamesOrIds.add(volName.toLowerCase())
-        existingNamesOrIds.add(volId.toLowerCase())
-      }
-    }
-
-    return list.map((drv: any) => {
-      const id = String(drv.driverId || drv.id || '')
-      const name = String(drv.name || drv.fullName || id)
-      const licenceNumber = drv.licenceNumber || drv.licenseNumber || drv.dlNumber || ''
-      const licenceStatus = String(drv.licenceStatus || drv.licenseStatus || 'VALID').toUpperCase()
-      const status = String(drv.status || 'ACTIVE').toUpperCase()
-
-      let isEligible = true
-      let blockingReason = ''
-
-      if (status !== 'ACTIVE') {
-        isEligible = false
-        blockingReason = 'Driver is currently inactive on roster.'
-      } else if (licenceStatus === 'EXPIRED') {
-        isEligible = false
-        blockingReason = 'Driving licence has expired.'
-      } else if (licenceStatus === 'SUSPENDED') {
-        isEligible = false
-        blockingReason = 'Driving licence is suspended.'
-      }
-
-      return {
-        id,
-        name,
-        licenceNumber,
-        licenceStatus,
-        status,
-        isEligible,
-        blockingReason,
-        availability: 'Available for pickup window',
-      }
-    })
-  }, [activeDrivers, activeVolunteers])
+      : volunteerEligibilityError ? `Pickup-window eligibility was not checked: ${volunteerEligibilityError}`
+        : pickupWindowBlocked ? volunteerEligibility?.blockingReason || 'Pickup window is not assignable.'
+          : reservationConflict ? 'An active assignment reservation overlaps this pickup window.'
+            : 'No available volunteer schedule covers this pickup window.'
+    return { ...volunteer, windowAvailable, windowAvailabilityReason, windowAvailabilityLabel: availabilityLabel }
+  }), [activeVolunteers, live, checkingVolunteerEligibility, volunteerEligibility, volunteerEligibilityError])
 
   const volunteerRanking = useMemo(
-    () =>
-      rankVolunteersForPickup(volunteersWithWindowEligibility, {
-        totalEstimatedWeightKg: Number(estimatedLoadKg),
-        foods: pickup.foods,
-      }),
+    () => rankVolunteersForPickup(volunteersWithWindowEligibility, { totalEstimatedWeightKg: Number(estimatedLoadKg), foods: pickup.foods }),
     [volunteersWithWindowEligibility, estimatedLoadKg, pickup.foods]
   )
 
@@ -278,114 +138,89 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
     setSelectedVolunteerIds(current => current.filter(id => eligibleIds.has(id)))
   }, [volunteerEligibility])
 
-  const vehicleRanking = useMemo(
-    () =>
-      rankVehiclesForPickup(activeVehicles, {
-        totalEstimatedWeightKg: Number(estimatedLoadKg),
-        totalVessels: Number(containerCount),
-        pickupAddress: pickup.donorLocation || (pickup as any).pickupAddress || '',
-        deliveryAddress: pickup.deliveryAddress || '',
-      }),
-    [
-      activeVehicles,
-      estimatedLoadKg,
-      containerCount,
-      pickup.donorLocation,
-      (pickup as any).pickupAddress,
-      pickup.deliveryAddress,
-    ]
-  )
+  const loadDriverOptions = async () => {
+    setLoadingDrivers(true); setDriverOptionsError(null)
+    try {
+      if (!live) throw new Error('Sign in as an administrator in Settings to choose NGO drivers, vehicles and containers.')
+      const options = await fetchDriverOptions(pickup.id)
+      setDriverOptions(options)
+      if (selectedDriverId && !options.options.some(option => option.driverId === selectedDriverId && option.eligible)) setSelectedDriverId('')
+    } catch (error) {
+      setDriverOptions(null)
+      setDriverOptionsError(error instanceof Error ? error.message : 'Could not load drivers for this pickup.')
+    } finally { setLoadingDrivers(false) }
+  }
+
+  const selectedDriver = driverOptions?.options.find(option => option.driverId === selectedDriverId) ?? null
+
+  const loadContainerOptions = async (driver: DriverAssignmentOption) => {
+    setLoadingContainers(true); setContainerOptionsError(null)
+    try {
+      if (!live) throw new Error('Sign in as an administrator in Settings to choose containers.')
+      const options = await fetchContainerOptions(pickup.id, driver.driverId)
+      setContainerOptions(options)
+      setSelectedVesselIds(options.recommendation.vesselIds)
+    } catch (error) {
+      setContainerOptions(null)
+      setContainerOptionsError(error instanceof Error ? error.message : 'Could not load containers for this pickup.')
+    } finally { setLoadingContainers(false) }
+  }
 
   useEffect(() => {
-    if (!selectedVehicleId && vehicleRanking.bestVehicle?.vehicleId) {
-      setSelectedVehicleId(vehicleRanking.bestVehicle.vehicleId)
-    }
-  }, [selectedVehicleId, vehicleRanking.bestVehicle?.vehicleId])
+    if (step === 1 && !driverOptions && !loadingDrivers) void loadDriverOptions()
+    if (step === 2 && selectedDriver && containerOptions?.driverId !== selectedDriver.driverId && !loadingContainers) void loadContainerOptions(selectedDriver)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
+
+  const chosenContainers = (containerOptions?.containers ?? []).filter(container => selectedVesselIds.includes(container.id))
+  const load = containerOptions?.load ?? driverOptions?.load ?? null
+  const plannedProblems = containerOptions && load ? containerProblems(load, chosenContainers, containerOptions.maxVessels) : []
 
   const canContinue = () => {
-    if (step === 0) return selectedVolunteerIds.length > 0
-    if (step === 1) {
-      if (!selectedDriverId) return false
-      const chosen = evaluatedDrivers.find(d => d.id === selectedDriverId)
-      return chosen ? chosen.isEligible : true
-    }
-    if (step === 2) {
-      if (!selectedVehicleId) return false
-      const chosen = vehicleRanking.ranked.find(v => v.vehicleId === selectedVehicleId)
-      return chosen ? chosen.isEligible : true
-    }
-    if (step === 3) return Number(containerCount) > 0
+    if (step === 0) return true
+    if (step === 1) return Boolean(selectedDriver?.eligible)
+    if (step === 2) return Boolean(containerOptions) && plannedProblems.length === 0
     return true
   }
 
   const canConfirmAssignment = !submitting
-    && selectedVolunteerIds.length > 0
-    && Boolean(selectedDriverId)
-    && Boolean(selectedVehicleId)
-    && (!isLiveAdmin() || (
-      Boolean(volunteerEligibility)
+    && Boolean(selectedDriver?.eligible)
+    && plannedProblems.length === 0
+    && chosenContainers.length > 0
+    && (!live || (
+      selectedVolunteerIds.length === 0 || (Boolean(volunteerEligibility)
       && !volunteerEligibilityError
-      && selectedVolunteerIds.every(id => volunteerEligibility?.volunteerIds.includes(id))
+      && selectedVolunteerIds.every(id => volunteerEligibility?.volunteerIds.includes(id)))
     ))
 
   const handleNext = () => {
-    if (!canContinue()) {
-      notify('Complete required selection to proceed.', 'error')
-      return
-    }
+    if (!canContinue()) { notify('Complete required selection to proceed.', 'error'); return }
     setStep(s => s + 1)
   }
 
   const handleSubmit = async () => {
-    if (submittingRef.current) return
+    if (submittingRef.current || !selectedDriver) return
     submittingRef.current = true
     setSubmitting(true)
     setErrorMessage(null)
     try {
-      if (isLiveAdmin()) {
-        // Sanitise numeric fields — NaN / 0 fail the server schema
-        const safeCount = Math.max(1, Math.floor(Number(containerCount) || 1))
-        const safeTotalKg = Math.max(0, Number(estimatedLoadKg) || 0)
-
-        const containers = selectedVesselIds.length > 0
-          ? selectedVesselIds.map(vid => {
-              const v = vessels.find(x => x.id === vid)
-              const perVesselKg = selectedVesselIds.length > 0
-                ? safeTotalKg / selectedVesselIds.length
-                : safeTotalKg
-              return {
-                containerType: v?.name || v?.vesselCode || 'Vessel',
-                count: 1,
-                estimatedLoadKg: Math.max(0, perVesselKg),
-              }
-            })
-          : [
-              {
-                containerType: aiAssessment.vessels[0]?.containerType || 'insulated crate',
-                count: safeCount,
-                estimatedLoadKg: safeTotalKg,
-              },
-            ]
-
-        if (!selectedDriverId) throw new Error('No driver selected.')
-        if (!selectedVehicleId) throw new Error('No vehicle selected.')
-        if (selectedVolunteerIds.length === 0) throw new Error('No volunteers selected.')
-
-        // DEBUG: log exact body sent to server
-        console.log('[AssignWizard] POST body:', JSON.stringify({
-          teamId: null, volunteerIds: selectedVolunteerIds, vesselIds: selectedVesselIds,
-          driverId: selectedDriverId, vehicleId: selectedVehicleId, role,
-          windowStartsAt: pickup.windowStartsAt, windowEndsAt: pickup.windowEndsAt, containers,
-        }, null, 2))
-
+      const totalCapacity = chosenContainers.reduce((sum, container) => sum + Number(container.capacityValue), 0)
+      const weight = load?.weightKg ?? null
+      const containers = chosenContainers.map(container => ({
+        containerType: `${container.name} (${container.vesselCode})`,
+        count: 1,
+        estimatedLoadKg: weight != null && totalCapacity > 0 ? Math.round(weight * Number(container.capacityValue) / totalCapacity * 100) / 100 : null,
+      }))
+      if (live) {
         const assignment = await createAssignment(
           pickup.id,
           {
             teamId: null,
             volunteerIds: selectedVolunteerIds,
-            vesselIds: selectedVesselIds,
-            driverId: selectedDriverId,
-            vehicleId: selectedVehicleId,
+            vesselIds: chosenContainers.map(container => container.id),
+            driverId: selectedDriver.driverId,
+            // The server derives this from the driver's fixed link and rejects any mismatch.
+            vehicleId: selectedDriver.vehicle.id,
             role,
             windowStartsAt: pickup.windowStartsAt,
             windowEndsAt: pickup.windowEndsAt,
@@ -393,9 +228,7 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
           },
           idempotencyKey
         )
-
         notify('Assignment created successfully.')
-
         onSuccess(assignment)
       } else {
         const demoAssignment: LiveAssignment = {
@@ -405,8 +238,8 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
           version: 1,
           volunteerIds: selectedVolunteerIds,
           teamId: null,
-          driverId: selectedDriverId,
-          vehicleId: selectedVehicleId,
+          driverId: selectedDriver.driverId,
+          vehicleId: selectedDriver.vehicle.id,
         }
         saveDemoAssignment(demoAssignment)
         updateDemoPickupStatus(pickup.id, 'ASSIGNED')
@@ -424,20 +257,22 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
     }
   }
 
+  const selectedVolunteerNames = volunteerRanking.ranked
+    .filter(volunteer => selectedVolunteerIds.includes(volunteer.volunteerId))
+    .map(volunteer => volunteer.name)
+  const warnings = [...(selectedDriver?.warnings ?? []), ...(containerOptions?.recommendation.reasons ?? []), ...(load?.notes ?? [])]
+
   return (
     <Modal
       title="Assign Crew & Vehicle"
-      subtitle="Assign volunteers, driver, and vehicle for this pickup."
+      subtitle="Assign volunteers, an NGO driver with their vehicle, and containers for this pickup."
       onClose={onClose}
       wide
     >
       <div className="wizard">
         <div className="wizard-steps">
           {wizardSteps.map((label, idx) => (
-            <div
-              key={label}
-              className={`wizard-step ${idx === step ? 'current' : ''} ${idx < step ? 'done' : ''}`}
-            >
+            <div key={label} className={`wizard-step ${idx === step ? 'current' : ''} ${idx < step ? 'done' : ''}`}>
               <span>{idx < step ? <Check size={14} /> : idx + 1}</span>
               <small>{label}</small>
             </div>
@@ -455,7 +290,10 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
             <>
               <div className="wizard-title">
                 <h3>Select Volunteers</h3>
-                <p>Choose packing and food rescue crew members for this pickup. (Drivers are selected in Step 2)</p>
+                <p>Volunteers are optional for driver-only pickups.</p>
+                <p>Choose approved volunteers for packing, loading and food handling. The NGO driver is chosen in Step 2.</p>
+                <p>Availability must cover this pickup's full time window. An overlapping assignment can still reserve a volunteer who marked a slot Available.</p>
+                {live && <button type="button" className="text-link" onClick={refreshVolunteerEligibility} disabled={checkingVolunteerEligibility}>Refresh volunteer schedules</button>}
               </div>
               {waitingTeam1 && volunteers.length === 0 ? (
                 <div className="wizard-tip" style={{ marginBottom: '1rem' }}>
@@ -509,7 +347,7 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
 
               {/* Selection summary */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem', color: '#64748b' }}>
-                <span>Showing packing & food handling crew (skills except driving)</span>
+                <span>Showing approved volunteers only · NGO drivers are not listed here</span>
                 <span style={{ fontWeight: 600, color: selectedVolunteerIds.length > 0 ? '#16a34a' : '#64748b' }}>
                   {`${selectedVolunteerIds.length} volunteer(s) selected`}
                 </span>
@@ -673,987 +511,180 @@ export function AssignWizard({ pickup, onClose, onSuccess, notify }: Props) {
             </>
           )}
 
+
           {step === 1 && (
             <>
               <div className="wizard-title">
-                <h3>Select Driver</h3>
-                <p>Choose an authorized driver or volunteer driver with a valid licence for this pickup.</p>
+                <h3>Select Driver & Vehicle</h3>
+                <p>Choose an NGO employee driver. Their permanently assigned vehicle is selected automatically.</p>
               </div>
-              {waitingTeam5Drivers && drivers.length === 0 && evaluatedDrivers.length === 0 ? (
-                <div className="wizard-tip" style={{ marginBottom: '1rem' }}>
-                  <strong>{waitingTeam5Drivers}</strong>
+              {loadingDrivers && <div className="wizard-tip">Checking drivers, vehicles, capacity and reservations for this pickup…</div>}
+              {driverOptionsError && (
+                <div className="wizard-tip error-tip" style={{ color: '#b91c1c' }}>
+                  <ShieldAlert size={16} /> {driverOptionsError} <button type="button" className="text-link" onClick={() => void loadDriverOptions()}>Retry</button>
                 </div>
-              ) : null}
-
-              {/* Table-like column header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#f8fafc', borderRadius: '6px 6px 0 0', border: '1px solid #e2e8f0', borderBottom: 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ width: '20px' }}>Select</span>
-                  <span>Driver Name & Licence</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                  <span>Availability</span>
-                  <span style={{ minWidth: '95px', textAlign: 'right' }}>Licence Status</span>
-                </div>
-              </div>
-
-              {/* Compact list */}
-              <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
-                {evaluatedDrivers.map((drv, index) => {
-                  const id = drv.id
-                  const isSelected = selectedDriverId === id
-                  return (
-                    <div
-                      key={id}
-                      role="button"
-                      tabIndex={drv.isEligible ? 0 : -1}
-                      onClick={() => {
-                        if (!drv.isEligible) return
-                        setSelectedDriverId(id)
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === ' ' || e.key === 'Enter') {
-                          if (!drv.isEligible) return
-                          setSelectedDriverId(id)
-                        }
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                        padding: '10px 14px',
-                        borderBottom: index < evaluatedDrivers.length - 1 ? '1px solid #e2e8f0' : 'none',
-                        background: isSelected ? '#f0fdf4' : drv.isEligible ? '#ffffff' : '#f8fafc',
-                        cursor: drv.isEligible ? 'pointer' : 'not-allowed',
-                        opacity: drv.isEligible ? 1 : 0.65,
-                        transition: 'background 0.15s ease',
-                      }}
-                    >
-                      {/* Left: Radio + Name + Licence No */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
-                        <input
-                          type="radio"
-                          name="selectedDriver"
-                          checked={isSelected}
-                          disabled={!drv.isEligible}
-                          onChange={() => {}}
-                          style={{ width: '18px', height: '18px', accentColor: '#16a34a', cursor: drv.isEligible ? 'pointer' : 'not-allowed', flexShrink: 0 }}
-                        />
-                        <div style={{ minWidth: 0 }}>
-                          <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{drv.name}</strong>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                            {drv.licenceNumber ? `Licence No: ${drv.licenceNumber}` : 'Driving Licence on file'}
-                          </div>
-                          {!drv.isEligible && (
-                            <div style={{ color: '#dc2626', fontSize: '0.73rem', marginTop: '2px' }}>
-                              <span>✕ {drv.blockingReason}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right: Availability & Status Badge */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexShrink: 0 }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: drv.isEligible ? '#166534' : '#991b1b', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: drv.isEligible ? '#22c55e' : '#ef4444' }} />
-                            {drv.isEligible ? 'Available' : 'Unavailable'}
-                          </span>
-                          <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block' }}>Window active</span>
-                        </div>
-                        <div style={{ minWidth: '95px', textAlign: 'right' }}>
-                          {drv.isEligible ? (
-                            <span
-                              style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                background: '#ecfdf5',
-                                color: '#065f46',
-                                border: '1px solid #a7f3d0',
-                                padding: '2px 8px',
-                                borderRadius: '999px',
-                                display: 'inline-block',
-                              }}
-                            >
-                              ✓ {drv.licenceStatus}
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                background: '#fee2e2',
-                                color: '#991b1b',
-                                border: '1px solid #fecaca',
-                                padding: '2px 8px',
-                                borderRadius: '999px',
-                                display: 'inline-block',
-                              }}
-                            >
-                              Ineligible
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-                {evaluatedDrivers.length === 0 && (
-                  <div style={{ padding: '1.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.88rem' }}>
-                    No drivers available.
+              )}
+              {driverOptions && (
+                <>
+                  <div className="wizard-tip" style={{ marginBottom: '0.75rem' }}>
+                    <Box size={16} /> <strong>Food load:</strong> {describeLoad(driverOptions.load)}
                   </div>
-                )}
-              </div>
+                  {driverOptions.blockingReason && (
+                    <div className="wizard-tip error-tip" style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>
+                      <ShieldAlert size={16} /> {driverOptions.blockingReason}
+                    </div>
+                  )}
+                  <div className="driver-option-list" role="radiogroup" aria-label="NGO drivers">
+                    {driverOptions.options.map(option => {
+                      const selected = option.driverId === selectedDriverId
+                      return (
+                        <label key={option.driverId} className={`driver-option ${selected ? 'selected' : ''} ${option.eligible ? '' : 'disabled'}`}>
+                          <input
+                            type="radio"
+                            name="driver"
+                            checked={selected}
+                            disabled={!option.eligible}
+                            onChange={() => { setSelectedDriverId(option.driverId); setContainerOptions(null) }}
+                          />
+                          <div className="driver-option-body">
+                            <div className="driver-option-row">
+                              <span><User size={15} /> <strong>Driver:</strong> {option.name}</span>
+                              <span className={`status-badge ${option.eligible ? 'status-available' : 'status-unavailable'}`}><span className="status-dot" />{option.eligible ? 'Available' : 'Unavailable'}</span>
+                            </div>
+                            <div className="driver-option-grid">
+                              <span><Truck size={14} /> <strong>Assigned vehicle:</strong> {option.vehicle.registrationNumber}</span>
+                              <span><strong>Vehicle type:</strong> {option.vehicle.kind}</span>
+                              <span><strong>Vehicle capacity:</strong> {option.vehicle.capacityKg} kg{option.vehicle.indicativeMaxVessels ? ` · up to ${option.vehicle.indicativeMaxVessels} containers` : ''}</span>
+                              <span><strong>Licence:</strong> {option.licenceNumber} · valid until {option.licenceExpiresOn}</span>
+                            </div>
+                            <p className={`driver-option-note ${option.capacity.status === 'FITS' ? 'ok' : option.capacity.status === 'VERIFY' ? 'warn' : 'bad'}`}>{option.capacity.message}</p>
+                            {option.reasons.map(reason => <p key={reason} className="driver-option-note bad">✕ {reason}</p>)}
+                            {option.eligible && option.warnings.filter(warning => warning !== option.capacity.message).map(warning => <p key={warning} className="driver-option-note warn"><AlertTriangle size={12} /> {warning}</p>)}
+                          </div>
+                        </label>
+                      )
+                    })}
+                    {driverOptions.options.length === 0 && (
+                      <div className="wizard-tip error-tip">No NGO employee drivers are registered. Add one from Assign Driver.</div>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
 
           {step === 2 && (
             <>
               <div className="wizard-title">
-                <h3>Select Vehicle</h3>
-                <p>Choose a vehicle with sufficient capacity and fleet readiness. Assignment-window reservations are rechecked on confirmation.</p>
+                <h3>Select Containers</h3>
+                <p>Containers are suggested from registered, clean inventory to hold the food and fit the selected vehicle.</p>
               </div>
-
-              {/* Vehicle Logistics & Nearest Route Recommendation Banner */}
-              {vehicleRanking.bestVehicle ? (
-                <div
-                  style={{
-                    background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)',
-                    border: '1px solid #a7f3d0',
-                    borderRadius: '8px',
-                    padding: '0.85rem',
-                    marginBottom: '1rem',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
-                    <Sparkles size={18} style={{ color: '#059669', flexShrink: 0, marginTop: '2px' }} />
-                    <div style={{ fontSize: '0.85rem', flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                        <div style={{ fontWeight: 700, color: '#065f46' }}>
-                          {'Nearest Vehicle & Route Recommendation'}
-                        </div>
-                        {vehicleRanking.bestVehicle.route && (
-                          <a
-                            href={vehicleRanking.bestVehicle.route.navigationUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              color: '#047857',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              textDecoration: 'none',
-                              background: '#ffffff',
-                              border: '1px solid #a7f3d0',
-                              borderRadius: '4px',
-                              padding: '2px 8px',
-                            }}
-                          >
-                            <Navigation size={12} /> {'Live Google Maps Route'} <ExternalLink size={12} />
-                          </a>
-                        )}
-                      </div>
-
-                      <div style={{ fontWeight: 600, color: '#0f172a', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <Truck size={15} style={{ color: '#059669' }} />
-                        <span>{`${vehicleRanking.bestVehicle.kind} (${vehicleRanking.bestVehicle.registrationNumber}) · ${vehicleRanking.bestVehicle.suitabilityScore}% match`}</span>
-                        {vehicleRanking.bestVehicle.distanceToDonorKm != null && (
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, background: '#dcfce7', color: '#15803d', padding: '1px 6px', borderRadius: '4px' }}>
-                            {`📍 ${vehicleRanking.bestVehicle.distanceToDonorKm} km to donor (~${vehicleRanking.bestVehicle.durationToDonorMins} mins)`}
-                          </span>
-                        )}
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                          {vehicleRanking.bestVehicle.isLiveLocation ? '🟢 Live GPS: ' : '🏢 Depot: '}{vehicleRanking.bestVehicle.locationLabel}
-                        </span>
-                      </div>
-
-                      <p style={{ margin: '4px 0 0', color: '#334155', fontSize: '0.8rem' }}>
-                        {vehicleRanking.bestVehicle.reasons[0] || aiAssessment.vehicle.reason}
-                      </p>
-
-                      {/* Specified Route summary & Turn-by-Turn Waypoints */}
-                      {vehicleRanking.bestVehicle.route && (
-                        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #d1fae5' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                            <span style={{ fontSize: '0.78rem', color: '#065f46', fontWeight: 600 }}>
-                              {`🗺️ Trip Corridor: ${vehicleRanking.bestVehicle.route.routeSummary}`}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setExpandedRouteVehicleId(prev => prev === vehicleRanking.bestVehicle?.vehicleId ? null : vehicleRanking.bestVehicle?.vehicleId || null)}
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#047857',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '3px',
-                                padding: 0,
-                              }}
-                            >
-                              {expandedRouteVehicleId === vehicleRanking.bestVehicle.vehicleId ? (
-                                <>{'Hide Turn-by-Turn Waypoints'} <ChevronUp size={13} /></>
-                              ) : (
-                                <>{'View Turn-by-Turn Waypoints'} <ChevronDown size={13} /></>
-                              )}
-                            </button>
-                          </div>
-
-                          {expandedRouteVehicleId === vehicleRanking.bestVehicle.vehicleId && (
-                            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {vehicleRanking.bestVehicle.route.legs.map((leg, lIdx) => (
-                                <div
-                                  key={lIdx}
-                                  style={{
-                                    background: '#ffffff',
-                                    border: '1px solid #cbd5e1',
-                                    borderRadius: '6px',
-                                    padding: '8px 10px',
-                                    fontSize: '0.78rem',
-                                  }}
-                                >
-                                  <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>
-                                      {lIdx === 0 ? '🚀 Leg 1: Vehicle Hub ➔ Donor Venue' : '🥘 Leg 2: Donor Venue ➔ NGO Distribution Center'}
-                                    </span>
-                                    <span style={{ color: '#059669', fontWeight: 600 }}>
-                                      {`${leg.distanceKm} km · ~${leg.durationMins} mins`}
-                                    </span>
-                                  </div>
-                                  <div style={{ color: '#475569', fontSize: '0.74rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                    {leg.instructions.map((inst, iIdx) => (
-                                      <div key={iIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
-                                        <span style={{ color: '#16a34a', fontWeight: 700 }}>•</span>
-                                        <span>{inst}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)',
-                    border: '1px solid #a7f3d0',
-                    borderRadius: '8px',
-                    padding: '0.85rem',
-                    marginBottom: '1rem',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.6rem',
-                  }}
-                >
-                  <Sparkles size={18} style={{ color: '#059669', flexShrink: 0, marginTop: '2px' }} />
-                  <div style={{ fontSize: '0.85rem' }}>
-                    <div style={{ fontWeight: 700, color: '#065f46' }}>
-                      {'Vehicle Logistics Profile'}
-                    </div>
-                    <div style={{ fontWeight: 600, color: '#0f172a', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <Truck size={15} style={{ color: '#059669' }} />
-                      <span>{aiAssessment.vehicle.vehicleType}</span>
-                    </div>
-                    <p style={{ margin: '3px 0 0', color: '#475569', fontSize: '0.8rem' }}>
-                      {aiAssessment.vehicle.reason}
-                    </p>
-                  </div>
+              {loadingContainers && <div className="wizard-tip">Checking container inventory for this load…</div>}
+              {containerOptionsError && (
+                <div className="wizard-tip error-tip" style={{ color: '#b91c1c' }}>
+                  <ShieldAlert size={16} /> {containerOptionsError} {selectedDriver && <button type="button" className="text-link" onClick={() => void loadContainerOptions(selectedDriver)}>Retry</button>}
                 </div>
               )}
-
-              {waitingTeam5Vehicles && vehicles.length === 0 ? (
-                <div className="wizard-tip" style={{ marginBottom: '1rem' }}>
-                  <strong>{waitingTeam5Vehicles}</strong>
-                </div>
-              ) : null}
-
-              {vehicleRanking.noCandidatesReason && (
-                <div className="wizard-tip error-tip" style={{ color: '#b91c1c', marginBottom: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.75rem' }}>
-                  <ShieldAlert size={16} /> {vehicleRanking.noCandidatesReason}
-                </div>
-              )}
-
-              {/* Table-like column header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#f8fafc', borderRadius: '6px 6px 0 0', border: '1px solid #e2e8f0', borderBottom: 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ width: '20px' }}>Select</span>
-                  <span>Vehicle Plate & Type</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                  <span>Payload & Margin</span>
-                  <span style={{ minWidth: '95px', textAlign: 'right' }}>Suitability</span>
-                </div>
-              </div>
-
-              {/* Compact list */}
-              <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
-                {vehicleRanking.ranked.map((veh, index) => {
-                  const id = veh.vehicleId
-                  const reg = veh.registrationNumber
-                  const isSelected = selectedVehicleId === id
-                  const isTopPick = veh.isEligible && veh.rank === 1
-                  return (
-                    <div
-                      key={id}
-                      role="button"
-                      tabIndex={veh.isEligible ? 0 : -1}
-                      onClick={() => {
-                        if (!veh.isEligible) return
-                        setSelectedVehicleId(id)
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === ' ' || e.key === 'Enter') {
-                          if (!veh.isEligible) return
-                          setSelectedVehicleId(id)
-                        }
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                        padding: '10px 14px',
-                        borderBottom: index < vehicleRanking.ranked.length - 1 ? '1px solid #e2e8f0' : 'none',
-                        background: isSelected ? '#f0fdf4' : veh.isEligible ? '#ffffff' : '#f8fafc',
-                        cursor: veh.isEligible ? 'pointer' : 'not-allowed',
-                        opacity: veh.isEligible ? 1 : 0.65,
-                        transition: 'background 0.15s ease',
-                      }}
-                    >
-                      {/* Left: Radio + Plate + Type + Reasons */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
-                        <input
-                          type="radio"
-                          name="selectedVehicle"
-                          checked={isSelected}
-                          disabled={!veh.isEligible}
-                          onChange={() => {}}
-                          style={{ width: '18px', height: '18px', accentColor: '#16a34a', cursor: veh.isEligible ? 'pointer' : 'not-allowed', flexShrink: 0 }}
-                        />
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.86rem', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '1px 6px', borderRadius: '4px', color: '#1e293b' }}>
-                              {reg}
-                            </span>
-                            <span style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 500 }}>{veh.kind}</span>
-                            {veh.distanceToDonorKm != null && (
-                              <span style={{ fontSize: '0.72rem', fontWeight: 600, background: '#ecfdf5', color: '#065f46', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: '4px' }}>
-                                {`📍 ${veh.distanceToDonorKm} km to donor (~${veh.durationToDonorMins} min)`}
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: '0.73rem', color: '#64748b', marginTop: '2px' }}>
-                            <span>{veh.isLiveLocation ? '🟢 Live GPS: ' : '🏢 Base Depot: '}{veh.locationLabel}</span>
-                          </div>
-                          {veh.reasons.length > 0 && (
-                            <div style={{ color: '#059669', fontSize: '0.73rem', marginTop: '2px' }}>
-                              <span>✓ {veh.reasons[0]}</span>
-                            </div>
-                          )}
-                          {veh.constraints.length > 0 && (
-                            <div style={{ color: '#dc2626', fontSize: '0.73rem', marginTop: '2px' }}>
-                              <span>✕ {veh.constraints[0]}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right: Capacity vs Load & Status Badge */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexShrink: 0 }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b' }}>
-                            {`${veh.capacityKg} kg`}
-                          </span>
-                          <span style={{ fontSize: '0.72rem', color: veh.isOverCapacity ? '#dc2626' : '#16a34a', display: 'block' }}>
-                            {veh.isOverCapacity ? `Deficit: ${Number(estimatedLoadKg) - veh.capacityKg} kg` : `Margin: +${veh.capacityKg - Number(estimatedLoadKg)} kg`}
-                          </span>
-                        </div>
-                        <div style={{ minWidth: '95px', textAlign: 'right' }}>
-                          {isTopPick && (
-                            <span
-                              style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                background: '#ecfdf5',
-                                color: '#065f46',
-                                border: '1px solid #a7f3d0',
-                                padding: '2px 8px',
-                                borderRadius: '999px',
-                                display: 'inline-block',
-                              }}
-                            >
-                              {`⭐ Top Pick · ${veh.suitabilityScore}%`}
-                            </span>
-                          )}
-                          {veh.isOverCapacity && (
-                            <span
-                              style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                background: '#fee2e2',
-                                color: '#991b1b',
-                                border: '1px solid #fecaca',
-                                padding: '2px 8px',
-                                borderRadius: '999px',
-                                display: 'inline-block',
-                              }}
-                            >
-                              Over Capacity
-                            </span>
-                          )}
-                          {!veh.isEligible && !veh.isOverCapacity && (
-                            <span
-                              style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                background: '#fee2e2',
-                                color: '#991b1b',
-                                border: '1px solid #fecaca',
-                                padding: '2px 8px',
-                                borderRadius: '999px',
-                                display: 'inline-block',
-                              }}
-                            >
-                              {veh.status}
-                            </span>
-                          )}
-                          {veh.isEligible && !isTopPick && (
-                            <span
-                              style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 600,
-                                background: '#f1f5f9',
-                                color: '#475569',
-                                padding: '2px 8px',
-                                borderRadius: '999px',
-                                display: 'inline-block',
-                              }}
-                            >
-                              {`${veh.suitabilityScore}%`}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+              {containerOptions && (
+                <>
+                  <div className={`wizard-tip ${containerOptions.recommendation.sufficient ? '' : 'error-tip'}`} style={{ marginBottom: '0.75rem' }}>
+                    {containerOptions.recommendation.sufficient ? <CheckCircle2 size={16} /> : <ShieldAlert size={16} />}
+                    <div>
+                      <strong>{containerOptions.recommendation.summary}</strong>
+                      {containerOptions.recommendation.estimate && <small style={{ display: 'block' }}>Estimate · verify the fit at pickup.</small>}
+                      {containerOptions.recommendation.reasons.map(reason => <small key={reason} style={{ display: 'block' }}>{reason}</small>)}
                     </div>
-                  )
-                })}
-                {vehicleRanking.ranked.length === 0 && (
-                  <div style={{ padding: '1.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.88rem' }}>
-                    No vehicles available.
+                    <button type="button" className="button button-secondary" style={{ marginLeft: 'auto' }} onClick={() => setSelectedVesselIds(containerOptions.recommendation.vesselIds)}>Use recommendation</button>
                   </div>
-                )}
-              </div>
+                  <p className="quiet-text" style={{ marginBottom: '0.5rem' }}>
+                    Food load: {describeLoad(containerOptions.load)}{containerOptions.maxVessels ? ` · this vehicle carries up to ${containerOptions.maxVessels} containers` : ''}
+                  </p>
+                  <div className="container-option-list">
+                    {containerOptions.containers.map(container => {
+                      const checked = selectedVesselIds.includes(container.id)
+                      return (
+                        <label key={container.id} className={`container-option ${checked ? 'selected' : ''} ${container.available ? '' : 'disabled'}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={!container.available && !checked}
+                            onChange={() => setSelectedVesselIds(current => checked ? current.filter(id => id !== container.id) : [...current, container.id])}
+                          />
+                          <span><strong>{container.name}</strong> · {container.vesselCode}</span>
+                          <span>{container.capacityValue} {unitLabel(container.capacityUnit)} · {container.temperatureSuitability.toLowerCase()}{isSealed(container) ? ' · sealed' : ''}</span>
+                          {!container.available && <small>{container.reason}</small>}
+                        </label>
+                      )
+                    })}
+                    {containerOptions.containers.length === 0 && <div className="wizard-tip error-tip">No containers are registered. Add containers in Vessels before assigning this pickup.</div>}
+                  </div>
+                  {plannedProblems.length > 0 && (
+                    <div className="wizard-tip error-tip" style={{ color: '#b91c1c', marginTop: '0.75rem' }}>
+                      <ShieldAlert size={16} />
+                      <div>{plannedProblems.map(problem => <p key={problem} style={{ margin: 0 }}>{problem}</p>)}</div>
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
 
           {step === 3 && (
             <>
               <div className="wizard-title">
-                <h3>Containers & Load</h3>
-                <p>Specify the containers required for food rescue.</p>
-              </div>
-
-              {/* AI Vessels Breakdown */}
-              <div
-                style={{
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  padding: '0.85rem',
-                  marginBottom: '1rem',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>AI Recommended Food-Safe Vessels</strong>
-                  <button
-                    type="button"
-                    className="button button-secondary"
-                    style={{ padding: '2px 8px', fontSize: '0.75rem' }}
-                    onClick={() => {
-                      setContainerCount(aiAssessment.vessels.reduce((acc, v) => acc + v.count, 0) || 2)
-                      setEstimatedLoadKg(aiAssessment.totalEstimatedWeightKg || 30)
-                      notify('AI recommended vessels applied.')
-                    }}
-                  >
-                    Apply AI Vessels
-                  </button>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.5rem' }}>
-                  {aiAssessment.vessels.map(v => (
-                    <div
-                      key={v.containerType}
-                      style={{
-                        background: '#ffffff',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        padding: '0.45rem 0.65rem',
-                        fontSize: '0.8rem',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                        <span>{`${v.count}x ${v.containerType}`}</span>
-                        <span style={{ color: '#059669' }}>{v.capacityPerUnit}</span>
-                      </div>
-                      <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '2px' }}>
-                        {v.purpose}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Input controls in compact card */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: '1rem',
-                  background: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  marginBottom: '1rem',
-                }}
-              >
-                <label className="field" style={{ margin: 0 }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Container Count</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={containerCount}
-                    onChange={e => setContainerCount(Number(e.target.value))}
-                    style={{ marginTop: '4px' }}
-                  />
-                </label>
-                <label className="field" style={{ margin: 0 }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Estimated Load (kg)</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={estimatedLoadKg}
-                    onChange={e => setEstimatedLoadKg(Number(e.target.value))}
-                    style={{ marginTop: '4px' }}
-                  />
-                </label>
-              </div>
-
-              {/* Clean Vessel Inventory Table */}
-              {waitingVessels && vessels.length === 0 ? (
-                <div className="wizard-tip" style={{ marginTop: '1rem' }}>
-                  <strong>{waitingVessels}</strong>
-                </div>
-              ) : null}
-
-              {vessels.length > 0 && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <strong style={{ fontSize: '0.85rem', color: '#1e293b' }}>
-                      {`Available Clean Vessel Inventory (${vessels.length} eligible)`}
-                    </strong>
-                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                      {selectedVesselIds.length > 0 ? `${selectedVesselIds.length} vessels selected` : 'Select specific vessels (optional)'}
-                    </span>
-                  </div>
-
-                  {/* Table-like column header */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#f8fafc', borderRadius: '6px 6px 0 0', border: '1px solid #e2e8f0', borderBottom: 'none' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ width: '20px' }}>Select</span>
-                      <span>Vessel Code & Name</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                      <span>Type & Capacity</span>
-                      <span style={{ minWidth: '95px', textAlign: 'right' }}>Hygiene Status</span>
-                    </div>
-                  </div>
-
-                  {/* Compact list */}
-                  <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
-                    {vessels.map((vsl, index) => {
-                      const isVslSelected = selectedVesselIds.includes(vsl.id)
-                      return (
-                        <div
-                          key={vsl.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => {
-                            setSelectedVesselIds(prev => {
-                              const next = isVslSelected ? prev.filter(x => x !== vsl.id) : [...prev, vsl.id]
-                              if (next.length > 0) setContainerCount(next.length)
-                              return next
-                            })
-                          }}
-                          onKeyDown={e => {
-                            if (e.key === ' ' || e.key === 'Enter') {
-                              setSelectedVesselIds(prev => {
-                                const next = isVslSelected ? prev.filter(x => x !== vsl.id) : [...prev, vsl.id]
-                                if (next.length > 0) setContainerCount(next.length)
-                                return next
-                              })
-                            }
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '12px',
-                            padding: '10px 14px',
-                            borderBottom: index < vessels.length - 1 ? '1px solid #e2e8f0' : 'none',
-                            background: isVslSelected ? '#f0fdf4' : '#ffffff',
-                            cursor: 'pointer',
-                            transition: 'background 0.15s ease',
-                          }}
-                        >
-                          {/* Left: Checkbox + Code + Name */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
-                            <input
-                              type="checkbox"
-                              checked={isVslSelected}
-                              onChange={() => {}}
-                              style={{ width: '18px', height: '18px', accentColor: '#16a34a', cursor: 'pointer', flexShrink: 0 }}
-                            />
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                <strong style={{ fontFamily: 'monospace', fontSize: '0.86rem', color: '#0f172a' }}>{vsl.vesselCode}</strong>
-                                <span style={{ fontSize: '0.8rem', color: '#475569' }}>{vsl.name}</span>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
-                                {vsl.foodGradeCertified ? (
-                                  <span style={{ fontSize: '0.7rem', fontWeight: 600, background: '#ecfdf5', color: '#065f46', padding: '1px 6px', borderRadius: '4px' }}>
-                                    ✓ Food-Grade Certified
-                                  </span>
-                                ) : (
-                                  <span style={{ fontSize: '0.7rem', fontWeight: 500, background: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '4px' }}>
-                                    Standard
-                                  </span>
-                                )}
-                                <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                                  {`Condition: ${(vsl as any).condition || 'Good'}`}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Right: Type & Hygiene Status */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexShrink: 0 }}>
-                            <div style={{ textAlign: 'right' }}>
-                              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b' }}>
-                                {`${vsl.capacityValue} ${vsl.capacityUnit}`}
-                              </span>
-                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>
-                                {vsl.vesselType}
-                              </span>
-                            </div>
-                            <div style={{ minWidth: '95px', textAlign: 'right' }}>
-                              <span
-                                style={{
-                                  fontSize: '0.72rem',
-                                  fontWeight: 700,
-                                  background: '#ecfdf5',
-                                  color: '#065f46',
-                                  border: '1px solid #a7f3d0',
-                                  padding: '2px 8px',
-                                  borderRadius: '999px',
-                                  display: 'inline-block',
-                                }}
-                              >
-                                ● {vsl.cleaningStatus}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {step === 4 && (
-            <>
-              <div className="wizard-title">
                 <h3>Review Assignment</h3>
-                <p>Confirm the crew, vehicle, and vessel allocations before dispatching.</p>
+                <p>Check every detail. The server re-checks availability, capacity and containers when you confirm.</p>
               </div>
-
-              {/* Verification banner */}
-              {selectedVolunteerIds.length === 0 || !selectedDriverId || !selectedVehicleId
-                || (isLiveAdmin() && (!volunteerEligibility || !!volunteerEligibilityError
-                  || !selectedVolunteerIds.every(id => volunteerEligibility.volunteerIds.includes(id)))) ? (
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#991b1b', fontSize: '0.85rem' }}>
-                  <AlertCircle size={18} />
-                  <strong>{volunteerEligibilityError
-                    ? 'Pickup eligibility could not be verified. Return to Step 1 and review the reason.'
-                    : selectedVolunteerIds.length > 0 && volunteerEligibility
-                      ? 'A selected volunteer is unavailable for this pickup window. Return to Step 1 and choose an eligible alternative.'
-                      : 'Incomplete assignment: Please ensure volunteers, driver, and vehicle are selected.'}</strong>
-                </div>
-              ) : (
-                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#166534', fontSize: '0.85rem' }}>
-                  <CheckCircle2 size={18} />
-                  <strong>{isLiveAdmin()
-                    ? 'Volunteer schedules and reservations pass the current check. All resources are revalidated when you confirm.'
-                    : 'Demo selections are complete. Live availability and reservation checks require the backend.'}</strong>
+              <div className="assign-review-grid">
+                <section>
+                  <h4>Pickup</h4>
+                  <dl>
+                    <dt>Donor</dt><dd>{pickup.donorName || 'Food donor'}</dd>
+                    <dt>Pickup location</dt><dd>{pickup.donorLocation || '—'}</dd>
+                    <dt>Pickup date & time</dt><dd>{new Date(pickup.windowStartsAt).toLocaleString('en-IN')} – {new Date(pickup.windowEndsAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</dd>
+                    <dt>Delivery destination</dt><dd>{pickup.deliveryAddress}</dd>
+                    <dt>Food items</dt><dd>{pickup.foods?.length ? pickup.foods.map(food => `${food.name} (${food.quantity} ${food.unit})`).join(', ') : 'See donor request'}</dd>
+                    <dt>Total food load</dt><dd>{load ? describeLoad(load) : '—'}</dd>
+                  </dl>
+                </section>
+                <section>
+                  <h4>Crew & vehicle</h4>
+                  <dl>
+                    <dt><Users size={13} /> Volunteers</dt><dd>{selectedVolunteerNames.length ? selectedVolunteerNames.join(', ') : 'Driver-only pickup — no Volunteers assigned.'}</dd>
+                    <dt><User size={13} /> NGO driver</dt><dd>{selectedDriver ? `${selectedDriver.name} · ${selectedDriver.phone}` : '—'}</dd>
+                    <dt><Truck size={13} /> Driver’s vehicle</dt><dd>{selectedDriver ? `${selectedDriver.vehicle.registrationNumber} · ${selectedDriver.vehicle.kind}` : '—'}</dd>
+                    <dt>Vehicle capacity</dt><dd>{selectedDriver ? `${selectedDriver.vehicle.capacityKg} kg` : '—'}</dd>
+                    <dt><Box size={13} /> Containers</dt><dd>{chosenContainers.length ? chosenContainers.map(container => `${container.name} ${container.vesselCode} (${container.capacityValue} ${unitLabel(container.capacityUnit)})`).join(', ') : '—'}</dd>
+                    <dt>Capacity check</dt><dd>{selectedDriver?.capacity.message ?? '—'}</dd>
+                  </dl>
+                </section>
+              </div>
+              {warnings.length > 0 && (
+                <div className="wizard-tip" style={{ marginTop: '0.75rem', background: '#fffbeb', borderColor: '#fde68a', color: '#92400e' }}>
+                  <AlertTriangle size={16} />
+                  <div>{[...new Set(warnings)].map(warning => <p key={warning} style={{ margin: 0 }}>{warning}</p>)}</div>
                 </div>
               )}
-
-              {/* Grouped compact cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                {/* 1. Volunteers */}
-                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px', marginBottom: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>
-                      <Users size={16} style={{ color: '#16a34a' }} />
-                      <span>Assigned Volunteers</span>
-                    </div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: selectedVolunteerIds.length > 0 ? '#16a34a' : '#dc2626' }}>
-                      {selectedVolunteerIds.length > 0 ? `${selectedVolunteerIds.length} volunteer(s)` : 'Missing selection'}
-                    </span>
-                  </div>
-                  {selectedVolunteerIds.length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {selectedVolunteerIds.map(vid => {
-                        const v = volunteerRanking.ranked.find(x => x.volunteerId === vid)
-                        return (
-                          <div key={vid} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '4px 10px', borderRadius: '6px', fontSize: '0.82rem' }}>
-                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{v?.name || vid}</span>
-                            {v?.role && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({v.role})</span>}
-                            {v && (
-                              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#059669', background: '#ecfdf5', padding: '1px 5px', borderRadius: '4px' }}>
-                                {`${v.suitabilityScore}%`}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#dc2626' }}>No volunteers selected. Please return to Step 1.</p>
-                  )}
+              {live && volunteerEligibilityError && (
+                <div className="wizard-tip error-tip" style={{ color: '#b91c1c', marginTop: '0.75rem' }}>
+                  <ShieldAlert size={16} /> Pickup eligibility could not be verified. Return to Step 1 and review the reason.
                 </div>
-
-                {/* 2. Driver & Vehicle */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.85rem' }}>
-                  {/* Driver Card */}
-                  <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>
-                        <User size={16} style={{ color: '#16a34a' }} />
-                        <span>Assigned Driver</span>
-                      </div>
-                      {selectedDriverId ? (
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#065f46', background: '#ecfdf5', padding: '1px 6px', borderRadius: '999px' }}>
-                          Confirmed
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#991b1b', background: '#fee2e2', padding: '1px 6px', borderRadius: '999px' }}>
-                          Required
-                        </span>
-                      )}
-                    </div>
-                    {(() => {
-                      const drv = evaluatedDrivers.find(d => d.id === selectedDriverId)
-                      if (!drv) return <p style={{ margin: 0, fontSize: '0.8rem', color: '#dc2626' }}>No driver selected.</p>
-                      return (
-                        <div style={{ fontSize: '0.82rem' }}>
-                          <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{drv.name}</strong>
-                          <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '2px' }}>
-                            {drv.licenceNumber ? `Licence: ${drv.licenceNumber} (${drv.licenceStatus})` : `Licence status: ${drv.licenceStatus}`}
-                          </div>
-                        </div>
-                      )
-                    })()}
-                  </div>
-
-                  {/* Vehicle Card */}
-                  <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>
-                        <Truck size={16} style={{ color: '#16a34a' }} />
-                        <span>Assigned Vehicle</span>
-                      </div>
-                      {selectedVehicleId ? (
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#065f46', background: '#ecfdf5', padding: '1px 6px', borderRadius: '999px' }}>
-                          Confirmed
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#991b1b', background: '#fee2e2', padding: '1px 6px', borderRadius: '999px' }}>
-                          Required
-                        </span>
-                      )}
-                    </div>
-                    {(() => {
-                      const veh = vehicleRanking.ranked.find(v => v.vehicleId === selectedVehicleId)
-                      if (!veh) return <p style={{ margin: 0, fontSize: '0.8rem', color: '#dc2626' }}>No vehicle selected.</p>
-                      return (
-                        <div style={{ fontSize: '0.82rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 700, background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '1px 6px', borderRadius: '4px' }}>
-                              {veh.registrationNumber}
-                            </span>
-                            <span style={{ color: '#334155' }}>{veh.kind}</span>
-                            {veh.distanceToDonorKm != null && (
-                              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#047857' }}>
-                                {`· 📍 ${veh.distanceToDonorKm} km away (~${veh.durationToDonorMins} mins)`}
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '3px' }}>
-                            {`Capacity: ${veh.capacityKg} kg · Load: ${estimatedLoadKg} kg · Location: ${veh.locationLabel}`}
-                          </div>
-                          {veh.route && (
-                            <div style={{ marginTop: '4px', fontSize: '0.74rem', color: '#047857', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Navigation size={12} />
-                              <span>{veh.route.routeSummary}</span>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                </div>
-
-                {/* 3. Containers & Vessels */}
-                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px', marginBottom: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>
-                      <Box size={16} style={{ color: '#16a34a' }} />
-                      <span>Allocated Vessels & Containers</span>
-                    </div>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#334155' }}>
-                      {`${containerCount} container(s) · ${estimatedLoadKg} kg load`}
-                    </span>
-                  </div>
-                  {selectedVesselIds.length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {selectedVesselIds.map(vid => {
-                        const v = vessels.find(x => x.id === vid)
-                        return (
-                          <div key={vid} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px', fontSize: '0.78rem' }}>
-                            <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{v?.vesselCode || vid}</strong>
-                            <span style={{ color: '#475569' }}>{v?.name || 'Vessel'}</span>
-                            {v?.capacityValue && <span style={{ color: '#059669', fontSize: '0.72rem' }}>({v.capacityValue} {v.capacityUnit})</span>}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
-                      {`Standard food containers allocated (${containerCount} units, ${estimatedLoadKg} kg).`}
-                    </p>
-                  )}
-                </div>
-
-                {/* 4. Pickup Logistics Details */}
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b', marginBottom: '8px' }}>
-                    Pickup & Route Information
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '0.8rem' }}>
-                    <div>
-                      <span style={{ color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Pickup ID</span>
-                      <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{pickup.id.slice(0, 16)}…</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Donor / Source</span>
-                      <strong style={{ color: '#0f172a' }}>{pickup.donorName || 'Food Donor'}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Pickup Address</span>
-                      <span style={{ color: '#334155' }}>{pickup.donorLocation || 'Pickup location on record'}</span>
-                    </div>
-                    <div>
-                      <span style={{ color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Delivery Address</span>
-                      <span style={{ color: '#334155' }}>{pickup.deliveryAddress}</span>
-                    </div>
-                    {(() => {
-                      const veh = vehicleRanking.ranked.find(v => v.vehicleId === selectedVehicleId)
-                      if (veh?.route) {
-                        return (
-                          <div style={{ gridColumn: '1 / -1', marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                              <span style={{ fontSize: '0.78rem', color: '#065f46', fontWeight: 600 }}>
-                                {`📍 Dispatch Route: ${veh.distanceToDonorKm} km to donor, ${veh.route.totalDistanceKm} km total trip (~${veh.route.totalDurationMins} mins)`}
-                              </span>
-                              <a
-                                href={veh.route.navigationUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  color: '#047857',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  textDecoration: 'none',
-                                  background: '#ffffff',
-                                  border: '1px solid #a7f3d0',
-                                  borderRadius: '4px',
-                                  padding: '2px 8px',
-                                }}
-                              >
-                                {'View Live Route on Google Maps'} <ExternalLink size={12} />
-                              </a>
-                            </div>
-                          </div>
-                        )
-                      }
-                      return null
-                    })()}
-                  </div>
-                </div>
-              </div>
+              )}
             </>
           )}
         </div>
 
         <div className="wizard-footer">
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={step === 0 ? onClose : () => setStep(s => s - 1)}
-          >
+          <button type="button" className="button button-secondary" onClick={step === 0 ? onClose : () => setStep(s => s - 1)}>
             {step === 0 ? 'Cancel' : <><ArrowLeft size={17} /> Back</>}
           </button>
-          <div className="step-counter">
-            Step {step + 1} of 5
-          </div>
-          {step === 4 ? (
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={handleSubmit}
-              disabled={!canConfirmAssignment}
-            >
+          <div className="step-counter">Step {step + 1} of {wizardSteps.length}</div>
+          {step === wizardSteps.length - 1 ? (
+            <button type="button" className="button button-primary" onClick={handleSubmit} disabled={!canConfirmAssignment}>
               {submitting ? 'Creating…' : 'Confirm Assignment'}
             </button>
           ) : (
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={handleNext}
-              disabled={!canContinue()}
-            >
+            <button type="button" className="button button-primary" onClick={handleNext} disabled={!canContinue()}>
               Continue <ArrowRight size={17} />
             </button>
           )}

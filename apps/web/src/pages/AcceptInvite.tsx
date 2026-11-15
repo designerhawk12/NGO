@@ -116,10 +116,10 @@ export default function AcceptInvite({ auth: suppliedAuth }: { auth?: InviteAuth
   return <main className="invite-page"><section className="invite-card" aria-live="polite">
     <div className="invite-header"><div className="invite-brand"><span><Leaf size={23}/></span><strong>AaharaConnect</strong></div><div className="language-switch" role="group" aria-label="Language"><button type="button" aria-pressed={language === 'en'} onClick={() => changeLanguage('en')}>English</button><span aria-hidden="true">|</span><button type="button" aria-pressed={language === 'kn'} onClick={() => changeLanguage('kn')}>ಕನ್ನಡ</button></div></div>
     {phase === 'loading' && <div role="status"><div className="invite-icon"><LockKeyhole size={25}/></div><h1>Validating your invitation…</h1><p>Please wait while we verify your secure link.</p></div>}
-    {phase === 'invalid' && <div role="alert"><div className="invite-icon"><LockKeyhole size={25}/></div><h1>{INVALID_MESSAGE}</h1><p>Ask an administrator for a new Volunteer invitation.</p></div>}
+    {phase === 'invalid' && <div role="alert"><div className="invite-icon"><LockKeyhole size={25}/></div><h1>{INVALID_MESSAGE}</h1><p>Ask an administrator for a new invitation.</p></div>}
     {(phase === 'ready' || phase === 'submitting') && <>
       <div className="invite-icon"><LockKeyhole size={25}/></div><h1>Set your password</h1>
-      <p>Finish setting up your Volunteer account. You will use this password in the AaharaConnect mobile app.</p>
+      <p>Finish setting up your AaharaConnect account. You will use this password in the AaharaConnect mobile app (Login as Volunteer / Driver).</p>
       {email && <p className="invite-email">Invitation for <strong>{email}</strong></p>}
       <form className="invite-form" onSubmit={event => { void submit(event) }} noValidate>
         <label htmlFor="invite-password">New password</label>
@@ -131,6 +131,6 @@ export default function AcceptInvite({ auth: suppliedAuth }: { auth?: InviteAuth
         <button className="invite-submit" type="submit" disabled={phase === 'submitting'}>{phase === 'submitting' ? 'Setting password…' : 'Set password'}</button>
       </form>
     </>}
-    {phase === 'success' && <div role="status"><div className="invite-icon success"><CheckCircle2 size={28}/></div><h1>Your Volunteer account is ready.</h1><p>You can now sign in to the AaharaConnect mobile app with your email and new password.</p>{!signedOut && <p className="invite-hint">Close this page when you are finished.</p>}</div>}
+    {phase === 'success' && <div role="status"><div className="invite-icon success"><CheckCircle2 size={28}/></div><h1>Your AaharaConnect account is ready.</h1><p>You can now sign in to the AaharaConnect mobile app with your email and new password.</p>{!signedOut && <p className="invite-hint">Close this page when you are finished.</p>}</div>}
   </section></main>
 }

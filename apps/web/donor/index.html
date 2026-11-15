@@ -162,9 +162,9 @@ body.dev .tag{display:inline-block}
     <!-- Live Supabase Sign-In Panel -->
     <div class="panel" id="emailSignInPanel" style="margin-top:12px;background:var(--surface);border:1px solid var(--line)">
       <label style="margin-top:0;font-size:0.9rem;color:var(--leaf);font-weight:700">Supabase Live Sign-In</label>
-      <p class="hint" style="font-size:0.8rem;margin:2px 0 8px">Sign in with your verified Supabase donor/admin account to connect directly to PostgreSQL.</p>
+      <p class="hint" style="font-size:0.8rem;margin:2px 0 8px">Sign in with your verified Supabase donor/admin account to use this environment’s shared API.</p>
       <label style="font-size:0.85rem">Email</label>
-      <input id="sbEmail" type="email" placeholder="e.g. admin_test@gmail.com" autocomplete="email">
+      <input id="sbEmail" type="email" placeholder="e.g. your staging donor email" autocomplete="email">
       <label style="font-size:0.85rem">Password</label>
       <input id="sbPass" type="password" placeholder="Password" autocomplete="current-password">
       <div class="err" id="sbErr"></div>
@@ -187,6 +187,8 @@ body.dev .tag{display:inline-block}
     <h1>Where is the food?</h1>
     <p class="lead" id="hello"></p>
     <div class="panel">
+      <label for="contactName">Contact name</label><input id="contactName" autocomplete="name">
+      <label for="contactPhone">Contact phone number</label><input id="contactPhone" inputmode="numeric" maxlength="10" autocomplete="tel-national" placeholder="10-digit mobile number">
       <label>Function hall name <span class="tag">hallName</span></label><input id="hName" placeholder="e.g. Sri Lakshmi Convention Hall">
       <label>Hall address <span class="tag">hallAddress</span></label><input id="hAddr" placeholder="e.g. 5th Block Koramangala, Bengaluru">
       <button class="ghost" id="btnGps" style="width:100%;margin-top:14px">Use my current location <span class="tag">fetchCurrentLocation()</span></button>
@@ -260,26 +262,26 @@ body.dev .tag{display:inline-block}
 
 <script>
 /* ===== Mode & API Configuration ===== */
-const API_BASE = (window.VITE_API_BASE_URL || (location.port === '5173' ? 'http://localhost:4000/api/v1' : '/api/v1')).replace(/\/+$/, '');
+const SUPABASE_AUTH_URL = '%VITE_SUPABASE_URL%/auth/v1';
+const SUPABASE_ANON_KEY = '%VITE_SUPABASE_PUBLISHABLE_KEY%';
+const DONOR_TOKEN_KEY = 'aaharaconnect-donor-token:' + SUPABASE_AUTH_URL;
+const API_BASE = (window.VITE_API_BASE_URL || ('%VITE_API_BASE_URL%'.startsWith('%') ? '' : '%VITE_API_BASE_URL%') || (location.port === '5173' ? 'http://localhost:4000/api/v1' : '/api/v1')).replace(/\/+$/, '');
 const savedMode = localStorage.getItem('aa:donor-live-mode');
 let isLiveMode = savedMode === null ? true : savedMode === '1';
 
 
+function tokenBelongsToEnvironment(token) {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const claims = JSON.parse(atob(part));
+    return claims.iss === SUPABASE_AUTH_URL && claims.exp * 1000 > Date.now();
+  } catch { return false; }
+}
 function getStoredToken() {
   const custom = document.getElementById('tokenInput')?.value.trim();
-  if (custom) return custom;
-  const explicit = localStorage.getItem('aaharaconnect-donor-token') || sessionStorage.getItem('aaharaconnect-donor-token');
-  if (explicit) return explicit;
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(k));
-        if (parsed?.access_token) return parsed.access_token;
-      } catch {}
-    }
-  }
-  return null;
+  const saved = localStorage.getItem(DONOR_TOKEN_KEY) || sessionStorage.getItem(DONOR_TOKEN_KEY);
+  const token = custom || saved;
+  return token && tokenBelongsToEnvironment(token) ? token : null;
 }
 
 function updateModeUI() {
@@ -318,8 +320,7 @@ if (autoToken && document.getElementById('tokenInput')) {
   document.getElementById('tokenStatus').textContent = '(Session token found)';
 }
 
-const SUPABASE_AUTH_URL = 'https://oneiwcfdnqzcyfvxufhc.supabase.co/auth/v1';
-const SUPABASE_ANON_KEY = 'sb_publishable_FD8PY57Z8hN_opU4tRFAIg_NnRnq99o';
+
 
 const sbBtn = document.getElementById('btnSbLogin');
 if (sbBtn) {
@@ -327,6 +328,10 @@ if (sbBtn) {
     const email = document.getElementById('sbEmail')?.value.trim();
     const password = document.getElementById('sbPass')?.value;
     const errBox = document.getElementById('sbErr');
+    if (SUPABASE_AUTH_URL.startsWith('%') || SUPABASE_ANON_KEY.startsWith('%')) {
+      if (errBox) errBox.textContent = 'Live sign-in is not configured for this environment.';
+      return;
+    }
     if (!email || !password) {
       if (errBox) errBox.textContent = 'Enter your email and password.';
       return;
@@ -347,7 +352,10 @@ if (sbBtn) {
       if (!res.ok || !data.access_token) {
         throw new Error(data.error_description || data.msg || 'Authentication failed. Please verify credentials.');
       }
-      localStorage.setItem('aaharaconnect-donor-token', data.access_token);
+      const meResponse = await fetch(`${API_BASE}/me`, {headers:{Authorization:`Bearer ${data.access_token}`},cache:'no-store'});
+      const me = await meResponse.json();
+      if (!meResponse.ok || !['DONOR','ADMIN'].includes(me.data?.role)) throw new Error('A Donor or Admin account for this environment is required. Volunteers use the mobile app.');
+      localStorage.setItem(DONOR_TOKEN_KEY, data.access_token);
       if (document.getElementById('tokenInput')) {
         document.getElementById('tokenInput').value = data.access_token;
       }
@@ -355,6 +363,9 @@ if (sbBtn) {
         document.getElementById('tokenStatus').textContent = `(Signed in: ${data.user?.email || email})`;
       }
       toast('Signed in to Supabase Live Account!');
+      donor = new FoodDonor(me.data.displayName || 'Food Donor', '', '');
+      document.getElementById('sbPass').value = '';
+      goHall();
     } catch (err) {
       if (errBox) errBox.textContent = err.message || 'Failed to sign in.';
     } finally {
@@ -509,7 +520,7 @@ $("btnLog").onclick = () => {
   if (!d) return $("lErr").textContent = "Phone number or password doesn't match. Register first if you're new.";
   $("lErr").textContent = ""; donor = d; toast("Logged in"); goHall();
 };
-function goHall(){ $("hello").textContent = "Hi " + donor.name + ", tell us which hall to pick the food up from."; show("s-hall"); }
+function goHall(){ $("contactName").value = donor.name; $("contactPhone").value = donor.phone; $("hello").textContent = "Hi " + donor.name + ", tell us which hall to pick the food up from."; show("s-hall"); }
 
 /* Hall + GPS */
 $("btnGps").onclick = async () => {
@@ -523,6 +534,9 @@ $("btnGps").onclick = async () => {
   $("btnGps").innerHTML = 'Use my current location <span class="tag">fetchCurrentLocation()</span>';
 };
 $("btnHall").onclick = () => {
+  const contactName = $("contactName").value.trim(), contactPhone = $("contactPhone").value.trim();
+  if (!contactName || !/^\d{10}$/.test(contactPhone)) return $("hErr").textContent = "Enter your contact name and 10-digit phone number.";
+  donor.name = contactName; donor.phone = contactPhone;
   const hn = $("hName").value.trim(), ha = $("hAddr").value.trim();
   const la = parseFloat($("lat").value), lo = parseFloat($("lng").value);
   if (!hn || !ha) return $("hErr").textContent = "Enter the hall name and address.";

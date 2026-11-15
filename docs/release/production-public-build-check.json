@@ -1,0 +1,9 @@
+{
+  "configuredProductionBuild": true,
+  "donorUsesProduction": true,
+  "donorUsesSameOriginApi": true,
+  "unresolvedVitePlaceholder": false,
+  "stagingReference": false,
+  "legacyForeignReference": false,
+  "privateCredentialLiteral": false
+}

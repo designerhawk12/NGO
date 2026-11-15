@@ -64,7 +64,7 @@ export default function LiveRequestDetail({ id }: { id: string }) {
           </View>
           <T color={C.muted} translate={false}>{item.id}</T>
           <InfoRow icon="pin" label="Pickup address" value={item.pickupAddress} />
-          <InfoRow icon="clock" label="Food ready by" value={new Date(item.readyAt).toLocaleString()} />
+          <InfoRow icon="clock" label="Food prepared" value={new Date(item.preparedAt).toLocaleString()} />
           <InfoRow icon="calendar" label="Pickup deadline" value={new Date(item.pickupDeadline).toLocaleString()} />
           <InfoRow icon="person" label="Contact person" value={`${item.contactName} · ${item.contactPhoneE164}`} />
         </Card>

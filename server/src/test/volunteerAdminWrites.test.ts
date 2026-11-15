@@ -5,7 +5,7 @@ import { HttpError } from '../middleware/errorHandler'
 const { verify, findUser, invite, revoke, repo, withTransaction } = vi.hoisted(() => ({
   verify: vi.fn(), findUser: vi.fn(), invite: vi.fn(), revoke: vi.fn(), withTransaction: vi.fn(),
   repo: {
-    findAdminVolunteerConflict: vi.fn(), insertInvitedVolunteer: vi.fn(),
+    findAdminVolunteerConflict: vi.fn(),
     findVolunteerForAdminUpdate: vi.fn(), updateAdminVolunteerRows: vi.fn(),
   },
 }))
@@ -39,7 +39,6 @@ beforeEach(() => {
   invite.mockResolvedValue({ authUserId: 'a0458efe-a4be-43da-a4ed-c290ac3b48cd', inviteNonce: 'nonce' })
   revoke.mockResolvedValue(true)
   repo.findAdminVolunteerConflict.mockResolvedValue(null)
-  repo.insertInvitedVolunteer.mockResolvedValue(row)
   repo.findVolunteerForAdminUpdate.mockResolvedValue(row)
   repo.updateAdminVolunteerRows.mockImplementation(async (_row: unknown, input: Record<string, unknown>) => ({
     ...row, name: input.name ?? row.name, phone_e164: input.phoneE164 === undefined ? row.phone_e164 : input.phoneE164,
@@ -49,18 +48,16 @@ beforeEach(() => {
   withTransaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => callback({}))
 })
 
-describe('ADMIN volunteer creation', () => {
-  it('invites and provisions a canonical volunteer with server-owned identity', async () => {
-    const result = await request(app).post('/api/v1/volunteers').set(auth).send(createBody)
-    expect(result.status).toBe(201)
-    expect(invite).toHaveBeenCalledWith('kavya@example.com', 'Kavya Iyer')
-    expect(repo.insertInvitedVolunteer).toHaveBeenCalledWith(
-      'a0458efe-a4be-43da-a4ed-c290ac3b48cd',
-      { email: 'kavya@example.com', name: 'Kavya Iyer', phoneE164: '+919876543210', registrationCode: 'VOL-002', skills: ['Driving', 'Packing'], status: 'ACTIVE' },
-      expect.anything()
-    )
-    expect(result.body.data).toEqual({ id: volunteerId, personId: row.person_id, registrationCode: 'VOL-002', name: 'Kavya Iyer', phoneE164: row.phone_e164, skills: row.skills, status: 'ACTIVE' })
-    expect(JSON.stringify(result.body)).not.toContain('authUserId')
+describe('ADMIN volunteer creation (retired: Volunteers join through mobile registration and approval)', () => {
+  it('answers 410 without inviting anyone or writing Volunteer records', async () => {
+    for (const body of [createBody, { ...createBody, skills: ['Driver'] }, {}]) {
+      const result = await request(app).post('/api/v1/volunteers').set(auth).send(body)
+      expect(result.status).toBe(410)
+      expect(result.body.error.code).toBe('ADMIN_VOLUNTEER_CREATION_RETIRED')
+    }
+    expect(invite).not.toHaveBeenCalled()
+    expect(repo.findAdminVolunteerConflict).not.toHaveBeenCalled()
+    expect(withTransaction).not.toHaveBeenCalled()
   })
 
   it('requires a verified ADMIN before side effects', async () => {
@@ -74,59 +71,9 @@ describe('ADMIN volunteer creation', () => {
     expect(invite).not.toHaveBeenCalled()
   })
 
-  it('strictly rejects role and every client-owned ID', async () => {
-    for (const key of ['role', 'authUserId', 'auth_user_id', 'appUserId', 'app_user_id', 'personId', 'person_id', 'volunteerId', 'volunteer_id', 'id']) {
-      const result = await request(app).post('/api/v1/volunteers').set(auth).send({ ...createBody, [key]: key === 'role' ? 'ADMIN' : volunteerId })
-      expect(result.status, key).toBe(400)
-    }
-    expect(invite).not.toHaveBeenCalled()
-  })
-
-  it('rejects invalid email, phone, duplicate skills and empty registration', async () => {
-    for (const change of [{ email: 'invalid' }, { phoneE164: '9876543210' }, { skills: ['Driving', 'driving'] }, { registrationCode: ' ' }]) {
-      expect((await request(app).post('/api/v1/volunteers').set(auth).send({ ...createBody, ...change })).status).toBe(400)
-    }
-    expect(invite).not.toHaveBeenCalled()
-  })
-
-  it('rejects local registration and phone conflicts before inviting', async () => {
-    repo.findAdminVolunteerConflict.mockResolvedValueOnce('registrationCode').mockResolvedValueOnce('phoneE164')
-    for (let index = 0; index < 2; index++) {
-      const result = await request(app).post('/api/v1/volunteers').set(auth).send(createBody)
-      expect(result.status).toBe(409)
-      expect(result.body.error.code).toBe(index === 0 ? 'REGISTRATION_CODE_ALREADY_EXISTS' : 'PHONE_ALREADY_EXISTS')
-    }
-    expect(invite).not.toHaveBeenCalled()
-  })
-
-  it('maps provider conflicts and outages without leaking provider errors', async () => {
-    invite.mockRejectedValueOnce(new HttpError(409, 'RESOURCE_CONFLICT', 'Existing account.'))
-      .mockRejectedValueOnce(new HttpError(503, 'SERVICE_UNAVAILABLE', 'Volunteer invitation is not configured.'))
-      .mockRejectedValueOnce(new HttpError(503, 'SERVICE_UNAVAILABLE', 'Invitation failed.'))
-    for (const status of [409, 503, 503]) {
-      const result = await request(app).post('/api/v1/volunteers').set(auth).send(createBody)
-      expect(result.status).toBe(status)
-      expect(repo.insertInvitedVolunteer).not.toHaveBeenCalled()
-    }
-  })
-
-  it('reports recovery required after database failure without deleting the invitation', async () => {
-    repo.insertInvitedVolunteer.mockRejectedValueOnce(new Error('database failure'))
-    const result = await request(app).post('/api/v1/volunteers').set(auth).send(createBody)
-    expect(result.status).toBe(503)
-    expect(result.body.error.code).toBe('INVITE_RECOVERY_REQUIRED')
+  it('never deletes or revokes existing invitations', async () => {
+    await request(app).post('/api/v1/volunteers').set(auth).send(createBody)
     expect(revoke).not.toHaveBeenCalled()
-  })
-
-  it('reports recovery required for a database conflict without Auth cleanup', async () => {
-    repo.insertInvitedVolunteer.mockRejectedValueOnce({ code: '23505' })
-    const diagnostic = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const result = await request(app).post('/api/v1/volunteers').set(auth).send(createBody)
-      expect(result.status).toBe(503)
-      expect(result.body.error.code).toBe('INVITE_RECOVERY_REQUIRED')
-      expect(diagnostic).toHaveBeenCalled()
-    } finally { diagnostic.mockRestore() }
   })
 })
 

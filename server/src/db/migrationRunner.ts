@@ -2,6 +2,13 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { withTransaction } from './pool';
+import type { PoolClient } from 'pg';
+
+export type MigrationHooks = {
+  before?: (client: PoolClient) => Promise<void>;
+  after?: (client: PoolClient) => Promise<void>;
+  expectedPending?: Record<string, string>;
+};
 
 export type MigrationMode = 'up' | 'status';
 
@@ -11,9 +18,10 @@ const verifiedHistoricalMigration = {
   checksum: '94bab7ac366215d29fd7346ed61ffb929a9858acb8cf2a6e58f5b8055080e94c',
 } as const;
 
-export async function runMigrations(mode: MigrationMode): Promise<void> {
+export async function runMigrations(mode: MigrationMode, hooks: MigrationHooks = {}): Promise<void> {
   await withTransaction(async client => {
     await client.query('SELECT pg_advisory_xact_lock(29017, 1)');
+    await hooks.before?.(client);
     if (mode === 'up') {
       await client.query('CREATE SCHEMA IF NOT EXISTS app');
       await client.query(
@@ -34,6 +42,15 @@ export async function runMigrations(mode: MigrationMode): Promise<void> {
     const files = readdirSync(migrationDirectory)
       .filter(name => /^\d+_[a-z0-9_]+\.sql$/.test(name))
       .sort();
+    const numberedMigrations = new Map<string, string>();
+    for (const name of files) {
+      const number = name.split('_', 1)[0];
+      const previous = numberedMigrations.get(number);
+      if (previous) {
+        throw new Error(`Duplicate migration number ${number}: ${previous}, ${name}`);
+      }
+      numberedMigrations.set(number, name);
+    }
     const migrationContents = new Map<string, { sql: string; checksum: string }>();
 
     for (const name of files) {
@@ -62,6 +79,12 @@ export async function runMigrations(mode: MigrationMode): Promise<void> {
             'Missing applied migration 005_functions.sql has an unexpected ledger checksum.'
           );
         }
+        if (name === '007_volunteer_applications.sql') {
+          throw new Error(
+            'Applied legacy 007_volunteer_applications.sql is absent from source; ' +
+            'reconcile this database before using 008_volunteer_applications.sql.'
+          );
+        }
         throw new Error('Applied migration missing from repository: ' + name);
       }
       if (localMigration.checksum !== checksum) {
@@ -69,13 +92,12 @@ export async function runMigrations(mode: MigrationMode): Promise<void> {
       }
     }
 
-    if (
-      !migrationContents.has(verifiedHistoricalMigration.name) &&
-      !existing.has(verifiedHistoricalMigration.name)
-    ) {
-      throw new Error(
-        'Missing migration 005_functions.sql is not recorded as applied in the database ledger.'
-      );
+    if (hooks.expectedPending) {
+      const pending = files.filter(name => !existing.has(name));
+      if (JSON.stringify(pending) !== JSON.stringify(Object.keys(hooks.expectedPending).sort())
+        || pending.some(name => migrationContents.get(name)!.checksum !== hooks.expectedPending![name])) {
+        throw new Error('Pending migration set/checksum differs from approved execution.');
+      }
     }
 
     for (const name of files) {
@@ -93,5 +115,6 @@ export async function runMigrations(mode: MigrationMode): Promise<void> {
         console.info('pending ' + name);
       }
     }
+    await hooks.after?.(client);
   });
 }

@@ -3,10 +3,10 @@ import { uuidSchema, type AppUser, type CreateAvailabilityRequest } from '@aahar
 import { HttpError } from '../../middleware/errorHandler';
 import { sendSuccess } from '../../utils/response';
 import * as volunteerService from './service';
+import { dispatchBestEffort } from '../push/service';
 import {
   listTeamsQuerySchema,
   listVolunteersQuerySchema,
-  type CreateAdminVolunteerInput,
   type CreateSelfRegistrationInput,
   type CreateTeamInput,
   type DecideVolunteerApplicationInput,
@@ -17,11 +17,14 @@ import {
   type UpdateTeamInput,
 } from './schemas';
 
-export const registerVolunteerHandler: RequestHandler = async (_request, response, next) => {
+export const registerVolunteerHandler: RequestHandler = async (request, response, next) => {
   try {
-    sendSuccess(response, await volunteerService.registerVolunteer(
-      response.locals.validatedBody as CreateSelfRegistrationInput
-    ), 201);
+    const result = await volunteerService.registerVolunteer(
+      response.locals.validatedBody as CreateSelfRegistrationInput,
+      request.ip ?? ''
+    );
+    await dispatchBestEffort();
+    sendSuccess(response,result,201);
   } catch (error) { next(error); }
 };
 
@@ -110,11 +113,20 @@ export const getAdminVolunteerHandler: RequestHandler = async (request, response
   } catch (error) { next(error); }
 };
 
+export const getAdminVolunteerDriverDetailsHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const id = uuidSchema.safeParse(request.params.id);
+    if (!id.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Volunteer ID must be a UUID.');
+    response.set('Cache-Control', 'no-store');
+    sendSuccess(response, await volunteerService.getAdminVolunteerDriverDetails(
+      response.locals.appUser as AppUser, id.data
+    ));
+  } catch (error) { next(error); }
+};
+
 export const createAdminVolunteerHandler: RequestHandler = async (_request, response, next) => {
   try {
-    sendSuccess(response, await volunteerService.createAdminVolunteer(
-      response.locals.appUser as AppUser, response.locals.validatedBody as CreateAdminVolunteerInput
-    ), 201);
+    volunteerService.createAdminVolunteer(response.locals.appUser as AppUser);
   } catch (error) { next(error); }
 };
 
@@ -159,5 +171,13 @@ export const updateAdminTeamHandler: RequestHandler = async (request, response, 
     sendSuccess(response, await volunteerService.updateAdminTeam(
       response.locals.appUser as AppUser, id.data, response.locals.validatedBody as UpdateTeamInput
     ));
+  } catch (error) { next(error); }
+};
+
+export const deleteAdminTeamHandler: RequestHandler = async (request, response, next) => {
+  try {
+    const id = uuidSchema.safeParse(request.params.id);
+    if (!id.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Team ID must be a UUID.');
+    sendSuccess(response, await volunteerService.deleteAdminTeam(response.locals.appUser as AppUser, id.data));
   } catch (error) { next(error); }
 };

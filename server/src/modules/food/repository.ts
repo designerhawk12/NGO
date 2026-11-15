@@ -117,14 +117,14 @@ export async function createFoodRequest(
        RETURNING id, donor_id, source_name, source_type, pickup_address, prepared_at, ready_at,
                  pickup_deadline, estimated_weight_kg, handling_requirements, donor_safety_declaration,
                  safety_review, safety_reviewed_by, safety_reviewed_at, contact_name, contact_phone_e164,
-                 notes, status, created_at`,
+                 notes, status, created_at, cancelled_at`,
       [
         donorId,
         data.sourceName,
         data.sourceType,
         data.pickupAddress,
         data.preparedAt,
-        data.readyAt,
+        data.readyAt ?? data.preparedAt,
         data.pickupDeadline,
         data.estimatedWeightKg,
         data.handlingRequirements,
@@ -140,10 +140,10 @@ export async function createFoodRequest(
 
     for (const item of data.items) {
       const itemResult = await client.query<FoodItemRow>(
-        `INSERT INTO app.food_items (food_request_id, food_type, quantity, unit, handling_requirements)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, food_request_id, food_type, quantity, unit, handling_requirements`,
-        [foodRequest.id, item.foodType, item.quantity, item.unit, item.handlingRequirements]
+        `INSERT INTO app.food_items (food_request_id, food_type, quantity, unit, handling_requirements, estimated_meals, estimated_weight_kg)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id, food_request_id, food_type, quantity, unit, handling_requirements, estimated_meals, estimated_weight_kg`,
+        [foodRequest.id, item.foodType, item.quantity, item.unit, item.handlingRequirements, item.estimatedMeals ?? null, item.estimatedWeightKg ?? null]
       );
       items.push(itemResult.rows[0]);
     }
@@ -164,7 +164,7 @@ export async function findFoodRequestById(
       `SELECT id, donor_id, source_name, source_type, pickup_address, prepared_at, ready_at,
               pickup_deadline, estimated_weight_kg, handling_requirements, donor_safety_declaration,
               safety_review, safety_reviewed_by, safety_reviewed_at, contact_name, contact_phone_e164,
-              notes, status, created_at
+              notes, status, created_at, cancelled_at
        FROM app.food_requests
        WHERE id = $1`,
       [id]
@@ -174,7 +174,7 @@ export async function findFoodRequestById(
     const foodRequest = reqResult.rows[0];
 
     const itemsResult = await db.query<FoodItemRow>(
-      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements
+      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements, estimated_meals, estimated_weight_kg
        FROM app.food_items
        WHERE food_request_id = $1
        ORDER BY id ASC`,
@@ -197,7 +197,7 @@ export async function findFoodRequestsByDonorId(
       `SELECT id, donor_id, source_name, source_type, pickup_address, prepared_at, ready_at,
               pickup_deadline, estimated_weight_kg, handling_requirements, donor_safety_declaration,
               safety_review, safety_reviewed_by, safety_reviewed_at, contact_name, contact_phone_e164,
-              notes, status, created_at
+              notes, status, created_at, cancelled_at
        FROM app.food_requests
        WHERE donor_id = $1
        ORDER BY created_at DESC, id DESC`,
@@ -208,7 +208,7 @@ export async function findFoodRequestsByDonorId(
 
     const requestIds = reqResult.rows.map(r => r.id);
     const itemsResult = await db.query<FoodItemRow>(
-      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements
+      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements, estimated_meals, estimated_weight_kg
        FROM app.food_items
        WHERE food_request_id = ANY($1::uuid[])
        ORDER BY id ASC`,
@@ -244,6 +244,10 @@ export async function listFoodRequests(
     if (query.status) {
       conditions.push(`status = $${p++}`);
       values.push(query.status);
+    } else {
+      // The default list is operational. Old rows with unknown timestamps stay
+      // in the explicit CANCELLED history view instead of inventing an age.
+      conditions.push(`(status = 'SUBMITTED' OR (status = 'CANCELLED' AND cancelled_at > now() - interval '24 hours'))`);
     }
     if (query.safetyReview) {
       conditions.push(`safety_review = $${p++}`);
@@ -257,10 +261,10 @@ export async function listFoodRequests(
       `SELECT id, donor_id, source_name, source_type, pickup_address, prepared_at, ready_at,
               pickup_deadline, estimated_weight_kg, handling_requirements, donor_safety_declaration,
               safety_review, safety_reviewed_by, safety_reviewed_at, contact_name, contact_phone_e164,
-              notes, status, created_at
+              notes, status, created_at, cancelled_at
        FROM app.food_requests
        ${whereClause}
-       ORDER BY created_at DESC, id DESC
+       ORDER BY (status = 'CANCELLED') ASC, created_at DESC, id DESC
        ${limitClause}`,
       values
     );
@@ -269,7 +273,7 @@ export async function listFoodRequests(
 
     const requestIds = reqResult.rows.map(r => r.id);
     const itemsResult = await db.query<FoodItemRow>(
-      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements
+      `SELECT id, food_request_id, food_type, quantity, unit, handling_requirements, estimated_meals, estimated_weight_kg
        FROM app.food_items
        WHERE food_request_id = ANY($1::uuid[])
        ORDER BY id ASC`,
@@ -309,7 +313,7 @@ export async function updateSafetyReview(
        RETURNING id, donor_id, source_name, source_type, pickup_address, prepared_at, ready_at,
                  pickup_deadline, estimated_weight_kg, handling_requirements, donor_safety_declaration,
                  safety_review, safety_reviewed_by, safety_reviewed_at, contact_name, contact_phone_e164,
-                 notes, status, created_at`,
+                 notes, status, created_at, cancelled_at`,
       [id, review, reviewerUserId]
     );
     return result.rows[0] ?? null;
@@ -325,12 +329,12 @@ export async function cancelFoodRequest(
   try {
     const result = await client.query<FoodRequestRow>(
       `UPDATE app.food_requests
-       SET status = 'CANCELLED'
+       SET status = 'CANCELLED', cancelled_at = now()
        WHERE id = $1 AND status = 'SUBMITTED'
        RETURNING id, donor_id, source_name, source_type, pickup_address, prepared_at, ready_at,
                  pickup_deadline, estimated_weight_kg, handling_requirements, donor_safety_declaration,
                  safety_review, safety_reviewed_by, safety_reviewed_at, contact_name, contact_phone_e164,
-                 notes, status, created_at`,
+                 notes, status, created_at, cancelled_at`,
       [id]
     );
     return result.rows[0] ?? null;

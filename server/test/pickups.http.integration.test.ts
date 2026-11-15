@@ -42,6 +42,7 @@ type Fixture = {
   volunteerId: string;
   driverId: string;
   vehicleId: string;
+  vesselId: string;
   foodRequestId: string;
   pickupId: string;
   payload: {
@@ -49,6 +50,7 @@ type Fixture = {
     volunteerIds: string[];
     driverId: string;
     vehicleId: string;
+    vesselIds: string[];
     role: string;
     windowStartsAt: string;
     windowEndsAt: string;
@@ -56,7 +58,10 @@ type Fixture = {
   };
 };
 
-async function seedFixture(sharedDriverAndVolunteer = false, vehicleStatus = 'ACTIVE'): Promise<Fixture> {
+// By default the driver is an NGO employee (no login, no Volunteer record) linked to the fixture
+// vehicle. legacyVolunteerDriver seeds the pre-012 model: a driver row on the Volunteer's person.
+async function seedFixture(legacyVolunteerDriver = false, vehicleStatus = 'ACTIVE'): Promise<Fixture> {
+  const sharedDriverAndVolunteer = legacyVolunteerDriver;
   const client = await getPool().connect();
   try {
     await client.query('BEGIN');
@@ -80,12 +85,20 @@ async function seedFixture(sharedDriverAndVolunteer = false, vehicleStatus = 'AC
       [volunteerPersonId, `VOL-${randomUUID()}`]
     )).rows[0].id;
     const driverId = (await client.query<{ id: string }>(
-      "INSERT INTO app.drivers(person_id, licence_number, licence_expires_on) VALUES ($1, $2, '2099-01-01') RETURNING id",
-      [driverPersonId, `DL-${randomUUID()}`]
+      "INSERT INTO app.drivers(person_id, licence_number, licence_expires_on, driver_type) VALUES ($1, $2, '2099-01-01', $3) RETURNING id",
+      [driverPersonId, `DL-${randomUUID()}`, legacyVolunteerDriver ? 'LEGACY_VOLUNTEER' : 'EMPLOYEE']
     )).rows[0].id;
     const vehicleId = (await client.query<{ id: string }>(
       'INSERT INTO app.vehicles(registration_number, kind, capacity_kg, status) VALUES ($1, $2, $3, $4) RETURNING id',
       [`TEST-${randomUUID()}`, 'Van', 500, vehicleStatus]
+    )).rows[0].id;
+    if (!legacyVolunteerDriver) {
+      await client.query('UPDATE app.vehicles SET assigned_driver_id = $2 WHERE id = $1', [vehicleId, driverId]);
+    }
+    const vesselId = (await client.query<{ id: string }>(
+      `INSERT INTO app.vessels (vessel_code, name, vessel_type, material, capacity_value, capacity_unit, temperature_suitability)
+       VALUES ($1, 'Fixture crate', 'CRATE', 'FOOD_GRADE_PLASTIC', 50, 'KG', 'AMBIENT') RETURNING id`,
+      [`FIX-${randomUUID()}`]
     )).rows[0].id;
     const startsAt = new Date(Date.now() + 60 * 60 * 1000);
     const endsAt = new Date(startsAt.getTime() + 2 * 60 * 60 * 1000);
@@ -109,12 +122,13 @@ async function seedFixture(sharedDriverAndVolunteer = false, vehicleStatus = 'AC
     await client.query('COMMIT');
     return {
       userId, donorId, personIds: [...new Set([volunteerPersonId, driverPersonId])],
-      volunteerId, driverId, vehicleId, foodRequestId, pickupId,
+      volunteerId, driverId, vehicleId, vesselId, foodRequestId, pickupId,
       payload: {
         teamId: null,
         volunteerIds: [volunteerId],
         driverId,
         vehicleId,
+        vesselIds: [vesselId],
         role: 'Pickup volunteer',
         windowStartsAt: startsAt.toISOString(),
         windowEndsAt: endsAt.toISOString(),
@@ -133,6 +147,13 @@ async function removeFixture(fixture: Fixture): Promise<void> {
   const client: PoolClient = await getPool().connect();
   try {
     await client.query('BEGIN');
+    // Test-only cleanup of the dedicated _test database: bypass the fixed-driver guard so the
+    // disposable vehicle/driver pair can be removed. Never used against shared databases.
+    await client.query("SET LOCAL session_replication_role = 'replica'");
+    await client.query('DELETE FROM app.vessel_logs WHERE vessel_id = $1', [fixture.vesselId]);
+    await client.query('DELETE FROM app.vessel_issuances WHERE vessel_id = $1 OR pickup_id = $2', [fixture.vesselId, fixture.pickupId]);
+    await client.query('DELETE FROM app.vessels WHERE id = $1', [fixture.vesselId]);
+    await client.query('DELETE FROM app.pickup_schedule_changes WHERE pickup_id = $1', [fixture.pickupId]);
     const assignmentIds = (await client.query<{ id: string }>(
       'SELECT id FROM app.assignments WHERE pickup_id = $1', [fixture.pickupId]
     )).rows.map(row => row.id);
@@ -147,8 +168,8 @@ async function removeFixture(fixture: Fixture): Promise<void> {
     await client.query('DELETE FROM app.food_requests WHERE id = $1', [fixture.foodRequestId]);
     await client.query('DELETE FROM app.volunteer_availability WHERE volunteer_id = $1', [fixture.volunteerId]);
     await client.query('DELETE FROM app.volunteers WHERE id = $1', [fixture.volunteerId]);
-    await client.query('DELETE FROM app.drivers WHERE id = $1', [fixture.driverId]);
     await client.query('DELETE FROM app.vehicles WHERE id = $1', [fixture.vehicleId]);
+    await client.query('DELETE FROM app.drivers WHERE id = $1', [fixture.driverId]);
     await client.query('DELETE FROM app.people WHERE id = ANY($1::uuid[])', [fixture.personIds]);
     await client.query('DELETE FROM app.donors WHERE id = $1', [fixture.donorId]);
     await client.query('DELETE FROM app.app_users WHERE id = $1', [fixture.userId]);
@@ -204,16 +225,16 @@ describe.skipIf(!enabled)('Pickup assignment HTTP + PostgreSQL integration', () 
       .toEqual([1, 1, 3, 1]);
   }));
 
-  it('reserves one canonical person when the driver is also the volunteer', async () => withFixture(async fixture => {
-    const response = await assign(fixture, 'shared-person');
-    expect(response.status).toBe(201);
-    const reservations = await getPool().query(
-      'SELECT person_id, vehicle_id FROM app.resource_reservations WHERE assignment_id = $1',
-      [response.body.data.id]
-    );
-    expect(reservations.rows).toHaveLength(2);
-    expect(reservations.rows.filter(row => row.person_id === fixture.personIds[0])).toHaveLength(1);
-    expect(reservations.rows.filter(row => row.vehicle_id === fixture.vehicleId)).toHaveLength(1);
+  it('rejects a historical Volunteer-linked driver without writing anything', async () => withFixture(async fixture => {
+    const response = await assign(fixture, 'legacy-volunteer-driver');
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe('DRIVER_NOT_ELIGIBLE');
+    const [assignments, vessel] = await Promise.all([
+      getPool().query('SELECT count(*)::int AS count FROM app.assignments WHERE pickup_id = $1', [fixture.pickupId]),
+      getPool().query('SELECT status FROM app.vessels WHERE id = $1', [fixture.vesselId]),
+    ]);
+    expect(assignments.rows[0].count).toBe(0);
+    expect(vessel.rows[0].status).toBe('AVAILABLE');
   }, true));
 
   it('rejects a maintenance vehicle without writing an assignment', async () => withFixture(async fixture => {
@@ -280,8 +301,8 @@ describe.skipIf(!enabled)('Pickup assignment HTTP + PostgreSQL integration', () 
         .send({ ...fixture.payload, vesselIds: [vesselId] });
 
       expect(response.status).toBe(409);
-      expect(response.body.error.code).toBe('RESOURCE_CONFLICT');
-      expect(response.body.error.message).toContain('already in use');
+      expect(response.body.error.code).toBe('CONTAINER_PLAN_INVALID');
+      expect(response.body.error.message).toContain('in use');
 
       const [assignments, plans, reservations, pickup] = await Promise.all([
         getPool().query('SELECT count(*)::int AS count FROM app.assignments WHERE pickup_id = $1', [fixture.pickupId]),
@@ -332,14 +353,22 @@ describe.skipIf(!enabled)('Pickup assignment HTTP + PostgreSQL integration', () 
       'INSERT INTO app.volunteers (person_id, registration_code) VALUES ($1, $2) RETURNING id',
       [volunteerPersonId, `VOL-${randomUUID()}`]
     )).rows[0].id;
-    const driverId = (await getPool().query<{ id: string }>(
-      'INSERT INTO app.drivers (person_id, licence_number, licence_expires_on) VALUES ($1, $2, $3) RETURNING id',
-      [driverPersonId, `DL-${randomUUID()}`, '2099-01-01']
-    )).rows[0].id;
+    // Register the vehicle first, then the NGO employee driver linked to it (one transaction).
     const vehicleId = (await getPool().query<{ id: string }>(
       'INSERT INTO app.vehicles (registration_number, kind, capacity_kg) VALUES ($1, $2, $3) RETURNING id',
       [`WORKFLOW-${randomUUID()}`, 'Van', 500]
     )).rows[0].id;
+    const driverClient = await getPool().connect();
+    let driverId = '';
+    try {
+      await driverClient.query('BEGIN');
+      driverId = (await driverClient.query<{ id: string }>(
+        "INSERT INTO app.drivers (person_id, licence_number, licence_expires_on, driver_type) VALUES ($1, $2, $3, 'EMPLOYEE') RETURNING id",
+        [driverPersonId, `DL-${randomUUID()}`, '2099-01-01']
+      )).rows[0].id;
+      await driverClient.query('UPDATE app.vehicles SET assigned_driver_id = $2 WHERE id = $1', [vehicleId, driverId]);
+      await driverClient.query('COMMIT');
+    } finally { driverClient.release(); }
     const vesselId = (await getPool().query<{ id: string }>(
       `INSERT INTO app.vessels
          (vessel_code, name, vessel_type, material, capacity_value, capacity_unit,
@@ -400,7 +429,7 @@ describe.skipIf(!enabled)('Pickup assignment HTTP + PostgreSQL integration', () 
           foodRequestId,
           windowStartsAt: startsAt.toISOString(),
           windowEndsAt: endsAt.toISOString(),
-          deliveryAddress: 'Test distribution hub',
+          distributionCenterId: (await getPool().query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Test distribution hub'])).rows[0].id,
         });
       expect(pickupResponse.status).toBe(201);
       pickupId = pickupResponse.body.data.id;
@@ -486,7 +515,7 @@ describe.skipIf(!enabled)('Pickup assignment HTTP + PostgreSQL integration', () 
           foodRequestId,
           windowStartsAt: startsAt.toISOString(),
           windowEndsAt: endsAt.toISOString(),
-          deliveryAddress: 'Test distribution hub',
+          distributionCenterId: (await getPool().query("INSERT INTO app.distribution_centers(address) VALUES ($1) RETURNING id", ['Test distribution hub'])).rows[0].id,
         });
       expect(duplicatePickup.status).toBe(409);
       const pickupCount = await getPool().query(
@@ -500,6 +529,7 @@ describe.skipIf(!enabled)('Pickup assignment HTTP + PostgreSQL integration', () 
       const cleanup = await getPool().connect();
       try {
         await cleanup.query('BEGIN');
+        await cleanup.query("SET LOCAL session_replication_role = 'replica'");
         if (assignmentId) {
           await cleanup.query('DELETE FROM app.idempotency_keys WHERE actor_user_id = $1', [adminId]);
           await cleanup.query('DELETE FROM app.assignment_status_events WHERE assignment_id = $1', [assignmentId]);
@@ -521,8 +551,8 @@ describe.skipIf(!enabled)('Pickup assignment HTTP + PostgreSQL integration', () 
         await cleanup.query('DELETE FROM app.donors WHERE app_user_id = $1', [donorUserId]);
         await cleanup.query('DELETE FROM app.volunteer_availability WHERE volunteer_id = $1', [volunteerId]);
         await cleanup.query('DELETE FROM app.volunteers WHERE id = $1', [volunteerId]);
-        await cleanup.query('DELETE FROM app.drivers WHERE id = $1', [driverId]);
         await cleanup.query('DELETE FROM app.vehicles WHERE id = $1', [vehicleId]);
+        await cleanup.query('DELETE FROM app.drivers WHERE id = $1', [driverId]);
         await cleanup.query('DELETE FROM app.vessels WHERE id = $1', [vesselId]);
         await cleanup.query('DELETE FROM app.people WHERE id = ANY($1::uuid[])', [[volunteerPersonId, driverPersonId]]);
         await cleanup.query('DELETE FROM app.app_users WHERE id = ANY($1::uuid[])', [[adminId, donorUserId, volunteerUserId]]);

@@ -1,0 +1,30 @@
+{
+  "verifiedUtc": "2026-11-10T05:47:09.874Z",
+  "projectId": "pyzyxgpcfwpcqyqrihuo",
+  "siteUrl": "https://ngo-eight-umber.vercel.app/",
+  "allowedRedirects": [
+    "https://ngo-eight-umber.vercel.app/accept-invite",
+    "https://ngo-eight-umber.vercel.app/reset-password",
+    "https://ngo-equinox10.vercel.app/",
+    "https://ngo-equinox10.vercel.app/**",
+    "https://ngo-*-equinox10.vercel.app",
+    "https://ngo-*-equinox10.vercel.app/**",
+    "https://ngo-eight-umber.vercel.app/**"
+  ],
+  "customSmtpEnabled": true,
+  "senderDisplayName": "AahaaraConnect NGO",
+  "senderAddressIndependentlyVerified": false,
+  "senderProviderOwnershipVerified": false,
+  "recipientAuthorized": false,
+  "recipientAbsenceChecked": true,
+  "emailsSent": 0,
+  "syntheticIdentitiesCreated": 0,
+  "gate": "BLOCKED: two supplied recipients already exist; unused alias was not authorized; sender-account authorization remains unconfirmed",
+  "smtpHost": "smtp.gmail.com",
+  "smtpPort": 587,
+  "userSuppliedSenderAddress": true,
+  "suppliedSenderDomainIsDisplayName": true,
+  "inferredAddressDomain": "gmail.com",
+  "eligibleAuthorizedRecipientAvailable": false,
+  "userSendingDecision": "No—keep sending blocked"
+}

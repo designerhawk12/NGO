@@ -3,6 +3,7 @@ import { uuidSchema, type AppUser, type CreateFoodRequest } from '@aaharaconnect
 import { HttpError } from '../../middleware/errorHandler';
 import { sendSuccess } from '../../utils/response';
 import * as foodService from './service';
+import { dispatchBestEffort } from '../push/service';
 import type { ListFoodRequestsQuery } from './types';
 
 export const createFoodRequestHandler: RequestHandler = async (_request, response, next) => {
@@ -10,6 +11,7 @@ export const createFoodRequestHandler: RequestHandler = async (_request, respons
     const user = response.locals.appUser as AppUser;
     const input = response.locals.validatedBody as CreateFoodRequest;
     const result = await foodService.createFoodRequest(user, input);
+    await dispatchBestEffort();
     sendSuccess(response, result, 201);
   } catch (error) {
     next(error);
@@ -65,6 +67,7 @@ export const cancelFoodRequestHandler: RequestHandler = async (request, response
     }
     const user = response.locals.appUser as AppUser;
     const result = await foodService.cancelFoodRequest(parsedId.data, user);
+    await dispatchBestEffort();
     sendSuccess(response, result);
   } catch (error) {
     next(error);

@@ -3,11 +3,21 @@ import { requireAuth } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/authorize';
 import { validateBody } from '../../middleware/validate';
 import {
+  createEmployeeDriverSchema,
+  inviteEmployeeDriverSchema,
   createVehicleMaintenanceRecordSchema,
   createVehicleSchema,
+  updateEmployeeDriverSchema,
   updateVehicleSchema,
 } from '@aaharaconnect/shared';
 import {
+  createEmployeeDriverHandler,
+  getOwnDriverProfileHandler,
+  inviteDriverHandler,
+  getDriverHandler,
+  listDriverVehicleOptionsHandler,
+  rejectFixedVehicleChange,
+  updateEmployeeDriverHandler,
   createMaintenanceHandler,
   createVehicleHandler,
   deleteVehicleHandler,
@@ -40,8 +50,22 @@ vehicleSubRouter.post(
   createMaintenanceHandler
 );
 
-// Driver endpoints for registry display
+// Driver registry. NGO employee drivers are created only here, each with one fixed vehicle.
+// A signed-in NGO employee driver reads only their own profile and fixed vehicle.
+driverSubRouter.get('/me', requireAuth, requireRole('DRIVER'), getOwnDriverProfileHandler);
 driverSubRouter.get('/', requireAuth, requireRole('ADMIN'), listDriversHandler);
+driverSubRouter.post('/:id/invite', requireAuth, requireRole('ADMIN'), validateBody(inviteEmployeeDriverSchema), inviteDriverHandler);
+driverSubRouter.get('/vehicle-options', requireAuth, requireRole('ADMIN'), listDriverVehicleOptionsHandler);
+driverSubRouter.post('/', requireAuth, requireRole('ADMIN'), validateBody(createEmployeeDriverSchema), createEmployeeDriverHandler);
+driverSubRouter.get('/:id', requireAuth, requireRole('ADMIN'), getDriverHandler);
+driverSubRouter.patch(
+  '/:id',
+  requireAuth,
+  requireRole('ADMIN'),
+  rejectFixedVehicleChange,
+  validateBody(updateEmployeeDriverSchema),
+  updateEmployeeDriverHandler
+);
 
 // Dispatch to subrouters based on baseUrl mount point (/vehicles vs /drivers)
 vehicleRoutes.use((request, response, next) => {

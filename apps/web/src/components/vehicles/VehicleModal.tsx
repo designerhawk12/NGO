@@ -9,13 +9,12 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useRef, useState } from 'react'
-import type { Driver, Vehicle, VehicleMaintenanceRecord } from '../../types'
+import type { Vehicle, VehicleMaintenanceRecord } from '../../types'
 import { Modal } from '../common/UI'
 
 type Props = {
   vehicle?: Vehicle
   existingVehicles?: Vehicle[]
-  drivers: Driver[]
   maintenanceRecords?: VehicleMaintenanceRecord[]
   onClose: () => void
   onSave: (vehicle: Vehicle) => boolean | Promise<boolean>
@@ -25,7 +24,7 @@ type Props = {
 const VEHICLE_TYPES = ['Van', 'Mini Truck', 'Tempo', 'Truck', 'Auto Rickshaw', 'Pickup', 'Other']
 const SIZES: ('SMALL' | 'MEDIUM' | 'LARGE')[] = ['SMALL', 'MEDIUM', 'LARGE']
 
-export default function VehicleModal({ vehicle, existingVehicles, drivers, onClose, onSave, notify }: Props) {
+export default function VehicleModal({ vehicle, existingVehicles, onClose, onSave, notify }: Props) {
   const isEdit = !!vehicle
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(vehicle?.photoDataUrl ?? null)
   const [photoBusy, setPhotoBusy] = useState(false)
@@ -118,22 +117,8 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
   const [equipFoodContainers, setEquipFoodContainers] = useState(vehicle?.equipment?.foodGradeContainers ?? true)
   const [foodContactSuitable, setFoodContactSuitable] = useState<boolean>(vehicle?.foodContactSuitable ?? true)
 
-  // 4. Driver & Assignment State
-  const matchedDriver = drivers.find(
-    d =>
-      (vehicle?.driverId && d.driverId === vehicle.driverId) ||
-      (vehicle?.driverName && d.name.toLowerCase() === vehicle.driverName.toLowerCase()) ||
-      (vehicle?.driverId && d.name.toLowerCase() === vehicle.driverId.toLowerCase())
-  )
-  const [driverSelection, setDriverSelection] = useState<string>(() => {
-    if (matchedDriver) return matchedDriver.driverId
-    if (vehicle?.driverName || vehicle?.driverId) return '__other__'
-    return ''
-  })
-  const [customDriverName, setCustomDriverName] = useState<string>(() => {
-    if (matchedDriver) return matchedDriver.name
-    return vehicle?.driverName || vehicle?.driverId || ''
-  })
+  // 4. Driver: read-only. Drivers are linked to vehicles only from Assign Driver.
+  const fixedDriverName = vehicle?.driverName?.trim() || ''
 
   const cleanReg = registrationNumber.trim().toUpperCase()
   const isDuplicateReg = Boolean(
@@ -174,25 +159,6 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
       return
     }
 
-    let finalDriverId: string | undefined = undefined
-    let finalDriverName: string | undefined = undefined
-    if (driverSelection === '__other__') {
-      const manualName = customDriverName.trim()
-      if (!manualName) {
-        notify('Please enter the driver name.', 'error')
-        return
-      }
-      finalDriverName = manualName
-    } else if (driverSelection) {
-      finalDriverId = driverSelection
-      finalDriverName = drivers.find(d => d.driverId === driverSelection)?.name
-    }
-
-    if (!finalDriverName) {
-      notify('Please select or enter a driver name.', 'error')
-      return
-    }
-
     let finalStatus = statusSelection
     if (statusSelection === '__other__') {
       const manualStatus = customStatus.trim()
@@ -225,8 +191,8 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
       nextServiceDate: vehicle?.nextServiceDate,
       lastCleaningDate: vehicle?.lastCleaningDate,
       nextCleaningDueDate: vehicle?.nextCleaningDueDate,
-      driverId: finalDriverId,
-      driverName: finalDriverName,
+      driverId: vehicle?.driverId,
+      driverName: vehicle?.driverName,
       status: finalStatus,
       lastMaintenance: vehicle?.lastMaintenance,
       nextMaintenance: vehicle?.nextMaintenance,
@@ -572,66 +538,24 @@ export default function VehicleModal({ vehicle, existingVehicles, drivers, onClo
           </div>
         </div>
 
-        {/* 4. Driver & Assignment */}
+        {/* 4. Driver (read-only; managed in Assign Driver) */}
         <div className="rounded-xl border border-emerald-200/80 bg-white hover:border-emerald-300 transition-colors shadow-xs p-4 space-y-3">
           <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
             <div className="flex items-center gap-2">
               <User className="text-emerald-700" size={18} />
-              <h3 className="font-bold text-slate-800 text-sm">4. Driver & Assignment</h3>
+              <h3 className="font-bold text-slate-800 text-sm">4. Driver</h3>
             </div>
-            <span className="text-[11px] font-semibold bg-emerald-100/90 text-emerald-800 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-              Mandatory
+            <span className="text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-full">
+              Not required
             </span>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-            <div className="field">
-              <label htmlFor="veh-driver">
-                Assigned Driver <span className="text-rose-500">*</span>
-              </label>
-              <select
-                id="veh-driver"
-                value={driverSelection}
-                onChange={e => {
-                  const val = e.target.value
-                  setDriverSelection(val)
-                  if (val && val !== '__other__') {
-                    const d = drivers.find(drv => drv.driverId === val)
-                    if (d) setCustomDriverName(d.name)
-                  }
-                }}
-                required
-              >
-                <option value="">Select a driver</option>
-                {drivers.map(d => (
-                  <option key={d.driverId} value={d.driverId}>
-                    {d.name} {d.phone ? `(${d.phone})` : ''} ({d.status})
-                  </option>
-                ))}
-                <option value="__other__">Other (Enter name manually)</option>
-              </select>
-              {driverSelection === '__other__' && (
-                <input
-                  id="veh-custom-driver"
-                  type="text"
-                  className="mt-2"
-                  value={customDriverName}
-                  onChange={e => setCustomDriverName(e.target.value)}
-                  placeholder="e.g. Ramesh Kumar"
-                  required
-                />
-              )}
-              <p className="text-[11px] text-slate-500 mt-1">
-                No permanent driver is required. Driver will be assigned per pickup.
-              </p>
-            </div>
-
-            <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-lg p-3 text-xs text-emerald-900 flex items-start gap-2.5">
-              <Info size={16} className="text-emerald-700 shrink-0 mt-0.5" />
-              <p className="leading-relaxed">
-                Driver assignment is managed when creating or scheduling a pickup. This vehicle will be automatically marked On Trip when an active assignment exists.
-              </p>
-            </div>
+          <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-lg p-3 text-xs text-emerald-900 flex items-start gap-2.5">
+            <Info size={16} className="text-emerald-700 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              {fixedDriverName
+                ? `Fixed driver: ${fixedDriverName}. This link was set in Assign Driver and cannot be changed here.`
+                : 'Driver not assigned. Save the vehicle first, then link an NGO employee driver from Assign Driver.'}
+            </p>
           </div>
         </div>
 

@@ -1,0 +1,31 @@
+{
+  "projectId": "pyzyxgpcfwpcqyqrihuo",
+  "verifiedUtc": "2026-11-10T05:36:18.416Z",
+  "dashboardUrl": "https://supabase.com/dashboard/project/pyzyxgpcfwpcqyqrihuo/auth/url-configuration",
+  "previousSiteUrl": "https://ngo-equinox10.vercel.app/",
+  "savedSiteUrl": "https://ngo-eight-umber.vercel.app/",
+  "redirectsBefore": [
+    "https://ngo-eight-umber.vercel.app/accept-invite",
+    "https://ngo-eight-umber.vercel.app/reset-password",
+    "https://ngo-equinox10.vercel.app/",
+    "https://ngo-equinox10.vercel.app/**",
+    "https://ngo-*-equinox10.vercel.app",
+    "https://ngo-*-equinox10.vercel.app/**",
+    "https://ngo-eight-umber.vercel.app/**"
+  ],
+  "redirectsAfter": [
+    "https://ngo-eight-umber.vercel.app/accept-invite",
+    "https://ngo-eight-umber.vercel.app/reset-password",
+    "https://ngo-equinox10.vercel.app/",
+    "https://ngo-equinox10.vercel.app/**",
+    "https://ngo-*-equinox10.vercel.app",
+    "https://ngo-*-equinox10.vercel.app/**",
+    "https://ngo-eight-umber.vercel.app/**"
+  ],
+  "redirectsUnchanged": true,
+  "readbackAfterReload": true,
+  "changedFields": [
+    "Site URL"
+  ],
+  "emailsSent": 0
+}
