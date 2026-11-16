@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { DriverJob } from '@aaharaconnect/shared';
-import { Alert, Linking, Pressable, View } from 'react-native';
+import { Alert, Platform, Pressable, View } from 'react-native';
+import * as Linking from 'expo-linking';
 import { ApiClientError } from '../../api/client';
 import { currentDestination, isClosedJob, listDriverJobs, nextDriverStep, updateDriverJob, type DriverAction } from '../../api/driver';
-import { pickupNavigationUrl, pickupSearchUrl } from '../volunteer/pickupNavigation';
+import { openDriverDirections } from './driverNavigation';
+import { useDriverGps } from './useDriverGps';
 import { Badge, Button, Card, Empty, Header, Icon, InfoRow, Screen, Sheet, T } from '../common/UI';
 import { C } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
@@ -41,6 +43,17 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
   const [reason, setReason] = useState('');
   const acting = useRef(false);
   const [sharingPickup, setSharingPickup] = useState<string | null>(null);
+  const gps = useDriverGps(jobs.some(job => !isClosedJob(job) && job.driverAcceptance === 'PENDING'
+    && (assignmentId ? job.assignmentId === assignmentId : !historyOnly)));
+  const gpsLabel = {
+    checking: 'Checking GPS…',
+    disabled: 'Phone location services are off.',
+    denied: 'Location permission is needed.',
+    blocked: 'Allow location access in Android app settings.',
+    approximate: 'Enable precise location in Android app settings.',
+    unverified: 'A fresh GPS position is required.',
+    ready: 'GPS position verified.',
+  }[gps.status];
 
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
@@ -85,6 +98,7 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
     if (acting.current) return;
     acting.current = true; setBusyId(job.assignmentId); setMessage(null);
     try {
+      if (action === 'ACCEPT') await gps.confirmReady();
       if (action === 'START') await requireDriverTracking(job.pickupId);
       await updateDriverJob(job, action, declineReason);
       if (action === 'DELIVER' || action === 'REJECT') { await stopDriverTracking(); setSharingPickup(null); }
@@ -93,8 +107,8 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
       const code = cause instanceof ApiClientError ? cause.code : '';
       setMessage({ text: errorText[code] ?? (cause instanceof Error ? cause.message : 'Could not update the job. Try again.'), ok: false });
     } finally {
-      acting.current = false; setBusyId(null);
       await refresh();
+      acting.current = false; setBusyId(null);
     }
   };
 
@@ -111,15 +125,10 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
 
   // Opens Google Maps directions only when the driver taps; never automatically on render or restore.
   const showOnMaps = async (job: DriverJob) => {
-    const destination = currentDestination(job);
-    const url = destination ? pickupNavigationUrl(destination.address) : null;
-    if (!destination || !url) { setMessage({ text: 'No destination address is recorded for this job. Contact the NGO administrator.', ok: false }); return; }
-    try { await requireDriverTracking(job.pickupId); }
-    catch (cause) { setMessage({ text: cause instanceof Error ? cause.message : 'Enable GPS sharing first.', ok: false }); return; }
-    try { await Linking.openURL(url); }
-    catch {
-      try { await Linking.openURL(pickupSearchUrl(destination.address)!); }
-      catch { setMessage({ text: 'Could not open Google Maps or a browser on this phone.', ok: false }); }
+    try { await openDriverDirections(job, Platform.OS === 'android', Linking.openURL); }
+    catch (cause) {
+      setMessage({ text: cause instanceof Error && cause.message.startsWith('No destination')
+        ? cause.message : 'Could not open Google Maps or a browser on this phone.', ok: false });
     }
   };
 
@@ -169,9 +178,15 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
             {job.operationalNotes && <InfoRow icon="edit" label="Notes" value={job.operationalNotes} />}
             {isClosedJob(job) && job.completedAt && <T size={13} color={C.muted} translate={false}>Closed {timeLabel(job.completedAt)}</T>}
 
-            {destination && <Button title="Show on Maps" icon="pin" variant="green" onPress={() => void showOnMaps(job)} style={{ marginTop: 12 }} />}
+            {step && 'action' in step && step.action === 'ACCEPT' && <>
+              <T color={gps.status === 'ready' ? C.green : C.muted}>{gpsLabel}</T>
+              {gps.error ? <T color={C.red}>{gps.error}</T> : null}
+              {gps.status !== 'ready' && <Button title={gps.status === 'blocked' || gps.status === 'approximate' ? 'Open app settings' : 'Enable GPS'}
+                variant="outline" disabled={gps.busy || gps.status === 'checking'} onPress={() => void gps.enable()} style={{ marginTop: 8 }} />}
+            </>}
+            {!isClosedJob(job) && job.driverAcceptance === 'ACCEPTED' && <Button title="Show on Maps" icon="pin" variant="green" onPress={() => void showOnMaps(job)} style={{ marginTop: 12 }} />}
             {destination && <T size={12} color={C.muted} style={{ marginTop: 4, textAlign: 'center' }}>Directions to the {destination.label}</T>}
-            {step && 'action' in step && <Button title={step.label} disabled={busyId !== null} loading={busyId === job.assignmentId}
+            {step && 'action' in step && <Button title={step.label} disabled={busyId !== null || (step.action === 'ACCEPT' && gps.status !== 'ready')} loading={busyId === job.assignmentId}
               onPress={() => confirm(job, step.action)} style={{ marginTop: 10 }} />}
             {step && 'waiting' in step && <T color={C.muted} style={{ marginTop: 10 }}>{step.waiting}</T>}
             {!isClosedJob(job) && ['PENDING', 'ACCEPTED'].includes(job.status) && <Button title="Decline job" variant="outline" disabled={busyId !== null}
