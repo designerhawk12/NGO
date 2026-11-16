@@ -25,6 +25,7 @@ vi.mock('./UI', () => ({
   LanguageSwitcher: () => null,
   Button: ({ title }: { title: string }) => <button>{title}</button>,
 }));
+vi.mock('./BrandLogo', () => ({ default: () => null }));
 
 describe('pilot sign-in screen', () => {
   it.each(['donor', 'volunteer'] as const)('%s exposes one real sign-in path and no demo bypass', role => {

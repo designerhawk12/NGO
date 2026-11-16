@@ -13,6 +13,8 @@ async function duty(userId: string, pickupId: string, tx: PoolClient, requestedV
   }
   const assignment = await lockDriverTrackingDuty(pickupId, profile.driverId, profile.vehicle.id, tx);
   if (!assignment) throw new HttpError(403, 'FORBIDDEN', 'No active accepted pickup duty authorizes location sharing.');
+  if (assignment.too_early) throw new HttpError(403, 'FORBIDDEN', 'Location sharing opens two hours before the scheduled pickup.');
+  if (assignment.expired) throw new HttpError(403, 'FORBIDDEN', 'The pickup tracking window has ended. Contact the NGO administrator.');
   return { profile, assignment };
 }
 export async function startSharing(userId: string, pickupId: string) {
@@ -71,6 +73,9 @@ export async function listFleetLocations() {
       JOIN app.pickups pk ON pk.id = a.pickup_id
       WHERE c.app_user_id = p.app_user_id AND c.withdrawn_at IS NULL AND d.status = 'ACTIVE'
         AND c.granted_at >= a.created_at AND c.granted_at > now() - interval '12 hours'
+        AND a.driver_acceptance = 'ACCEPTED'
+        AND pk.window_starts_at <= now() + interval '2 hours'
+        AND pk.window_ends_at >= now() - interval '12 hours'
         AND a.status IN ('PENDING','ACCEPTED','EN_ROUTE','ARRIVED_AT_DONOR','FOOD_COLLECTED')
         AND pk.status NOT IN ('DELIVERED','CANCELLED','FAILED') LIMIT 1) s ON true
     LEFT JOIN LATERAL (SELECT latitude, longitude, recorded_at, accuracy_meters, speed_mps FROM app.vehicle_locations

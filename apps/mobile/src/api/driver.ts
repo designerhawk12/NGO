@@ -12,7 +12,7 @@ export async function getOwnDriverProfile(): Promise<DriverSelfProfile> {
 }
 
 export async function listDriverJobs(): Promise<DriverJob[]> {
-  const page = await apiRequest<Page<DriverJob>>('assignments/driver', { headers: await authHeaders() });
+  const page = await apiRequest<Page<DriverJob>>('assignments/driver', { headers: await authHeaders(), cache: 'no-store' });
   return page.items;
 }
 

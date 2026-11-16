@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { Button, Card, Icon, LanguageSwitcher, Screen, T } from '../components/common/UI';
+import BrandLogo from '../components/common/BrandLogo';
 import { C } from '../constants/theme';
 import { useApp } from '../context/AppContext';
 export default function Welcome() {
@@ -14,8 +15,8 @@ export default function Welcome() {
   if (restoreError) return <Screen><Card><T>Could not verify your saved session. Check your connection and retry.</T><Button title="Retry" onPress={retryRestore} /></Card></Screen>;
   return <Screen style={{ justifyContent: 'center' }}>
     <View style={{ alignItems: 'flex-end', marginBottom: 34 }}><LanguageSwitcher /></View>
-    <View style={{ alignItems: 'center', marginBottom: 30 }}><View style={{ width: 70, height: 70, borderRadius: 21, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}><Icon name="heart" size={35} color={C.white} /></View>
-      <T size={30} weight="800" color={C.ink} translate={false}>AaharaConnect</T><T color={C.muted}>Food Rescue Network</T></View>
+    <View style={{ alignItems: 'center', marginBottom: 30 }}><BrandLogo full width={250} />
+      <T size={30} weight="800" color={C.ink} translate={false}>AaharaConnect</T></View>
     <T size={23} weight="700" color={C.ink} style={{ marginBottom: 6 }}>Choose how to continue</T><T color={C.muted} style={{ marginBottom: 18 }}>Together, less food waste.</T>
     {volunteerApplicationStatus && <Card style={{ marginBottom: 14, borderColor: volunteerApplicationStatus === 'DENIED' ? C.red : C.orange }}>
       <T size={18} weight="700" color={volunteerApplicationStatus === 'DENIED' ? C.red : C.ink}>

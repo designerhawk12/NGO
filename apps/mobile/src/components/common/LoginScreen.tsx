@@ -3,6 +3,7 @@ import { Linking, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { volunteerRegistrationInputSchema } from '@aaharaconnect/shared';
 import { Button, Card, Field, Header, Icon, LanguageSwitcher, Screen, T } from './UI';
+import BrandLogo from './BrandLogo';
 import { C } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { Role } from '../../types';
@@ -196,6 +197,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
       </Card>
     </> : <>
       <Header title={role === 'volunteer' ? 'Login as Volunteer / Driver' : role === 'admin' ? 'Administrator sign in' : 'Donor sign in'} subtitle={role === 'volunteer' ? 'Volunteers and NGO drivers use the same email sign-in.' : 'Welcome back'} back />
+      <BrandLogo />
       {role === 'volunteer' && app.volunteerApplicationStatus && <Card style={{ marginBottom: 14 }}>
         <T weight="700" color={app.volunteerApplicationStatus === 'DENIED' ? C.red : C.ink}>
           {app.volunteerApplicationStatus === 'DENIED' ? 'Volunteer application not approved' : 'Volunteer application pending approval'}

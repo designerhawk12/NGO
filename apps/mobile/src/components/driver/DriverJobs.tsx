@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import type { DriverJob } from '@aaharaconnect/shared';
-import { Alert, Platform, Pressable, View } from 'react-native';
+import { Alert, AppState, Platform, Pressable, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { ApiClientError } from '../../api/client';
 import { currentDestination, isClosedJob, listDriverJobs, nextDriverStep, updateDriverJob, type DriverAction } from '../../api/driver';
@@ -42,6 +43,8 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
   const [declining, setDeclining] = useState<DriverJob | null>(null);
   const [reason, setReason] = useState('');
   const acting = useRef(false);
+  const sharingStarting = useRef(false);
+  const refreshSequence = useRef(0);
   const [sharingPickup, setSharingPickup] = useState<string | null>(null);
   const gps = useDriverGps(jobs.some(job => !isClosedJob(job) && job.driverAcceptance === 'PENDING'
     && (assignmentId ? job.assignmentId === assignmentId : !historyOnly)));
@@ -56,40 +59,68 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
   }[gps.status];
 
   const refresh = useCallback(async () => {
+    const sequence = ++refreshSequence.current;
     setLoading(true); setError(null);
     try {
       const updated = await listDriverJobs();
+      if (sequence !== refreshSequence.current) return null;
       setJobs(updated);
       const session = await trackingSession();
-      if (session && !updated.some(job => job.pickupId === session.pickupId && !isClosedJob(job))) await stopDriverTracking();
-      setSharingPickup((await activeDriverTracking())?.pickupId ?? null);
+      if (sequence === refreshSequence.current && session && !sharingStarting.current
+        && !updated.some(job => job.pickupId === session.pickupId && !isClosedJob(job) && job.driverAcceptance === 'ACCEPTED')) {
+        await stopDriverTracking();
+      }
+      if (!sharingStarting.current) {
+        const active = await activeDriverTracking();
+        if (sequence === refreshSequence.current) setSharingPickup(active?.pickupId ?? null);
+      }
+      return updated;
     }
     catch (cause) {
+      if (sequence !== refreshSequence.current) return null;
       setJobs([]);
       setError(cause instanceof ApiClientError && cause.code === 'NETWORK_ERROR'
         ? 'No connection. Pull your jobs again when you are online.'
         : 'Could not load your jobs. Check your connection and retry.');
-    } finally { setLoading(false); }
+      return null;
+    } finally { if (sequence === refreshSequence.current) setLoading(false); }
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     let active = true;
     void Promise.resolve().then(() => { if (active) void refresh(); });
-    return () => { active = false; };
-  }, [refresh]);
-
-  useEffect(() => {
-    const timer = setInterval(() => { void refresh(); }, 30_000);
-    return () => clearInterval(timer);
-  }, [refresh]);
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') void refresh();
+    });
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void refresh(); }, 30_000);
+    return () => {
+      active = false;
+      refreshSequence.current += 1;
+      subscription.remove();
+      clearInterval(timer);
+    };
+  }, [refresh]));
 
   const startSharing = (job: DriverJob) => Alert.alert(t('Share your phone GPS during NGO duty?'),
     t('The NGO Admin can see the reported location of your fixed vehicle during this pickup. Android will ask for foreground and background location; choose Allow all the time in Settings so Google Maps can stay open. A persistent notification shows sharing. You can stop at any time. Android force-stop and battery restrictions can interrupt reports.'), [
       { text: t('Cancel'), style: 'cancel' },
       { text: t('Start Location Sharing'), onPress: () => {
         void (async () => {
-          try { await startDriverTracking(job.pickupId); setSharingPickup(job.pickupId); setMessage({ text: 'Location Sharing Active', ok: true }); }
+          if (sharingStarting.current) return;
+          sharingStarting.current = true;
+          try {
+            const updated = await refresh();
+            if (!updated) throw new Error('Could not verify your current assignment. Check your connection and retry.');
+            const current = updated.find(item => item.assignmentId === job.assignmentId);
+            if (!current || isClosedJob(current) || current.driverAcceptance !== 'ACCEPTED') {
+              throw new Error('This assignment is no longer an accepted active duty.');
+            }
+            await startDriverTracking(current.pickupId);
+            setSharingPickup(current.pickupId);
+            setMessage({ text: 'Location Sharing Active', ok: true });
+          }
           catch (cause) { setSharingPickup(null); setMessage({ text: cause instanceof Error ? cause.message : 'Could not start location sharing.', ok: false }); }
+          finally { sharingStarting.current = false; }
         })();
       } },
     ]);

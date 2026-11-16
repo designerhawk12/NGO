@@ -7,6 +7,7 @@ export type Language = 'en' | 'kn'
 const kannada: Record<string, string> = {
   'Use a current Admin account for this environment. Volunteer and Driver accounts use the mobile app; Donors can also use the Donor portal. Credentials from another environment do not grant access here.':'ಈ ಪರಿಸರದ ಪ್ರಸ್ತುತ ನಿರ್ವಾಹಕ ಖಾತೆಯನ್ನು ಬಳಸಿ. ಸ್ವಯಂಸೇವಕರು ಮತ್ತು ಚಾಲಕರು ಮೊಬೈಲ್ ಅಪ್ಲಿಕೇಶನ್ ಬಳಸಬೇಕು; ದಾನಿಗಳು ದಾನಿ ಪೋರ್ಟಲ್ ಕೂಡ ಬಳಸಬಹುದು. ಬೇರೆ ಪರಿಸರದ ಪ್ರವೇಶ ವಿವರಗಳು ಇಲ್ಲಿ ಪ್ರವೇಶ ನೀಡುವುದಿಲ್ಲ.',
   'Administrator access is required.':'ನಿರ್ವಾಹಕರ ಪ್ರವೇಶ ಅಗತ್ಯವಿದೆ.',
+  'Akshaya Aahara Foundation — RIGHT TO EAT, NOT TO WASTE':'ಅಕ್ಷಯ ಆಹಾರ ಫೌಂಡೇಶನ್ — ತಿನ್ನುವ ಹಕ್ಕು, ವ್ಯರ್ಥ ಮಾಡುವುದಕ್ಕಲ್ಲ',
   'No recent location':'ಇತ್ತೀಚಿನ ಸ್ಥಳ ಲಭ್ಯವಿಲ್ಲ',
   'Location updates unavailable':'ಸ್ಥಳದ ನವೀಕರಣಗಳು ಲಭ್ಯವಿಲ್ಲ',
   'Administrator sign-in':'ನಿರ್ವಾಹಕರ ಪ್ರವೇಶ',

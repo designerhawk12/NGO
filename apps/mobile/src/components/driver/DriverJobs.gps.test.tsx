@@ -10,7 +10,7 @@ const native = vi.hoisted(() => ({
   services: vi.fn(), permission: vi.fn(), request: vi.fn(), position: vi.fn(),
   settings: vi.fn(), intent: vi.fn(),
   appState: { currentState: 'active', addEventListener: vi.fn() },
-  list: vi.fn(), update: vi.fn(), open: vi.fn(),
+  list: vi.fn(), update: vi.fn(), open: vi.fn(), alert: vi.fn(), start: vi.fn(), requireTracking: vi.fn(),
 }));
 vi.mock('expo-location', () => ({
   Accuracy: { High: 4 }, hasServicesEnabledAsync: native.services,
@@ -21,7 +21,7 @@ vi.mock('react-native', () => ({
   AppState: native.appState, Platform: { OS: 'android' },
   Linking: { openSettings: native.settings, sendIntent: native.intent },
   View: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-  Alert: { alert: vi.fn() }, Pressable: () => null,
+  Alert: { alert: native.alert }, Pressable: () => null,
 }));
 vi.mock('expo-router', async () => {
   const { useEffect } = await import('react');
@@ -35,7 +35,10 @@ vi.mock('../../api/driver', async importOriginal => ({
 vi.mock('../../constants/theme', () => ({ C: {} }));
 vi.mock('../../context/LanguageContext', () => ({ useLanguage: () => ({ t: (text: string) => text }) }));
 vi.mock('../common/NotificationBell', () => ({ default: () => null }));
-vi.mock('../tracking/driverTracking', () => ({ trackingSession: async () => null, activeDriverTracking: async () => null }));
+vi.mock('../tracking/driverTracking', () => ({
+  trackingSession: async () => null, activeDriverTracking: async () => null,
+  startDriverTracking: native.start, requireDriverTracking: native.requireTracking,
+}));
 vi.mock('../common/UI', () => {
   const Wrapper = ({ children }: React.PropsWithChildren) => <div>{children}</div>;
   return {
@@ -128,6 +131,27 @@ it('uses pickup coordinates when valid and falls back to HTTPS driving direction
     'google.navigation:q=12%2C77&mode=d',
     'https://www.google.com/maps/dir/?api=1&destination=12%2C77&travelmode=driving&dir_action=navigate',
   ]);
+});
+
+it('rechecks accepted duty before sharing and keeps navigation and journey actions working', async () => {
+  native.list.mockResolvedValue([accepted]);
+  await act(async () => root.render(<DriverJobs />));
+  await click('Turn On GPS / Start Location Sharing');
+  const confirm = native.alert.mock.lastCall?.[2][1].onPress;
+  native.list.mockResolvedValueOnce([{ ...accepted, status: 'CANCELLED' }]);
+  await act(async () => confirm());
+  expect(native.start).not.toHaveBeenCalled();
+  expect(container.textContent).toContain('no longer an accepted active duty');
+
+  await click('Refresh jobs');
+  await click('Turn On GPS / Start Location Sharing');
+  await act(async () => native.alert.mock.lastCall?.[2][1].onPress());
+  expect(native.start).toHaveBeenCalledExactlyOnceWith(job.pickupId);
+  await click('Show on Maps');
+  expect(native.open).toHaveBeenCalledWith(expect.stringContaining('google.navigation:'));
+  await click('Start journey to pickup');
+  expect(native.requireTracking).toHaveBeenCalledWith(job.pickupId);
+  expect(native.update).toHaveBeenCalledWith(accepted, 'START', undefined);
 });
 
 it('uses the real address for invalid coordinates and rejects a missing destination', async () => {

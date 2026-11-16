@@ -82,6 +82,9 @@ try {
   const setInput = async (element, value) => { assert.ok(element, 'Expected input'); await act(async () => { const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; setter.call(element, value); element.dispatchEvent(new window.Event('input', { bubbles:true })) }) }
 
   await act(async () => root.render(React.createElement(Root)))
+  assert.equal(document.querySelector('.landing-brand img').getAttribute('src'), '/branding/aaf-logo.png')
+  assert.equal(document.querySelector('.landing-hero img').getAttribute('src'), '/branding/aaf-logo-full.png')
+  assert.match(document.querySelector('.landing-hero img').alt, /RIGHT TO EAT, NOT TO WASTE/)
   assert.equal(document.querySelector('.landing-hero h1').textContent, 'Good food from your event can feed someone today')
   assert.equal(document.querySelector('.landing-hero a[href="#install-app"]'), null)
   assert.doesNotMatch(document.querySelector('.landing').textContent, /NGO administration|SHA-256/)

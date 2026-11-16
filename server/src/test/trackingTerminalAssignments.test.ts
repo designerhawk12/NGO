@@ -19,6 +19,32 @@ beforeEach(()=>{
   profile.mockResolvedValue({driverId:'fixed-driver',status:'ACTIVE',vehicle:{id:vehicleId,registrationNumber:'KA01AB1234'}});
 });
 describe('employee Driver location authorization and terminal duties',()=>{
+  const consent = () => request(app).post(`/api/v1/pickups/${pickupId}/tracking-consent`)
+    .set('Authorization', 'Bearer signed-token').send({ pickupId, consent: true });
+
+  it.each([
+    [{ too_early: true, expired: false }, 'opens two hours before'],
+    [{ too_early: false, expired: true }, 'window has ended'],
+  ] as const)('explains an accepted duty outside the tracking window without writing consent', async (window, message) => {
+    query.mockResolvedValueOnce({ rows: [{ id: 'assignment', ...window }] });
+    const response = await consent();
+    expect(response.status).toBe(403);
+    expect(response.body.error.message).toContain(message);
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts tracking consent for the assigned Driver in the window, even while crew acceptance is pending', async () => {
+    query.mockResolvedValue({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'assignment', too_early: false, expired: false }] })
+      .mockResolvedValueOnce({ rows: [{ id: driver.id }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'consent', startedAt: sessionStartedAt }] });
+    const response = await consent();
+    expect(response.status).toBe(200);
+    expect(response.body.data).toMatchObject({ id: 'consent', vehicleId });
+    expect(query.mock.calls[0][0]).toContain("a.driver_acceptance = 'ACCEPTED'");
+    expect(query.mock.calls[3][0]).toContain('INSERT INTO app.vehicle_tracking_consents');
+  });
   it('rejects new consent once the assignment or pickup is terminal',async()=>{
     query.mockResolvedValueOnce({rows:[],rowCount:0});
     const response=await request(app).post(`/api/v1/pickups/${pickupId}/tracking-consent`).set('Authorization','Bearer signed-token').send({pickupId,consent:true});

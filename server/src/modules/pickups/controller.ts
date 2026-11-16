@@ -127,6 +127,7 @@ export const updateAssignmentStatusHandler: RequestHandler = async (request, res
 export const getDriverJobsHandler: RequestHandler = async (_request, response, next) => {
   try {
     const actor = requireActor(response);
+    response.setHeader('Cache-Control', 'no-store');
     sendSuccess(response, await pickupService.getDriverJobs(actor.id));
   } catch (error) {
     next(error);

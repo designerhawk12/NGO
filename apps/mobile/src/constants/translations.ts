@@ -1,4 +1,10 @@
 export const kn: Record<string, string> = {
+  'Akshaya Aahara Foundation': 'ಅಕ್ಷಯ ಆಹಾರ ಫೌಂಡೇಶನ್',
+  'Akshaya Aahara Foundation — RIGHT TO EAT, NOT TO WASTE': 'ಅಕ್ಷಯ ಆಹಾರ ಫೌಂಡೇಶನ್ — ತಿನ್ನುವ ಹಕ್ಕು, ವ್ಯರ್ಥ ಮಾಡುವುದಕ್ಕಲ್ಲ',
+  'Location sharing opens two hours before the scheduled pickup.': 'ನಿಗದಿತ ಆಹಾರ ಸಂಗ್ರಹಕ್ಕೆ ಎರಡು ಗಂಟೆ ಮೊದಲು ಸ್ಥಳ ಹಂಚಿಕೆ ಲಭ್ಯವಾಗುತ್ತದೆ.',
+  'The pickup tracking window has ended. Contact the NGO administrator.': 'ಸಂಗ್ರಹದ ಸ್ಥಳ ಹಂಚಿಕೆ ಅವಧಿ ಮುಗಿದಿದೆ. ಎನ್‌ಜಿಒ ನಿರ್ವಾಹಕರನ್ನು ಸಂಪರ್ಕಿಸಿ.',
+  'This assignment is no longer an accepted active duty.': 'ಈ ನಿಯೋಜನೆ ಈಗ ಸ್ವೀಕರಿಸಿದ ಸಕ್ರಿಯ ಕರ್ತವ್ಯವಾಗಿಲ್ಲ.',
+  'Could not verify your current assignment. Check your connection and retry.': 'ನಿಮ್ಮ ಪ್ರಸ್ತುತ ನಿಯೋಜನೆಯನ್ನು ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ. ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
   'Notifications': 'ಅಧಿಸೂಚನೆಗಳು',
   'Requests and assignments': 'ವಿನಂತಿಗಳು ಮತ್ತು ನಿಯೋಜನೆಗಳು',
   'Sign in to view your notifications.': 'ನಿಮ್ಮ ಅಧಿಸೂಚನೆಗಳನ್ನು ನೋಡಲು ಸೈನ್ ಇನ್ ಮಾಡಿ.',
