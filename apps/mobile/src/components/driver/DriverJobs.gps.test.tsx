@@ -34,6 +34,7 @@ vi.mock('../../api/driver', async importOriginal => ({
 }));
 vi.mock('../../constants/theme', () => ({ C: {} }));
 vi.mock('../../context/LanguageContext', () => ({ useLanguage: () => ({ t: (text: string) => text }) }));
+vi.mock('../common/BrandLogo', () => ({ default: () => null }));
 vi.mock('../common/NotificationBell', () => ({ default: () => null }));
 vi.mock('../tracking/driverTracking', () => ({
   trackingSession: async () => null, activeDriverTracking: async () => null,

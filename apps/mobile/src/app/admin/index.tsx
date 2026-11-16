@@ -1,3 +1,4 @@
+import BrandLogo from '../../components/common/BrandLogo';
 import { useEffect, useState } from 'react';
 import { Linking } from 'react-native';
 import { Redirect, router } from 'expo-router';
@@ -19,7 +20,7 @@ export default function AdminHome(){
     void listNotifications().then(result=>setRecent(result.items.slice(0,5))).catch(()=>{});
   }},[app.role]);
   if(app.role!=='admin'||app.mode!=='live')return <Redirect href="/admin/login" />;
-  return <Screen><Header title="AahaaraConnect" subtitle="Administrator" /><T color={C.muted} translate={false}>Signed in: {identity}</T>
+  return <Screen><BrandLogo width={72} /><Header title="AahaaraConnect" subtitle="Administrator" /><T color={C.muted} translate={false}>Signed in: {identity}</T>
     <NotificationBell />
     <Card style={{marginBottom:12}}><T color={C.muted} translate={false}>Notification permission: {permission}</T>
       <Button title="Enable Notifications" variant="outline" onPress={()=>void enableNotifications().then(setPermission).catch(cause=>app.notify(cause instanceof Error?cause.message:'Notifications could not be enabled.'))} style={{marginTop:8}} />

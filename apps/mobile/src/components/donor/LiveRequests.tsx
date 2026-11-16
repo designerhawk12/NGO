@@ -1,3 +1,4 @@
+import BrandLogo from '../common/BrandLogo';
 import React, { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { View } from 'react-native';
@@ -54,6 +55,7 @@ export function LiveDonorHome() {
   const active = items.find(item => !['Cancelled', 'Completed'].includes(outcome(item)));
   const completed = items.filter(item => outcome(item) === 'Completed');
   return <Screen>
+    <BrandLogo width={72} />
     <Header title="Welcome" subtitle="Your food rescue workspace." right={<LanguageSwitcher />} />
     <NotificationBell />
     <Card style={{ backgroundColor: C.greenSoft, marginBottom: 20, padding: 21 }}>

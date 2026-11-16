@@ -1,3 +1,4 @@
+import BrandLogo from '../common/BrandLogo';
 import React, { useCallback, useRef, useState } from 'react';
 import type { DriverJob } from '@aaharaconnect/shared';
 import { Alert, AppState, Platform, Pressable, View } from 'react-native';
@@ -166,6 +167,7 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
   const visible = jobs.filter(job => assignmentId ? job.assignmentId === assignmentId : historyOnly ? isClosedJob(job) : !isClosedJob(job));
 
   return <Screen>
+    {!historyOnly && !assignmentId && <BrandLogo width={72} />}
     <Header title={historyOnly ? 'History' : 'My Jobs'} subtitle={historyOnly ? 'Your completed and closed jobs.' : 'Pickups assigned to you by the NGO.'} />
     {!historyOnly && <NotificationBell />}
     <Button title="Refresh jobs" variant="outline" icon="history" onPress={() => void refresh()} style={{ marginBottom: 12 }} />
