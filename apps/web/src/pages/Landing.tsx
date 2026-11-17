@@ -14,7 +14,7 @@ export default function Landing() {
   const changeLanguage = (next: Language) => { setLanguage(next); window.localStorage.setItem('aaharaconnect-language', next) }
   return <div className="landing">
     <header className="landing-bar">
-      <a className="landing-brand" href="#"><img src={logoUrl} alt="Akshaya Aahara Foundation" width={56} height={35}/><span><strong>Akshaya Ahar</strong><small>Share surplus food, feed more people</small></span></a>
+      <a className="landing-brand" href="#"><img src={logoUrl} alt="Akshaya Aahara Foundation" width={42} height={26}/><span><strong>Akshaya Ahar</strong><small>Share surplus food, feed more people</small></span></a>
       <button className="landing-menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Main menu" aria-expanded={menuOpen}>{menuOpen ? <X size={22}/> : <Menu size={22}/>}</button>
       <nav className={`landing-menu ${menuOpen ? 'open' : ''}`} aria-label="Main menu">
         <div className="language-switch" role="group" aria-label="Language"><button type="button" className={language === 'en' ? 'active' : ''} aria-pressed={language === 'en'} onClick={() => changeLanguage('en')}>English</button><span aria-hidden="true">|</span><button type="button" className={language === 'kn' ? 'active' : ''} aria-pressed={language === 'kn'} onClick={() => changeLanguage('kn')}>ಕನ್ನಡ</button></div>
@@ -23,7 +23,7 @@ export default function Landing() {
     </header>
     <main>
       <section className="landing-hero">
-        <img className="landing-foundation-logo" src={`${import.meta.env.BASE_URL}branding/aaf-logo-full.png`} alt="Akshaya Aahara Foundation — RIGHT TO EAT, NOT TO WASTE" width={252} height={180} />
+        <img className="landing-foundation-logo" src={`${import.meta.env.BASE_URL}branding/aaf-logo-full.png`} alt="Akshaya Aahara Foundation — RIGHT TO EAT, NOT TO WASTE" width={180} height={129} />
         <h1>Good food from your event can feed someone today</h1>
         <p>Akshaya Ahar connects function halls and event hosts with volunteers who collect surplus food and deliver it to people in need.</p>
         <div className="landing-actions"><a className="landing-cta large" href={workspaceUrl}>Open Admin Dashboard <ArrowRight size={18}/></a></div>

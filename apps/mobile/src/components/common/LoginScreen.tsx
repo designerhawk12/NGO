@@ -7,7 +7,7 @@ import BrandLogo from './BrandLogo';
 import { C } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { Role } from '../../types';
-import { isLiveAuthConfigured, registerDonorWithEmailConfirmation, signInWithEmail, signOut, validateDonorRegistrationInput } from '../../api/auth';
+import { isLiveAuthConfigured, registerDonorWithEmailConfirmation, resendDonorConfirmation, signInWithEmail, signOut, validateDonorRegistrationInput } from '../../api/auth';
 import { registerVolunteer } from '../../api/volunteers';
 import { normalizeIndianPhone } from '../../api/volunteerRegistrationInput';
 import { ApiClientError } from '../../api/client';
@@ -36,6 +36,21 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
   const [donorConfirmPassword, setDonorConfirmPassword] = useState('');
   const [donorRegistrationResult, setDonorRegistrationResult] = useState(false);
   const registrationSubmitting = useRef(false);
+  const [retryUntil, setRetryUntil] = useState(0);
+  const [resendUntil, setResendUntil] = useState(0);
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
+  function startCooldown(setUntil: (value: number) => void) {
+    setUntil(Date.now() + 60_000);
+  }
+  React.useEffect(() => {
+    const next = Math.min(...[retryUntil, resendUntil].filter(value => value > 0));
+    if (!Number.isFinite(next)) return;
+    const timer = setTimeout(() => {
+      if (retryUntil && retryUntil <= next) setRetryUntil(0);
+      if (resendUntil && resendUntil <= next) setResendUntil(0);
+    }, Math.max(0, next - Date.now()));
+    return () => clearTimeout(timer);
+  }, [retryUntil, resendUntil]);
   const [identityProof, setIdentityProof] = useState<IdentityProofDraft | null>(null);
   const submissionId = useRef<string | undefined>(undefined);
   const submitLive = async () => {
@@ -74,7 +89,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
 }finally { setBusy(false); }
   };
   const submitRegistration = async () => {
-    if (registrationSubmitting.current) return;
+    if (retryUntil > Date.now() || registrationSubmitting.current) return;
     if (!isLiveAuthConfigured()) { setRegistrationError('Volunteer registration is not configured.'); return; }
     const normalizedPhone = normalizeIndianPhone(registration.phone);
     if (!normalizedPhone.ok) { setRegistrationError('Enter a valid 10-digit Indian mobile number. The +91 country code is added automatically.'); return; }
@@ -102,7 +117,8 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         : field === 'name' ? 'Enter your full name.'
           : field === 'phoneE164' ? 'Use E.164 phone format, for example +919876543210.'
             : field === 'skills' ? 'Choose up to 32 unique skills.'
-                : 'Check the registration details and try again.');
+                : field === 'identityProof' ? 'Choose a valid JPEG or PNG identity image and confirm consent.'
+              : 'Check the registration details and try again.');
       return;
     }
     registrationSubmitting.current = true; setRegistrationBusy(true); setRegistrationError(null);
@@ -114,14 +130,26 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         REGISTRATION_DISABLED: 'Public Volunteer registration is disabled while invitation email delivery is being verified. Contact the NGO for help. Retrying will not submit an application.',
         VOLUNTEER_REGISTRATION_CONFLICT: 'An account already uses these details. If you already registered as a Donor, use a different email address for your Volunteer application.',
         VOLUNTEER_ALREADY_EXISTS: 'An account already uses these details. If you already registered as a Donor, use a different email address for your Volunteer application.',
-        VALIDATION_ERROR: 'Check your name, email and phone number and try again.',
-        INVITE_RATE_LIMITED: 'Too many attempts. Please wait a while before trying again.',
+        VALIDATION_ERROR: 'The API rejected the application fields. Check your name, email, phone, skills and identity image.',
+        VOLUNTEER_PHONE_CONFLICT: 'This phone number already belongs to a Volunteer record. Contact the NGO for help.',
+        REGISTRATION_RATE_LIMITED: 'Registration attempts are limited. Retry the same application after the registration limit clears.',
+        INVITE_RATE_LIMITED: 'The email provider is temporarily limiting invitations. Wait at least one minute and retry the same application.',
+        IDENTITY_TOO_LARGE: 'Use a JPEG or PNG image smaller than 500 KB.',
+        IDENTITY_TYPE_INVALID: 'Choose a valid JPEG or PNG identity image and confirm consent.',
+        IDENTITY_REQUIRED: 'Choose a valid JPEG or PNG identity image and confirm consent.',
+        IDENTITY_STORAGE_UNAVAILABLE: 'Identity proof could not be stored. Retry the same application.',
+        SUBMISSION_BUSY: 'Your application is being processed. Retry the same application shortly.',
+        SUBMISSION_CONFLICT: 'Application details changed. Submit the edited application again.',
+        SUBMISSION_EXPIRED: 'This application attempt expired. Contact the NGO before retrying.',
+        FORBIDDEN: 'The service denied permission to submit this application.',
         INVITE_EMAIL_NOT_AUTHORIZED: 'This email cannot receive invitations with the current email settings. Contact an administrator.',
         INVITE_SERVICE_UNAVAILABLE: 'The invitation service is temporarily unavailable. Try again shortly.',
         INVITE_CONFIGURATION_ERROR: 'Invitation configuration needs administrator attention.',
         VOLUNTEER_REGISTRATION_REVIEW_REQUIRED: 'Your invitation may have been sent, but an administrator must review the application before you retry.',
         NETWORK_ERROR: 'Could not reach the API. Check your connection and try again.',
       };
+      if (cause instanceof ApiClientError && cause.status === 429) startCooldown(setRetryUntil);
+      if (cause instanceof ApiClientError && cause.code === 'SUBMISSION_CONFLICT') submissionId.current = undefined;
       setRegistrationError(cause instanceof ApiClientError
         ? messages[cause.code] ?? (cause.status === 429 ? messages.INVITE_RATE_LIMITED
           : cause.status >= 500 ? 'The service had a problem. Please try again shortly.'
@@ -141,21 +169,38 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
     try {
       await registerDonorWithEmailConfirmation(donorEmail, donorPassword, donorName);
       setDonorRegistrationResult(true);
+      startCooldown(setResendUntil);
       setDonorPassword(''); setDonorConfirmPassword('');
     } catch (error) {
       setRegistrationError(error instanceof Error ? error.message : 'Could not register. Check your details and try again.');
     } finally { registrationSubmitting.current = false; setRegistrationBusy(false); }
   };
+  const resendConfirmation = async () => {
+    if (registrationSubmitting.current || resendUntil > Date.now()) return;
+    registrationSubmitting.current = true; setRegistrationBusy(true); setResendNotice(null);
+    startCooldown(setResendUntil);
+    try {
+      await resendDonorConfirmation(donorEmail);
+      setResendNotice('If confirmation is pending, check your inbox and spam folder.');
+    } catch {
+      setResendNotice('Confirmation could not be requested. Wait one minute and try again.');
+    } finally {
+      registrationSubmitting.current = false; setRegistrationBusy(false);
+    }
+  };
   if (app.role === role) return <Redirect href={role === 'volunteer' ? '/volunteer/(tabs)/home' : role === 'admin' ? '/admin' : '/donor/(tabs)/home'} />;
   if (role === 'volunteer' && app.role === 'driver') return <Redirect href="/driver/(tabs)/jobs" />;
   return <Screen style={{ justifyContent: 'center' }}><View style={{ alignItems: 'flex-end', marginBottom: 24 }}><LanguageSwitcher /></View>
     {registerMode && role === 'donor' ? <>
+      <BrandLogo />
       <Header title="Register as Donor" subtitle="Create your donor account" back />
       <Card style={{ padding: 22 }}>
         {donorRegistrationResult ? <>
           <T size={18} weight="700" color={C.ink} style={{ marginBottom: 8 }}>Check your email</T>
           <T color={C.muted} style={{ marginBottom: 18 }}>Follow the confirmation link to verify your email, then return here and sign in.</T>
-          <Button title="Back to sign in" onPress={() => { setRegisterMode(false); setDonorRegistrationResult(false); setRegistrationError(null); }} variant="green" />
+          {resendNotice && <T color={C.muted} style={{ marginBottom: 12 }}>{resendNotice}</T>}
+          <Button title={resendUntil ? 'Resend available after one minute' : 'Resend confirmation email'} onPress={() => { void resendConfirmation(); }} variant="outline" loading={registrationBusy} disabled={registrationBusy || !!resendUntil} style={{ marginBottom: 8 }} />
+          <Button title="Back to sign in" onPress={() => { setRegisterMode(false); setDonorRegistrationResult(false); setResendNotice(null); setRegistrationError(null); }} variant="green" disabled={registrationBusy} />
         </> : <>
           <Field label="Name" value={donorName} onChangeText={setDonorName} autoCapitalize="words" autoComplete="name" required maxLength={200} />
           <Field label="Email address" value={donorEmail} onChangeText={setDonorEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" required maxLength={254} />
@@ -166,6 +211,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
         </>}
       </Card>
     </> : registerMode && role === 'volunteer' ? <>
+      <BrandLogo />
       <Header title="Register as Volunteer" subtitle="Apply to join AahaaraConnect" back />
       <Card style={{ padding: 22 }}>
         {registrationResult ? <>
@@ -191,7 +237,7 @@ export function LoginScreen({ role }: { role: Exclude<Role, null> }) {
           {selectedSkills.includes('Other') && <Field label="Other skill or interest" value={otherSkill} onChangeText={setOtherSkill} autoCapitalize="sentences" maxLength={100} required />}
           <T size={13} color={C.muted} style={{ marginBottom: 14 }}>After submission, Supabase will email a password setup link. Confirming your email does not approve the application; an Admin reviews it separately.</T>
           {registrationError && <T color={C.red} style={{ marginBottom: 12 }}>{registrationError}</T>}
-          <Button title="Submit application" onPress={() => { void submitRegistration(); }} loading={registrationBusy} disabled={registrationBusy} style={{ marginTop: 4 }} />
+          <Button title="Submit application" onPress={() => { void submitRegistration(); }} loading={registrationBusy} disabled={registrationBusy || !!retryUntil} style={{ marginTop: 4 }} />
           <Button title="Already have an account? Sign in" onPress={() => { setRegisterMode(false); setRegistrationError(null); }} variant="quiet" disabled={registrationBusy} style={{ marginTop: 8 }} />
         </>}
       </Card>

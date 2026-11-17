@@ -15,7 +15,7 @@ export default function Welcome() {
   if (restoreError) return <Screen><Card><T>Could not verify your saved session. Check your connection and retry.</T><Button title="Retry" onPress={retryRestore} /></Card></Screen>;
   return <Screen style={{ justifyContent: 'center' }}>
     <View style={{ alignItems: 'flex-end', marginBottom: 34 }}><LanguageSwitcher /></View>
-    <View style={{ alignItems: 'center', marginBottom: 30 }}><BrandLogo full width={250} />
+    <View style={{ alignItems: 'center', marginBottom: 20 }}><BrandLogo full width={164} />
       <T size={30} weight="800" color={C.ink} translate={false}>AaharaConnect</T></View>
     <T size={23} weight="700" color={C.ink} style={{ marginBottom: 6 }}>Choose how to continue</T><T color={C.muted} style={{ marginBottom: 18 }}>Together, less food waste.</T>
     {volunteerApplicationStatus && <Card style={{ marginBottom: 14, borderColor: volunteerApplicationStatus === 'DENIED' ? C.red : C.orange }}>

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getCurrentAccessToken, registerDonorWithEmailConfirmation, restoreAppUser, signInWithEmail, validateDonorRegistrationInput } from './auth';
+import { getCurrentAccessToken, registerDonorWithEmailConfirmation, resendDonorConfirmation, restoreAppUser, signInWithEmail, validateDonorRegistrationInput } from './auth';
 
 const { authMock, apiRequest } = vi.hoisted(() => ({
   authMock: {
-    signUp: vi.fn(), signInWithPassword: vi.fn(), signOut: vi.fn(), getSession: vi.fn(), refreshSession: vi.fn(), startAutoRefresh: vi.fn(), stopAutoRefresh: vi.fn(),
+    signUp: vi.fn(), resend: vi.fn(), signInWithPassword: vi.fn(), signOut: vi.fn(), getSession: vi.fn(), refreshSession: vi.fn(), startAutoRefresh: vi.fn(), stopAutoRefresh: vi.fn(),
   },
   apiRequest: vi.fn(),
 }));
@@ -46,6 +46,20 @@ describe('Donor Auth', () => {
     authMock.signUp.mockResolvedValueOnce({ data: { user: { id: 'auth-id' }, session: { access_token: 'x' } }, error: null });
     await expect(registerDonorWithEmailConfirmation('donor@example.com', '12345678', 'Donor')).rejects.toThrow(/Email confirmation is not enabled/);
     expect(authMock.signOut).toHaveBeenCalledOnce();
+  });
+
+  it('requests a signup confirmation resend without changing the login session', async () => {
+    authMock.resend.mockResolvedValueOnce({ error: null });
+    await resendDonorConfirmation(' donor@example.com ');
+    expect(authMock.resend).toHaveBeenCalledWith({ type: 'signup', email: 'donor@example.com' });
+    expect(authMock.signOut).not.toHaveBeenCalled();
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
+
+  it('does not accept an unconfirmed donor or resolve an application role', async () => {
+    authMock.signInWithPassword.mockResolvedValueOnce({ data: { session: null }, error: new Error('Email not confirmed') });
+    await expect(signInWithEmail('donor@example.com', 'example-password')).rejects.toThrow('Email not confirmed');
+    expect(apiRequest).not.toHaveBeenCalled();
   });
 
   it('rejects invalid credentials and never creates a local login', async () => {

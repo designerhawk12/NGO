@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
+import sharp from 'sharp';
 
-const { verify, findUser, invite, getEmail, withTransaction, consumeRateLimit, repo } = vi.hoisted(() => ({
+const { verify, findUser, invite, getEmail, withTransaction, query, upload, consumeRateLimit, repo } = vi.hoisted(() => ({
   verify: vi.fn(),
   findUser: vi.fn(),
   invite: vi.fn(),
   getEmail: vi.fn(),
   withTransaction: vi.fn(),
+  query: vi.fn(),
+  upload: vi.fn(),
   consumeRateLimit: vi.fn(),
   repo: {
     findAdminVolunteerConflict: vi.fn(),
@@ -24,9 +27,13 @@ vi.mock('../auth/supabase', () => ({
   inviteSupabaseUserByEmail: invite,
   getSupabaseUserEmail: getEmail,
   setVolunteerPassword: vi.fn(),
+  getSupabaseAdminClient: () => ({ storage: {
+    getBucket: async () => ({ data: { public: false }, error: null }),
+    from: () => ({ upload }),
+  } }),
 }));
 vi.mock('../auth/appUsers', () => ({ findOrCreateAppUser: findUser }));
-vi.mock('../db/pool', () => ({ withTransaction }));
+vi.mock('../db/pool', () => ({ withTransaction, getPool: () => ({ query }) }));
 vi.mock('../modules/volunteers/registrationRateLimit', () => ({ consumeVolunteerRegistrationRateLimit: consumeRateLimit }));
 vi.mock('../modules/volunteers/repository', () => repo);
 
@@ -94,6 +101,39 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('Volunteer self-registration', () => {
+  it('keeps an explicitly throttled invitation retryable under the same submission ID', async () => {
+    vi.stubEnv('VOLUNTEER_IDENTITY_REQUIRED', 'true');
+    const submissionId = 'a0000000-0000-4000-8000-000000000001';
+    const dataBase64 = (await sharp({
+      create: { width: 8, height: 8, channels: 3, background: '#ffffff' },
+    }).jpeg().toBuffer()).toString('base64');
+    const payload = { ...registration, submissionId, identityProof: {
+      documentType: 'PAN', contentType: 'image/jpeg', dataBase64, consent: true, maskedAadhaarConfirmed: false,
+    } };
+    const { createHash } = await import('node:crypto');
+    const { volunteerRegistrationInputSchema } = await import('@aaharaconnect/shared');
+    const requestHash = createHash('sha256')
+      .update(JSON.stringify(volunteerRegistrationInputSchema.parse(payload))).digest('hex');
+    query.mockImplementation(async (sql: string) => ({
+      rows: sql.includes('SELECT id FROM') ? [{ id: submissionId }]
+        : sql.includes('RETURNING *') ? [{
+          request_hash: requestHash,
+          expires_at: new Date(Date.now() + 60_000),
+          object_path: 'registration/test.jpg',
+        }] : [],
+    }));
+    upload.mockResolvedValue({ error: null });
+    invite.mockRejectedValue(new HttpError(429, 'INVITE_RATE_LIMITED', 'Invitation email limit reached.'));
+    const result = await request(app).post('/api/v1/volunteers/register').send(payload);
+    expect(result.status).toBe(429);
+    expect(result.body.error.code).toBe('INVITE_RATE_LIMITED');
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('SET invite_started_at=NULL'), [submissionId, expect.any(String)]);
+    expect(invite).toHaveBeenCalledOnce();
+    expect(consumeRateLimit).not.toHaveBeenCalled();
+    expect(repo.insertSelfRegisteredVolunteer).not.toHaveBeenCalled();
+  });
+
+
   it('is disabled by default before validation, database access, or email invitation', async () => {
     vi.stubEnv('PUBLIC_VOLUNTEER_REGISTRATION_ENABLED', undefined);
     const result = await request(app).post('/api/v1/volunteers/register').send({ email: 'invalid' });
@@ -153,7 +193,7 @@ describe('Volunteer self-registration', () => {
     consumeRateLimit.mockResolvedValueOnce(false);
     const result = await request(app).post('/api/v1/volunteers/register').send(registration);
     expect(result.status).toBe(429);
-    expect(result.body.error.code).toBe('INVITE_RATE_LIMITED');
+    expect(result.body.error.code).toBe('REGISTRATION_RATE_LIMITED');
     expect(invite).not.toHaveBeenCalled();
     expect(repo.findAdminVolunteerConflict).not.toHaveBeenCalled();
     expect(repo.insertSelfRegisteredVolunteer).not.toHaveBeenCalled();

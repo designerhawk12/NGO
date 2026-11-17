@@ -83,6 +83,11 @@ export async function registerDonorWithEmailConfirmation(email: string, password
   }
 }
 
+export async function resendDonorConfirmation(email: string): Promise<void> {
+  const { error } = await getAuthClient().auth.resend({ type: 'signup', email: email.trim() });
+  if (error) throw error;
+}
+
 export async function restoreAppUser(): Promise<AppUser | null> {
   if (!isLiveAuthConfigured()) return null;
   const auth = getAuthClient();

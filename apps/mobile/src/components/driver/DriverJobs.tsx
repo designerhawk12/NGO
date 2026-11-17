@@ -167,7 +167,7 @@ export default function DriverJobs({ historyOnly = false, assignmentId }: { hist
   const visible = jobs.filter(job => assignmentId ? job.assignmentId === assignmentId : historyOnly ? isClosedJob(job) : !isClosedJob(job));
 
   return <Screen>
-    {!historyOnly && !assignmentId && <BrandLogo width={72} />}
+    {!historyOnly && !assignmentId && <BrandLogo />}
     <Header title={historyOnly ? 'History' : 'My Jobs'} subtitle={historyOnly ? 'Your completed and closed jobs.' : 'Pickups assigned to you by the NGO.'} />
     {!historyOnly && <NotificationBell />}
     <Button title="Refresh jobs" variant="outline" icon="history" onPress={() => void refresh()} style={{ marginBottom: 12 }} />

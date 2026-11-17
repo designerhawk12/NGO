@@ -15,9 +15,12 @@ export default function IdentityProofPicker({ value, onChange }: { value: Identi
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, base64: true, exif: false });
       const asset = !result.canceled && result.assets[0];
       if (!asset || !asset.base64) return;
-      if (asset.base64.length > 666668 || (asset.mimeType !== 'image/jpeg' && asset.mimeType !== 'image/png')) { setError('Use a JPEG or PNG image smaller than 500 KB.'); return; }
+      // Classify the encoded payload, which can differ from the source URI's MIME type.
+      const contentType = asset.base64.startsWith('/9j/') ? 'image/jpeg'
+        : asset.base64.startsWith('iVBORw0KGgo') ? 'image/png' : null;
+      if (asset.base64.length > 666668 || !contentType) { setError('Use a JPEG or PNG image smaller than 500 KB.'); return; }
       setError(''); setPreview(asset.uri);
-      onChange({ documentType: type, contentType: asset.mimeType, dataBase64: asset.base64, consent: false, maskedAadhaarConfirmed: false });
+      onChange({ documentType: type, contentType, dataBase64: asset.base64, consent: false, maskedAadhaarConfirmed: false });
     } catch { setError('Could not open the image picker. Try again.'); }
   };
   return <View style={{ marginVertical: 12 }}>

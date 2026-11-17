@@ -232,7 +232,7 @@ function registrationConflict(): HttpError {
 export async function registerVolunteer(input: CreateSelfRegistrationInput, clientIp: string): Promise<VolunteerRegistrationResult> {
   if (identityEnabled() || input.identityProof) return registerWithIdentity(input, clientIp);
   if (!await consumeVolunteerRegistrationRateLimit(clientIp, input.email)) {
-    throw new HttpError(429, 'INVITE_RATE_LIMITED', 'Volunteer registration limit reached. Please wait before trying again.');
+    throw new HttpError(429, 'REGISTRATION_RATE_LIMITED', 'Volunteer registration limit reached. Please wait before trying again.');
   }
   const conflict = await volunteerRepository.findAdminVolunteerConflict(null, input.phoneE164);
   if (conflict) throw registrationConflict();

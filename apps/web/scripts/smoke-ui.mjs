@@ -84,6 +84,8 @@ try {
   await act(async () => root.render(React.createElement(Root)))
   assert.equal(document.querySelector('.landing-brand img').getAttribute('src'), '/branding/aaf-logo.png')
   assert.equal(document.querySelector('.landing-hero img').getAttribute('src'), '/branding/aaf-logo-full.png')
+  assert.equal(document.querySelector('.landing-brand img').getAttribute('width'), '42')
+  assert.equal(document.querySelector('.landing-hero img').getAttribute('width'), '180')
   assert.match(document.querySelector('.landing-hero img').alt, /RIGHT TO EAT, NOT TO WASTE/)
   assert.equal(document.querySelector('.landing-hero h1').textContent, 'Good food from your event can feed someone today')
   assert.equal(document.querySelector('.landing-hero a[href="#install-app"]'), null)

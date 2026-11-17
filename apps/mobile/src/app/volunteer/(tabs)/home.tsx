@@ -18,7 +18,7 @@ function LiveVolunteerHome() {
   const { t } = useLanguage();
   const today = new Date();
   const availableNow = availability.some(slot => slot.state === 'AVAILABLE' && new Date(slot.startsAt) <= today && today < new Date(slot.endsAt));
-  return <Screen><BrandLogo width={72} /><Header title="Good evening," subtitle={profile?.name ?? (profileLoading ? t('Loading...') : '')} right={<LanguageSwitcher />} />
+  return <Screen><BrandLogo /><Header title="Good evening," subtitle={profile?.name ?? (profileLoading ? t('Loading...') : '')} right={<LanguageSwitcher />} />
     <NotificationBell />
     {profileError ? <Card style={{ marginBottom: 16 }}><T color={C.red}>{profileError}</T><Button title="Retry" variant="outline" onPress={() => void refreshProfile()} style={{ marginTop: 12 }} /></Card> : !profileLoading && !profile ? <Card style={{ marginBottom: 16 }}><T>No volunteer profile found.</T><Button title="Retry" variant="outline" onPress={() => void refreshProfile()} style={{ marginTop: 12 }} /></Card> : null}
     <Card style={{ backgroundColor: C.greenSoft, borderColor: '#CDE7D5', marginBottom: 20 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Icon name="calendar" size={24} /><View style={{ flex: 1 }}><T size={17} weight="700" color={C.ink}>Your availability</T><T color={C.muted}>{availabilityLoading ? t('Loading...') : availabilityError ? t('Could not load availability.') : `${availability.length} ${t('slots')}`}</T></View>{!availabilityLoading && !availabilityError && <Badge value={availableNow ? 'Available' : 'Unavailable'} />}</View>{availabilityError && <Button title="Retry" variant="outline" onPress={() => void refreshAvailability()} style={{ marginTop: 12 }} />}</Card>
@@ -30,7 +30,7 @@ function LiveVolunteerHome() {
 function DemoVolunteerHome({ volunteerName, assignments, slotsCount }: { volunteerName: string; assignments: ReturnType<typeof useApp>['assignments']; slotsCount: number }) {
   const { t } = useLanguage();
   const next = assignments.find(item => !['Completed', 'Rejected'].includes(item.status));
-  return <Screen><BrandLogo width={72} /><Header title={`Good evening,`} subtitle={volunteerName} right={<LanguageSwitcher />} />
+  return <Screen><BrandLogo /><Header title={`Good evening,`} subtitle={volunteerName} right={<LanguageSwitcher />} />
     <Card style={{ backgroundColor: C.greenSoft, borderColor: '#CDE7D5', marginBottom: 20 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={24} /></View><View style={{ flex: 1 }}><T size={17} weight="700" color={C.ink}>Available for pickups</T><T color={C.muted}>Ready to make a difference today?</T></View><Badge value="Available" /></View></Card>
     <T size={21} weight="700" color={C.ink} style={{ marginBottom: 12 }}>Next assignment</T>
     {next ? <AssignmentCard item={next} /> : <Card><T color={C.muted}>No completed assignments yet</T></Card>}

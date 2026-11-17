@@ -36,7 +36,7 @@ export async function registerWithIdentity(input: VolunteerRegistrationInput, ip
   const hash = createHash('sha256').update(JSON.stringify(input)).digest('hex');
   const existing = await getPool().query('SELECT id FROM app.identity_registration_attempts WHERE id = $1', [input.submissionId]);
   if (!existing.rows[0]) {
-    if (!await consumeVolunteerRegistrationRateLimit(ip, input.email)) throw new HttpError(429, 'INVITE_RATE_LIMITED', 'Registration limit reached. Retry the same submission later.');
+    if (!await consumeVolunteerRegistrationRateLimit(ip, input.email)) throw new HttpError(429, 'REGISTRATION_RATE_LIMITED', 'Registration limit reached. Retry the same submission later.');
     await getPool().query(`INSERT INTO app.identity_registration_attempts(id, request_hash, object_path) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, [input.submissionId, hash, `registration/${input.submissionId}.jpg`]);
   }
   const bytes = await validatedIdentityImage(input.identityProof);
@@ -55,10 +55,22 @@ export async function registerWithIdentity(input: VolunteerRegistrationInput, ip
     if (uploaded.error) throw new HttpError(503, 'IDENTITY_STORAGE_UNAVAILABLE', 'The proof could not be stored. Retry the same submission.');
     let authId = attempt.auth_user_id as string | null;
     if (!authId) {
-      if(await findAdminVolunteerConflict(null,input.phoneE164))throw new HttpError(409,'VOLUNTEER_REGISTRATION_CONFLICT','An account already uses these details.');
+      if (await findAdminVolunteerConflict(null, input.phoneE164)) {
+        throw new HttpError(409, 'VOLUNTEER_PHONE_CONFLICT', 'A volunteer record already uses this phone number.');
+      }
       if(attempt.invite_started_at) throw new HttpError(503,'VOLUNTEER_REGISTRATION_REVIEW_REQUIRED','An invitation may already have been sent. The NGO must reconcile this application before retrying.');
       await getPool().query('UPDATE app.identity_registration_attempts SET invite_started_at=now() WHERE id=$1 AND lease_id=$2',[input.submissionId,leaseId]);
-      const invited = await inviteSupabaseUserByEmail(input.email, input.name);
+      let invited: Awaited<ReturnType<typeof inviteSupabaseUserByEmail>>;
+      try {
+        invited = await inviteSupabaseUserByEmail(input.email, input.name);
+      } catch (error) {
+        // An explicit provider throttle can be retried. For ambiguous provider
+        // failures retain the marker so a retry cannot send a second invitation.
+        if (error instanceof HttpError && error.status === 429) {
+          await getPool().query('UPDATE app.identity_registration_attempts SET invite_started_at=NULL WHERE id=$1 AND lease_id=$2', [input.submissionId, leaseId]);
+        }
+        throw error;
+      }
       authId = invited.authUserId;
       // Persist external invitation recovery independently; rollback cannot unsend an invitation.
       await getPool().query('UPDATE app.identity_registration_attempts SET auth_user_id = $2 WHERE id = $1', [input.submissionId, authId]);
