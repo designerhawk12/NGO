@@ -7,8 +7,11 @@ import { HttpError } from '../../middleware/errorHandler';
 
 const IP_WINDOW_SECONDS = 60 * 60;
 const IP_MAX_ATTEMPTS = 5;
-const EMAIL_WINDOW_SECONDS = 24 * 60 * 60;
+const EMAIL_WINDOW_SECONDS = 60 * 60;
 const EMAIL_MAX_ATTEMPTS = 1;
+
+// Reject the transaction so neither bucket commits unless both allow the request.
+const limitReached = new Error('Volunteer registration rate limit reached.');
 
 function normalizeIpAddress(value: string): string {
   const address = value.trim().toLowerCase();
@@ -70,11 +73,12 @@ export async function consumeVolunteerRegistrationRateLimit(clientIp: string, em
         `DELETE FROM app.volunteer_registration_rate_limits
          WHERE window_started_at < now() - interval '30 days'`
       );
-      if (!await consumeBucket(client, ipHash, IP_WINDOW_SECONDS, IP_MAX_ATTEMPTS)) return false;
-      if (!await consumeBucket(client, emailHash, EMAIL_WINDOW_SECONDS, EMAIL_MAX_ATTEMPTS)) return false;
+      if (!await consumeBucket(client, ipHash, IP_WINDOW_SECONDS, IP_MAX_ATTEMPTS)) throw limitReached;
+      if (!await consumeBucket(client, emailHash, EMAIL_WINDOW_SECONDS, EMAIL_MAX_ATTEMPTS)) throw limitReached;
       return true;
     });
-  } catch {
+  } catch (error) {
+    if (error === limitReached) return false;
     throw new HttpError(503, 'INVITE_CONFIGURATION_ERROR', 'Volunteer registration protection is unavailable.');
   }
 }
